@@ -1,0 +1,60 @@
+# ==========================
+# Python / BackEnd
+# ==========================
+# Virtual environment
+BackEnd/.venv/
+venv/
+env/
+
+# Byte-compiled / cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Alembic / migrations cache
+alembic/versions/*.pyc
+
+# Logs
+BackEnd/logs/
+*.log
+
+# Environment files
+BackEnd/.env
+
+# Database files (if any)
+*.db
+*.sqlite3
+
+# ==========================
+# Node / FrontEnd
+# ==========================
+# Node modules
+FrontEnd/node_modules/
+
+# Build / dist
+FrontEnd/dist/
+FrontEnd/build/
+
+# Environment files
+FrontEnd/.env
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+
+# ==========================
+# Editor / OS files
+# ==========================
+.vscode/
+.idea/
+.DS_Store
+*.swp
+*.swo
+
+# ==========================
+# Misc
+# ==========================
+*.zip
+*.tar.gz
+*.egg-info/

@@ -1,0 +1,31 @@
+# Python / Django / FastAPI
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.sqlite3
+*.env
+*.log
+
+# Virtual environment
+.venv/
+venv/
+env/
+ENV/
+
+# Alembic / migrations compiled files
+alembic/__pycache__/
+alembic/versions/__pycache__/
+
+# Django / FastAPI static/media (if you add them)
+media/
+staticfiles/
+
+# IDE / OS files
+.vscode/
+.idea/
+.DS_Store
+*.swp
+*.swo
+
+
