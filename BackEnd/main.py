@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from core.config import settings
 from core.database import Base, engine
-from routers.v1 import auth, user_routes, admin
+from routers.v1 import auth, user_routes, admin, doctors
 from routers.v1 import auth
 
 
@@ -29,7 +29,9 @@ def create_app() -> FastAPI:
     api_v1_prefix = "/api/v1"
     app.include_router(auth.router, prefix=f"{api_v1_prefix}/auth", tags=["Auth"])
     app.include_router(user_routes.router, prefix=f"{api_v1_prefix}/users", tags=["Users"])
-    app.include_router(admin.router, prefix=f"{api_v1_prefix}/admin", tags=["Admin"])  # ✅ added prefix
+    app.include_router(admin.router, prefix=f"{api_v1_prefix}/admin", tags=["Admin"])  
+    app.include_router(doctors.router, prefix=f"{api_v1_prefix}/doctors", tags=["Doctors"])
+
 
     return app
 

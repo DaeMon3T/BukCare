@@ -1,6 +1,7 @@
 # schemas/doctors.py
 from pydantic import BaseModel, EmailStr, Field, ConfigDict
-from typing import Optional
+from typing import Optional, List
+from schemas.address import Address
 
 
 # ---------------------------
@@ -33,17 +34,19 @@ class DoctorBase(BaseModel):
 
 class DoctorCreate(DoctorBase):
     password: str = Field(..., min_length=6, max_length=255)
+    specialization_ids: Optional[List[int]] = []  # ✅ multiple specialization IDs
+
 
 class DoctorUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=255)
     email: Optional[EmailStr] = None
-    specialization_id: Optional[int] = None
+    specialization_ids: Optional[List[int]] = []  # ✅ allow multiple updates
     address_id: Optional[int] = None
 
 class Doctor(DoctorBase):
     model_config = ConfigDict(from_attributes=True)
     doctor_id: int
-    specialization: Optional[Specialization] = None
+    specializations: List[Specialization] = [] 
     # You can import Address schema separately if you want
     # or define it here as well if you want everything in one file
     address: Optional["Address"] = None

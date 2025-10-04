@@ -1,7 +1,15 @@
 # models/doctor.py
-from sqlalchemy import Column, String, Integer, ForeignKey
+from sqlalchemy import Column, String, Integer, ForeignKey, Table
 from sqlalchemy.orm import relationship
 from core.database import Base
+
+# Association table for many-to-many relationship
+doctor_specializations = Table(
+    "doctor_specializations",
+    Base.metadata,
+    Column("doctor_id", Integer, ForeignKey("doctors.doctor_id"), primary_key=True),
+    Column("specialization_id", Integer, ForeignKey("specializations.specialization_id"), primary_key=True),
+)
 
 class Specialization(Base):
     __tablename__ = "specializations"
@@ -10,7 +18,8 @@ class Specialization(Base):
     name = Column(String(100), nullable=False)
     descriptions = Column(String(500), nullable=True)
     
-    doctors = relationship("Doctor", back_populates="specialization")
+    # Many-to-Many: Specialization can belong to multiple doctors
+    doctors = relationship("Doctor", secondary=doctor_specializations, back_populates="specializations")
 
 class Doctor(Base):
     __tablename__ = "doctors"
@@ -24,5 +33,7 @@ class Doctor(Base):
     
     # Relationships
     user = relationship("User", back_populates="doctor_profile")
-    specialization = relationship("Specialization", back_populates="doctors")
     address = relationship("Address", back_populates="doctors")
+
+    # Many-to-Many: Doctor can have multiple specializations
+    specializations = relationship("Specialization", secondary=doctor_specializations, back_populates="doctors")
