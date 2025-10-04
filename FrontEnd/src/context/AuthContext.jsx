@@ -45,9 +45,7 @@ export const AuthProvider = ({ children }) => {
       } catch (error) {
         console.error('Error parsing user data:', error);
         // Remove corrupted data
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('refresh_token');
-        localStorage.removeItem('user_data');
+        localStorage.clear();
       }
     }
 
@@ -57,12 +55,12 @@ export const AuthProvider = ({ children }) => {
   /**
    * Login function
    * Stores access & refresh tokens in localStorage and updates user state
-   * @param {Object} tokens - { access: string, refresh: string }
+   * @param {Object} tokens - { access_token: string, refresh_token: string }
    * @param {Object} userData - User info (id, name, email, role, picture, etc.)
    */
   const login = (tokens, userData) => {
-    localStorage.setItem('access_token', tokens.access);
-    localStorage.setItem('refresh_token', tokens.refresh);
+    localStorage.setItem('access_token', tokens.access_token);   // ✅ fixed
+    localStorage.setItem('refresh_token', tokens.refresh_token); // ✅ fixed
     localStorage.setItem('user_data', JSON.stringify(userData));
     setUser(userData);
   };
@@ -73,32 +71,29 @@ export const AuthProvider = ({ children }) => {
    * Ensures user is fully logged out both client-side and server-side
    */
   const logout = async () => {
-  try {
-    const accessToken = localStorage.getItem('access_token');
-    if (accessToken) {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/auth/logout`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`,  
-        },
-      });
+    try {
+      const accessToken = localStorage.getItem('access_token');
+      if (accessToken) {
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/auth/logout`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${accessToken}`,
+          },
+        });
 
-      if (!response.ok) {
-        console.error('Logout failed on backend:', response.status);
+        if (!response.ok) {
+          console.error('Logout failed on backend:', response.status);
+        }
       }
+    } catch (error) {
+      console.error('Error logging out on backend:', error);
+    } finally {
+      localStorage.clear(); // ✅ clears all auth data
+      setUser(null);
+      window.location.href = '/';
     }
-  } catch (error) {
-    console.error('Error logging out on backend:', error);
-  } finally {
-    // Clear frontend storage
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('refresh_token');
-    localStorage.removeItem('user_data');
-    setUser(null);
-    window.location.href = '/';
-  }
-};
+  };
 
   // Context value object provided to all child components
   const value = {

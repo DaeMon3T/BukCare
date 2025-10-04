@@ -1,18 +1,4 @@
-// src/services/admin/AdminAPI.js
-
-const BASE_URL = "http://localhost:8000/api/v1/admin";
-
-/**
- * Helper to attach authorization headers
- */
-function getAuthHeaders() {
-  const token = localStorage.getItem("access_token"); // token saved after login
-  if (!token) throw new Error("No access token found. Please login first.");
-  return {
-    "Content-Type": "application/json",
-    "Authorization": `Bearer ${token}`,
-  };
-}
+import BaseAPI from "../BaseAPI";
 
 /**
  * Invite a user (doctor or staff)
@@ -21,50 +7,67 @@ function getAuthHeaders() {
  * @param {string} userData.role - User's role ('doctor' or 'staff')
  */
 async function inviteUser({ email, role }) {
-  if (!role) throw new Error("Role is required to invite a user");
-
-  // Unified backend endpoint
-  const endpoint = '/invite/';
+  if (!email) throw new Error("Email is required");
+  if (!role) throw new Error("Role is required");
 
   try {
-    const res = await fetch(`${BASE_URL}${endpoint}`, {
-      method: "POST",
-      headers: getAuthHeaders(),
-      body: JSON.stringify({ email, role }), // role explicitly sent
-    });
+    const { data } = await BaseAPI.post("/admin/invite", { email, role });
 
-    const data = await res.json();
-
-    if (!res.ok) {
-      // Handle specific error cases
-      if (res.status === 400) {
-        if (data.detail?.includes('already exists') || data.message?.includes('already exists')) {
-          throw new Error('A user with this email already exists');
-        }
-        if (data.detail?.includes('pending invitation') || data.message?.includes('pending invitation')) {
-          throw new Error('A pending invitation already exists for this email');
-        }
-      }
-      throw new Error(data.detail || data.message || `Server error (${res.status})`);
-    }
-
-    // Partial success (invitation created but email failed)
-    if (data.warning || (data.message && data.message.includes('failed to send email'))) {
-      console.warn('Invitation created but email sending failed:', data.message);
+    // Handle partial success: invitation created but email failed
+    if (data.warning || (data.message && data.message.includes("failed to send email"))) {
+      console.warn("Invitation created but email sending failed:", data.message);
       return {
         success: true,
-        warning: data.message || 'Invitation created but email notification failed to send',
-        ...data
+        warning: data.message || "Invitation created but email notification failed to send",
+        ...data,
       };
     }
 
     return data;
   } catch (error) {
-    console.error('API call failed:', error);
-    throw error;
+    const message = error.response?.data?.detail || error.response?.data?.message || error.message;
+
+    if (error.response?.status === 400) {
+      if (message.includes("already exists")) throw new Error("A user with this email already exists");
+      if (message.includes("pending invitation")) throw new Error("A pending invitation already exists for this email");
+    }
+
+    throw new Error(message);
+  }
+}
+
+/**
+ * Fetch dashboard stats (patients, doctors, staff, etc.)
+ */
+async function getDashboardStats() {
+  try {
+    const { data } = await BaseAPI.get("/admin/dashboard-stats");
+    return data;
+  } catch (error) {
+    throw new Error(error.response?.data?.detail || error.message);
+  }
+}
+
+
+
+/**
+ * Search for users by name or email
+ * @param {string} query - Search query string
+ */
+async function searchUsers(query) {
+  try {
+    const { data } = await BaseAPI.get("/admin/search-users", {
+      params: { query }
+    });
+    return data;
+  } catch (error) {
+    console.error("User search failed:", error);
+    throw new Error(error.response?.data?.detail || error.message);
   }
 }
 
 export default {
   inviteUser,
+  getDashboardStats,
+  searchUsers,
 };

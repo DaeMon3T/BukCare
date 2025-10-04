@@ -4,7 +4,8 @@
 // ============================================================================
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '@/context/AuthContext';
+import Footer from "@/components/Footer";
 
 const CompleteProfile = () => {
   const navigate = useNavigate();
@@ -314,6 +315,8 @@ const CompleteProfile = () => {
           </div>
         </div>
       </div>
+      {/* Footer */}
+      <Footer />
     </div>
   );
 };

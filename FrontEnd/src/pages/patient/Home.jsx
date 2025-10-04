@@ -1,8 +1,45 @@
-// src/pages/patient/PatientInterface.jsx
 import React from "react";
 import Navbar from "../../components/Navbar";
+import DoctorCard from "../../components/DoctorCard";
 
 const PatientInterface = () => {
+  // 🧪 Mock data (replace with real data later)
+  const doctors = [
+    {
+      doctor_id: 1,
+      name: "Dr. Sarah Johnson",
+      email: "sarah.johnson@healthcare.com",
+      specialization: {
+        name: "Cardiology",
+        descriptions: "Expert in heart health, cardiovascular treatments, and cardiac surgery."
+      },
+      address: "City Medical Center, New York, NY",
+      avatar: "https://randomuser.me/api/portraits/women/44.jpg"
+    },
+    {
+      doctor_id: 2,
+      name: "Dr. James Lee",
+      email: "james.lee@healthcare.com",
+      specialization: {
+        name: "Dermatology",
+        descriptions: "Specialist in skin care, acne treatment, and aesthetic dermatology."
+      },
+      address: "Health First Clinic, Los Angeles, CA",
+      avatar: "https://randomuser.me/api/portraits/men/46.jpg"
+    },
+    {
+      doctor_id: 3,
+      name: "Dr. Aisha Ahmed",
+      email: "aisha.ahmed@healthcare.com",
+      specialization: {
+        name: "Pediatrics",
+        descriptions: "Caring for infants, children, and adolescents with compassion and expertise."
+      },
+      address: "Sunrise Hospital, Chicago, IL",
+      avatar: "https://randomuser.me/api/portraits/women/65.jpg"
+    }
+  ];
+
   return (
     <div className="h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 overflow-hidden">
       {/* Navbar */}
@@ -11,11 +48,12 @@ const PatientInterface = () => {
       {/* Main Content */}
       <main className="h-[calc(100vh-4rem)] overflow-y-auto">
         <div className="w-full px-4 sm:px-6 lg:px-8 py-6">
+          {/* Hero Section */}
           <div className="mb-6">
             <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-6 text-white">
               <h1 className="text-2xl font-bold mb-2">Welcome back!</h1>
               <p className="text-blue-100">
-                Here's your health dashboard. Stay on top of your appointments.
+                Here's your health dashboard. Browse and book appointments with our top specialists.
               </p>
             </div>
           </div>
@@ -44,26 +82,25 @@ const PatientInterface = () => {
                     <h3 className="font-semibold text-gray-800">
                       Book Appointment
                     </h3>
-                    <p className="text-sm text-gray-600">Schedule with doctors</p>
+                    <p className="text-sm text-gray-600">
+                      Schedule with doctors quickly and easily
+                    </p>
                   </div>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Dashboard Content */}
-          <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-            <div className="xl:col-span-2 bg-white rounded-xl shadow-sm border border-gray-100">
-              <div className="p-4 lg:p-6 border-b border-gray-100">
-                <h2 className="text-lg lg:text-xl font-semibold text-gray-800">
-                  Recent Activity
-                </h2>
-              </div>
-              <div className="p-4 lg:p-6 space-y-4">
-                <div className="text-center py-8 text-gray-500">
-                  <p className="text-sm">No recent activity</p>
-                </div>
-              </div>
+          {/* 👨‍⚕️ Doctors Section */}
+          <div className="mb-6">
+            <h2 className="text-lg lg:text-2xl font-bold text-gray-800 mb-6">
+              Meet Our Specialists
+            </h2>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+              {doctors.map((doc) => (
+                <DoctorCard key={doc.doctor_id} doctor={doc} />
+              ))}
             </div>
           </div>
         </div>

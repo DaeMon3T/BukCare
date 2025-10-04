@@ -1,8 +1,8 @@
-"""create tables
+"""Initial migration
 
-Revision ID: 4924c2a9175f
-Revises: 5cb3fe70b897
-Create Date: 2025-09-29 15:34:30.064127
+Revision ID: d858a5cddaf6
+Revises: 
+Create Date: 2025-10-04 10:12:48.722886
 
 """
 from typing import Sequence, Union
@@ -12,8 +12,8 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '4924c2a9175f'
-down_revision: Union[str, Sequence[str], None] = '5cb3fe70b897'
+revision: str = 'd858a5cddaf6'
+down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
@@ -52,32 +52,24 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('address_id')
     )
     op.create_index(op.f('ix_addresses_address_id'), 'addresses', ['address_id'], unique=False)
-    op.create_table('doctors',
-    sa.Column('doctor_id', sa.Integer(), nullable=False),
-    sa.Column('name', sa.String(length=255), nullable=False),
-    sa.Column('email', sa.String(length=255), nullable=False),
-    sa.Column('password', sa.String(length=255), nullable=False),
-    sa.Column('specialization_id', sa.Integer(), nullable=True),
-    sa.Column('address_id', sa.Integer(), nullable=True),
-    sa.ForeignKeyConstraint(['address_id'], ['addresses.address_id'], ),
-    sa.ForeignKeyConstraint(['specialization_id'], ['specializations.specialization_id'], ),
-    sa.PrimaryKeyConstraint('doctor_id')
-    )
-    op.create_index(op.f('ix_doctors_doctor_id'), 'doctors', ['doctor_id'], unique=False)
     op.create_table('users',
-    sa.Column('user_id', sa.Integer(), nullable=False),
+    sa.Column('user_id', sa.Integer(), autoincrement=True, nullable=False),
+    sa.Column('custom_id', sa.String(), nullable=False),
+    sa.Column('email', sa.String(), nullable=False),
     sa.Column('fname', sa.String(), nullable=False),
     sa.Column('lname', sa.String(), nullable=False),
+    sa.Column('google_id', sa.String(), nullable=True),
+    sa.Column('picture', sa.String(), nullable=True),
+    sa.Column('locale', sa.String(), nullable=True),
     sa.Column('mname', sa.String(), nullable=True),
-    sa.Column('email', sa.String(), nullable=False),
-    sa.Column('password', sa.String(), nullable=True),
     sa.Column('sex', sa.Boolean(), nullable=True),
     sa.Column('dob', sa.DateTime(), nullable=True),
     sa.Column('contact_number', sa.String(), nullable=True),
-    sa.Column('role', sa.Enum('ADMIN', 'DOCTOR', 'STAFF', 'PATIENT', name='userrole'), nullable=True),
+    sa.Column('password', sa.String(), nullable=True),
+    sa.Column('role', sa.Enum('ADMIN', 'DOCTOR', 'STAFF', 'PATIENT', name='user_role_enum'), nullable=True),
     sa.Column('is_active', sa.Boolean(), nullable=True),
     sa.Column('is_verified', sa.Boolean(), nullable=True),
-    sa.Column('google_id', sa.String(), nullable=True),
+    sa.Column('is_profile_complete', sa.Boolean(), nullable=True),
     sa.Column('refresh_token', sa.String(), nullable=True),
     sa.Column('reset_token', sa.String(), nullable=True),
     sa.Column('reset_token_expires', sa.DateTime(), nullable=True),
@@ -89,21 +81,51 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('user_id'),
     sa.UniqueConstraint('google_id')
     )
+    op.create_index(op.f('ix_users_custom_id'), 'users', ['custom_id'], unique=True)
     op.create_index(op.f('ix_users_email'), 'users', ['email'], unique=True)
     op.create_index(op.f('ix_users_user_id'), 'users', ['user_id'], unique=False)
     op.create_table('appointments',
-    sa.Column('appointment_id', sa.Integer(), nullable=False),
+    sa.Column('appointment_id', sa.Integer(), autoincrement=True, nullable=False),
     sa.Column('patient_id', sa.Integer(), nullable=False),
     sa.Column('doctor_id', sa.Integer(), nullable=False),
     sa.Column('appointment_date', sa.DateTime(), nullable=False),
+    sa.Column('status', sa.Enum('PENDING', 'CONFIRMED', 'CANCELLED', 'COMPLETED', name='appointmentstatus'), nullable=False),
     sa.Column('created_at', sa.DateTime(), server_default=sa.text('now()'), nullable=False),
     sa.Column('updated_at', sa.DateTime(), server_default=sa.text('now()'), nullable=False),
-    sa.Column('status', sa.Enum('PENDING', 'CONFIRMED', 'COMPLETED', 'CANCELLED', name='appointmentstatus'), nullable=False),
-    sa.ForeignKeyConstraint(['doctor_id'], ['doctors.doctor_id'], ),
+    sa.ForeignKeyConstraint(['doctor_id'], ['users.user_id'], ),
     sa.ForeignKeyConstraint(['patient_id'], ['users.user_id'], ),
     sa.PrimaryKeyConstraint('appointment_id')
     )
     op.create_index(op.f('ix_appointments_appointment_id'), 'appointments', ['appointment_id'], unique=False)
+    op.create_table('doctors',
+    sa.Column('doctor_id', sa.Integer(), nullable=False),
+    sa.Column('user_id', sa.Integer(), nullable=False),
+    sa.Column('specialization_id', sa.Integer(), nullable=True),
+    sa.Column('address_id', sa.Integer(), nullable=True),
+    sa.Column('license_number', sa.String(length=100), nullable=True),
+    sa.Column('years_of_experience', sa.Integer(), nullable=True),
+    sa.ForeignKeyConstraint(['address_id'], ['addresses.address_id'], ),
+    sa.ForeignKeyConstraint(['specialization_id'], ['specializations.specialization_id'], ),
+    sa.ForeignKeyConstraint(['user_id'], ['users.user_id'], ),
+    sa.PrimaryKeyConstraint('doctor_id'),
+    sa.UniqueConstraint('user_id')
+    )
+    op.create_index(op.f('ix_doctors_doctor_id'), 'doctors', ['doctor_id'], unique=False)
+    op.create_table('invitations',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('email', sa.String(), nullable=False),
+    sa.Column('role', sa.String(), nullable=False),
+    sa.Column('invited_by', sa.Integer(), nullable=False),
+    sa.Column('token', sa.String(), nullable=False),
+    sa.Column('status', sa.String(), nullable=True),
+    sa.Column('created_at', sa.DateTime(), nullable=True),
+    sa.Column('expires_at', sa.DateTime(), nullable=True),
+    sa.ForeignKeyConstraint(['invited_by'], ['users.user_id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index(op.f('ix_invitations_email'), 'invitations', ['email'], unique=False)
+    op.create_index(op.f('ix_invitations_id'), 'invitations', ['id'], unique=False)
+    op.create_index(op.f('ix_invitations_token'), 'invitations', ['token'], unique=True)
     op.create_table('notifications',
     sa.Column('notification_id', sa.Integer(), nullable=False),
     sa.Column('source_user_id', sa.Integer(), nullable=True),
@@ -127,13 +149,18 @@ def downgrade() -> None:
     # ### commands auto generated by Alembic - please adjust! ###
     op.drop_index(op.f('ix_notifications_notification_id'), table_name='notifications')
     op.drop_table('notifications')
+    op.drop_index(op.f('ix_invitations_token'), table_name='invitations')
+    op.drop_index(op.f('ix_invitations_id'), table_name='invitations')
+    op.drop_index(op.f('ix_invitations_email'), table_name='invitations')
+    op.drop_table('invitations')
+    op.drop_index(op.f('ix_doctors_doctor_id'), table_name='doctors')
+    op.drop_table('doctors')
     op.drop_index(op.f('ix_appointments_appointment_id'), table_name='appointments')
     op.drop_table('appointments')
     op.drop_index(op.f('ix_users_user_id'), table_name='users')
     op.drop_index(op.f('ix_users_email'), table_name='users')
+    op.drop_index(op.f('ix_users_custom_id'), table_name='users')
     op.drop_table('users')
-    op.drop_index(op.f('ix_doctors_doctor_id'), table_name='doctors')
-    op.drop_table('doctors')
     op.drop_index(op.f('ix_addresses_address_id'), table_name='addresses')
     op.drop_table('addresses')
     op.drop_index(op.f('ix_city_municipality_city_municipality_id'), table_name='city_municipality')

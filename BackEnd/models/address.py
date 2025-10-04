@@ -36,4 +36,4 @@ class Address(Base):
     # Relationships
     city_municipality = relationship("CityMunicipality", back_populates="addresses")
     users = relationship("User", back_populates="address")
-    #doctors = relationship("Doctor", back_populates="address")
+    doctors = relationship("Doctor", back_populates="address")

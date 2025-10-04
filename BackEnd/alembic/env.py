@@ -12,7 +12,6 @@ from models.users import User
 from models.doctor import Doctor
 from models.appointment import Appointment
 from models.notification import Notification
-from models.specialization import Specialization
 from models.address import Address, Province, CityMunicipality
 
 # Alembic Config

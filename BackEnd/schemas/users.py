@@ -65,13 +65,13 @@ class UserUpdate(BaseModel):
 # ========================
 # Response Schema
 # ========================
-class UserResponse(UserBase):
-    user_id: int
-    is_active: bool
-    is_verified: bool
-    created_at: datetime
-    updated_at: datetime
-    last_login: Optional[datetime] = None
+# class UserResponse(UserBase):
+#     user_id: int
+#     is_active: bool
+#     is_verified: bool
+#     created_at: datetime
+#     updated_at: datetime
+#     last_login: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True  # ✅ works with SQLAlchemy ORM
+#     class Config:
+#         from_attributes = True  # ✅ works with SQLAlchemy ORM

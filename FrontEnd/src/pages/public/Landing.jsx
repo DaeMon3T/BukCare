@@ -1,5 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
+import Footer from "../../components/Footer";
+
 
 // Simple icon example, you can customize as needed
 function IconCalendar() {
@@ -133,10 +135,8 @@ export default function Landing() {
         </div>
       </section>
       
-      {/* Footer */}
-      <footer className="bg-[#1A1A40]/90 py-6 text-center text-white/60 text-sm">
-        © 2025 BukCare. All rights reserved.
-      </footer>
+     <Footer />
+
     </div>
   );
 }

@@ -124,10 +124,7 @@ export default function About() {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="bg-black/30 py-6 text-center text-white/70 text-sm">
-        © 2025 BukCare. All rights reserved.
-      </footer>
+      <Footer />
     </div>
   );
 }

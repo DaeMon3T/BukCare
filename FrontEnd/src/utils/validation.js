@@ -1,20 +1,45 @@
 /**
- * Validate email format
- * @param {string} email 
- * @returns {boolean}
+ * Enhanced email validation with specific error messages
  */
 export function validateEmail(email) {
+  if (!email) return { isValid: false, message: 'Email is required' };
+  
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(email);
+  const isValid = emailRegex.test(email);
+  
+  return {
+    isValid,
+    message: isValid ? '' : 'Please enter a valid email address'
+  };
 }
-
 /**
- * Validate password strength (minimum 6 characters)
- * @param {string} password 
- * @returns {boolean}
+ * Enhanced password validation with strength requirements
  */
 export function validatePassword(password) {
-  return password && password.length >= 6;
+  if (!password) return { isValid: false, message: 'Password is required' };
+  
+  const hasMinLength = password.length >= 8;
+  const hasUpperCase = /[A-Z]/.test(password);
+  const hasLowerCase = /[a-z]/.test(password);
+  const hasNumbers = /\d/.test(password);
+  const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+  
+  const isValid = hasMinLength && hasUpperCase && hasLowerCase && hasNumbers;
+  
+  if (!isValid) {
+    const messages = [];
+    if (!hasMinLength) messages.push('at least 8 characters');
+    if (!hasUpperCase) messages.push('one uppercase letter');
+    if (!hasLowerCase) messages.push('one lowercase letter');
+    if (!hasNumbers) messages.push('one number');
+    
+    return {
+      isValid: false,
+      message: `Password must contain ${messages.join(', ')}`
+    };
+  }
+  
+  return { isValid: true, message: '' };
 }
 
 /**

@@ -1,8 +1,16 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext"; 
 import GradientButton from "../../components/GradientButton";
 import { validateDoctorSignupData } from "../../utils/validation";
+import { validateInvitation, registerDoctor } from "../../services/auth/DoctorSignUpAPI";
 
 const DoctorSignUp = () => {
+  const [searchParams] = useSearchParams();
+  const inviteToken = searchParams.get('invite_token');
+  const navigate = useNavigate();
+  const { login } = useAuth();
+
   const [formData, setFormData] = useState({
     fname: "",
     mname: "",
@@ -16,6 +24,30 @@ const DoctorSignUp = () => {
     specialization: [],
     otherSpecialization: "",
   });
+
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    // Validate invitation token on mount
+    if (!inviteToken) {
+      alert('You need an invitation to register as a doctor');
+      navigate('/');
+      return;
+    }
+
+    checkInvitation();
+  }, [inviteToken, navigate]);
+
+  const checkInvitation = async () => {
+    try {
+      const data = await validateInvitation(inviteToken);
+      // Pre-fill email from invitation
+      setFormData(prev => ({ ...prev, email: data.email }));
+    } catch (error) {
+      alert(error.message);
+      navigate('/');
+    }
+  };
 
   const specializationOptions = [
     "Cardiology",
@@ -62,17 +94,46 @@ const DoctorSignUp = () => {
     }
   };
 
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        const validation = validateDoctorSignupData(formData);
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    const validation = validateDoctorSignupData(formData);
+    if (!validation.isValid) {
+      alert(validation.errors.join("\n"));
+      return;
+    }
 
-        if (!validation.isValid) {
-            alert(validation.errors.join("\n"));
-            return;
-        }
+    setLoading(true);
 
-        console.log("Doctor SignUp Data:", formData);
-        };
+    try {
+      const result = await registerDoctor({
+        invite_token: inviteToken,
+        fname: formData.fname,
+        lname: formData.lname,
+        mname: formData.mname,
+        email: formData.email,
+        phone: formData.phone,
+        licenseNumber: formData.licenseNumber,
+        password: formData.password,
+        specialization: formData.specialization,
+        otherSpecialization: formData.otherSpecialization
+      });
+       login(result.tokens, result.user);
+      
+      // ✅ Show success message
+      alert('Doctor account created successfully! Welcome aboard.');
+      
+      // ✅ Redirect directly to doctor dashboard
+      navigate('/doctor/dashboard', { replace: true });
+
+      alert(result.message || 'Doctor account created successfully! Please sign in.');
+      navigate('/auth/signin');
+    } catch (error) {
+      alert(error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 px-4">
@@ -122,14 +183,14 @@ const DoctorSignUp = () => {
             />
           </div>
 
-          {/* Email */}
+          {/* Email - Read only since it comes from invitation */}
           <input
             type="email"
             name="email"
             placeholder="Email Address"
             value={formData.email}
-            onChange={handleChange}
-            className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+            className="w-full border border-gray-300 rounded-lg px-4 py-2 bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+            readOnly
             required
           />
 
@@ -215,7 +276,9 @@ const DoctorSignUp = () => {
           </div>
 
           {/* Submit Button */}
-          <GradientButton type="submit">Create Doctor Account</GradientButton>
+          <GradientButton type="submit" disabled={loading}>
+            {loading ? 'Creating Account...' : 'Create Doctor Account'}
+          </GradientButton>
         </form>
       </div>
     </div>

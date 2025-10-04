@@ -1,5 +1,5 @@
 from pydantic import BaseModel, EmailStr, Field, validator,conint
-from typing import Optional
+from typing import Optional, List
 from datetime import date, datetime
 
 
@@ -129,3 +129,18 @@ class EmailVerificationRequest(BaseModel):
 class ResendVerificationRequest(BaseModel):
     """Request to resend verification email"""
     email: EmailStr
+
+class DoctorSignupRequest(BaseModel):
+    invite_token: str
+    fname: str
+    lname: str
+    mname: Optional[str] = None
+    email: EmailStr
+    phone: str
+    license_number: str = Field(..., alias="licenseNumber")  # Accept both
+    password: str
+    specialization: List[str]
+    other_specialization: Optional[str] = Field(None, alias="otherSpecialization")  # Accept both
+    
+    class Config:
+        populate_by_name = True  # ✅ This allows both snake_case and camelCase

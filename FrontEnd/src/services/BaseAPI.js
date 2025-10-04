@@ -1,21 +1,38 @@
 // src/services/BaseAPI.js
 import axios from "axios";
 
-const API_URL = "http://localhost:8000/api/v1"; // adjust for your backend
+// Use environment variable if defined, fallback to localhost
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api/v1";
 
-// Create an Axios instance for reusability
+/**
+ * Axios instance for API requests
+ * Automatically sets JSON headers and can include auth token
+ */
 const BaseAPI = axios.create({
-  baseURL: API_URL,
+  baseURL: API_BASE_URL,
   headers: {
     "Content-Type": "application/json",
   },
 });
 
-// Optional: Add request/response interceptors for auth tokens
-// BaseAPI.interceptors.request.use((config) => {
-//   const token = localStorage.getItem("access_token");
-//   if (token) config.headers.Authorization = `Bearer ${token}`;
-//   return config;
-// });
+// Optional: Request interceptor to include Authorization header
+BaseAPI.interceptors.request.use((config) => {
+  const token = localStorage.getItem("access_token");
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+}, (error) => {
+  return Promise.reject(error);
+});
+
+// Optional: Response interceptor for handling errors globally
+BaseAPI.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    // You can add global error handling here
+    return Promise.reject(error);
+  }
+);
 
 export default BaseAPI;

@@ -1,9 +1,30 @@
-# schemas/doctor.py
+# schemas/doctors.py
 from pydantic import BaseModel, EmailStr, Field, ConfigDict
 from typing import Optional
-from schemas.specialization import Specialization
-from schemas.address import Address
 
+
+# ---------------------------
+# Specialization Schemas
+# ---------------------------
+class SpecializationBase(BaseModel):
+    name: str = Field(..., min_length=1, max_length=100)
+    descriptions: Optional[str] = Field(None, max_length=500)
+
+class SpecializationCreate(SpecializationBase):
+    pass
+
+class SpecializationUpdate(BaseModel):
+    name: Optional[str] = Field(None, min_length=1, max_length=100)
+    descriptions: Optional[str] = Field(None, max_length=500)
+
+class Specialization(SpecializationBase):
+    model_config = ConfigDict(from_attributes=True)
+    specialization_id: int
+
+
+# ---------------------------
+# Doctor Schemas
+# ---------------------------
 class DoctorBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
     email: EmailStr
@@ -23,4 +44,6 @@ class Doctor(DoctorBase):
     model_config = ConfigDict(from_attributes=True)
     doctor_id: int
     specialization: Optional[Specialization] = None
-    address: Optional[Address] = None
+    # You can import Address schema separately if you want
+    # or define it here as well if you want everything in one file
+    address: Optional["Address"] = None

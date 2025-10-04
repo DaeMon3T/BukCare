@@ -1,8 +1,8 @@
 // pages/admin/InviteModal.jsx
 import React, { useState } from 'react';
 import { Mail, XCircle, AlertCircle } from 'lucide-react';
-import { validateEmail } from '../../utils/validation';
-import adminAPI from '../../services/admin/AdminAPI';
+import { validateEmail } from '@/utils/validation';
+import adminAPI from '@/services/admin/AdminAPI';
 
 const InviteModal = ({ showInviteModal, setShowInviteModal, onInvitationSent }) => {
   const [email, setEmail] = useState('');

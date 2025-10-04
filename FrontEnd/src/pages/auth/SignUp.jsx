@@ -1,10 +1,11 @@
-// ============================================================================
-// SignUp.jsx - Google One-Tap Sign-In Implementation
-// ============================================================================
-import { GoogleLogin } from '@react-oauth/google';
-import { useNavigate, Link, useLocation } from "react-router-dom";
+// pages/auth/SignUp.jsx
 import { useState } from "react";
-import { useAuth } from "../../context/AuthContext";
+import { useNavigate, useLocation, Link } from "react-router-dom";
+import { GoogleLogin } from "@react-oauth/google";
+
+import { useAuth } from "@/context/AuthContext";
+import { googleSignUp } from "@/services/auth/GoogleSignUpAPI";
+import Footer from "@/components/Footer";
 
 export default function SignUp() {
   const navigate = useNavigate();
@@ -14,7 +15,7 @@ export default function SignUp() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // Role-based redirect
+  // Role-based redirect paths
   const getRoleBasedRedirectPath = (userType) => {
     switch (userType) {
       case "admin": return "/admin/dashboard";
@@ -25,44 +26,31 @@ export default function SignUp() {
     }
   };
 
-  // Handle Google Sign-Up Success
+  // Handle Google Sign-Up success
   const handleGoogleSuccess = async (credentialResponse) => {
     setLoading(true);
     setError("");
 
     try {
-      const res = await fetch("http://localhost:8000/api/v1/auth/google", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id_token: credentialResponse.credential }),
-      });
-
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.detail || "Google signup failed");
-      }
-
-      const data = await res.json();
+      const data = await googleSignUp(credentialResponse.credential);
 
       // Save tokens and user in context
       login(data.tokens, data.user);
 
-      // Check if profile is complete
+      // Redirect to complete profile if needed
       if (!data.user.is_profile_complete) {
-        // Redirect to complete profile page
-        navigate('/complete-profile', { 
+        navigate("/complete-profile", {
           replace: true,
-          state: { 
+          state: {
             user_id: data.user.user_id,
             email: data.user.email,
             name: data.user.name,
             fname: data.user.fname,
             lname: data.user.lname,
-            picture: data.user.picture
-          }
+            picture: data.user.picture,
+          },
         });
       } else {
-        // Redirect based on role
         const from = location.state?.from?.pathname;
         const redirectPath = from || getRoleBasedRedirectPath(data.user.user_type);
         navigate(redirectPath, { replace: true });
@@ -75,7 +63,6 @@ export default function SignUp() {
     }
   };
 
-  // Handle Google Sign-Up Error
   const handleGoogleError = () => {
     setError("Google Sign-Up failed. Please try again.");
   };
@@ -144,8 +131,8 @@ export default function SignUp() {
             <div className="text-center mt-8 pt-6 border-t border-white/20">
               <span className="text-white/80">
                 Already have an account?{" "}
-                <Link 
-                  to="/signin" 
+                <Link
+                  to="/signin"
                   className="text-[#FFC43D] hover:text-[#FFD84C] transition font-semibold"
                 >
                   Sign in here
@@ -171,9 +158,7 @@ export default function SignUp() {
       </div>
 
       {/* Footer */}
-      <footer className="bg-[#1A1A40]/90 py-6 text-center text-white/60 text-sm">
-        © 2025 BukCare. All rights reserved.
-      </footer>
+      <Footer />
     </div>
   );
 }
