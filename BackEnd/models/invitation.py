@@ -11,7 +11,7 @@ class Invitation(Base):
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String, nullable=False, index=True)
     role = Column(String, nullable=False)
-    invited_by = Column(Integer, ForeignKey("users.user_id"), nullable=False)
+    invited_by = Column(String, ForeignKey("users.user_id"), nullable=False)
     token = Column(String, unique=True, index=True, nullable=False)
     status = Column(String, default="pending")  # pending | accepted | expired
     created_at = Column(DateTime, default=datetime.utcnow)

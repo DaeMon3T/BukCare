@@ -89,6 +89,7 @@ async def google_auth(request: GoogleAuthRequest, db: Session = Depends(get_db))
     if not user:
         # Auto-create user with Google data
         user = User(
+            user_id=User.generate_id(db), 
             email=email,
             fname=idinfo.get("given_name", ""),
             lname=idinfo.get("family_name", ""),
@@ -145,7 +146,7 @@ async def complete_profile(
     Complete user profile after Google OAuth
     Collects: sex, dob, contact_number, address_id, password (optional)
     """
-    user = db.query(User).filter(User.user_id == request.user_id).first()
+    user = db.query(User).filter(User.user_id == str(request.user_id)).first()
     
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -358,6 +359,7 @@ def doctor_signup(request: DoctorSignupRequest, db: Session = Depends(get_db)):
     # 4. Create User
     hashed_password = get_password_hash(request.password)
     new_user = User(
+        user_id=User.generate_id(db), 
         email=request.email,
         fname=request.fname,
         lname=request.lname,

@@ -25,7 +25,7 @@ class Doctor(Base):
     __tablename__ = "doctors"
     
     doctor_id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.user_id"), nullable=False, unique=True)
+    user_id = Column(String, ForeignKey("users.user_id"), nullable=False, unique=True)
     specialization_id = Column(Integer, ForeignKey("specializations.specialization_id"), nullable=True)
     address_id = Column(Integer, ForeignKey("addresses.address_id"), nullable=True)  # ✅ ADD THIS LINE
     license_number = Column(String(100), nullable=True)

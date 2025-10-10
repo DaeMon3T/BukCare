@@ -1,8 +1,8 @@
 // src/pages/patient/Profile.jsx
 import { useEffect, useState } from "react";
-import Navbar from "../../components/Navbar";
-import { useAuth } from "../../context/AuthContext";
-import { getUserProfile, updateUserProfile, updateProfilePicture } from "../../services/users/UsersAPI";
+import Navbar from "@/components/Navbar";
+import { useAuth } from "@/context/AuthContext";
+import { getUserProfile, updateUserProfile, updateProfilePicture } from "@/services/users/UsersAPI";
 
 export default function Profile() {
   const { user: authUser } = useAuth();

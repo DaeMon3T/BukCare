@@ -1,5 +1,5 @@
 # models/appointment.py
-from sqlalchemy import Column, Integer, DateTime, ForeignKey, Enum, func
+from sqlalchemy import Column, String, DateTime, ForeignKey, Enum, func, Integer
 from sqlalchemy.orm import relationship
 from core.database import Base
 import enum
@@ -15,9 +15,9 @@ class Appointment(Base):
     
     appointment_id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     
-    # Foreign Keys - BOTH reference users.user_id
-    patient_id = Column(Integer, ForeignKey("users.user_id"), nullable=False)
-    doctor_id = Column(Integer, ForeignKey("users.user_id"), nullable=False)
+    # Foreign Keys now match User.user_id type
+    patient_id = Column(String, ForeignKey("users.user_id"), nullable=False)
+    doctor_id = Column(String, ForeignKey("users.user_id"), nullable=False)
     
     appointment_date = Column(DateTime, nullable=False)
     status = Column(Enum(AppointmentStatus, name="appointmentstatus"), default=AppointmentStatus.PENDING, nullable=False)
@@ -30,5 +30,4 @@ class Appointment(Base):
     patient = relationship("User", back_populates="appointments_as_patient", foreign_keys=[patient_id])
     doctor = relationship("User", back_populates="appointments_as_doctor", foreign_keys=[doctor_id])
     
-    # ✅ ADD THIS LINE:
     notifications = relationship("Notification", back_populates="appointment")

@@ -1,5 +1,5 @@
 // src/pages/patient/Appointments.jsx
-import Navbar from '../../components/Navbar';
+import Navbar from '@/components/Navbar';
 
 export default function Appointments() {
   return (

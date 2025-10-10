@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { useAuth } from "../../context/AuthContext"; 
-import GradientButton from "../../components/GradientButton";
-import { validateDoctorSignupData } from "../../utils/validation";
-import { validateInvitation, registerDoctor } from "../../services/auth/DoctorSignUpAPI";
+import { useAuth } from "@/context/AuthContext"; 
+import GradientButton from "@/components/GradientButton";
+import { validateDoctorSignupData } from "@/utils/validation";
+import { validateInvitation, registerDoctor } from "@/services/auth/DoctorSignUpAPI";
 
 const DoctorSignUp = () => {
   const [searchParams] = useSearchParams();

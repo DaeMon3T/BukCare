@@ -1,9 +1,9 @@
 # models/users.py
-from sqlalchemy import Column, String, Integer, Boolean, DateTime, ForeignKey, Enum, Text
-from sqlalchemy.orm import relationship
+from sqlalchemy import Column, String, Integer, Boolean, DateTime, ForeignKey, Enum
+from sqlalchemy.orm import relationship, Session
 from datetime import datetime
 from core.database import Base
-import enum, uuid
+import enum
 
 class UserRole(str, enum.Enum):
     ADMIN = "admin"
@@ -14,9 +14,9 @@ class UserRole(str, enum.Enum):
 class User(Base):
     __tablename__ = "users"
     
-    user_id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    custom_id = Column(String, unique=True, index=True, nullable=False, default=lambda: str(uuid.uuid4()))
-    
+    # Instead of autoincrement, we’ll manage our own custom ID
+    user_id = Column(String, primary_key=True, index=True, unique=True, nullable=False)
+
     # Personal info
     email = Column(String, unique=True, index=True, nullable=False)  
     fname = Column(String, nullable=False)                           
@@ -48,7 +48,7 @@ class User(Base):
     address = relationship("Address", back_populates="users")
     sent_invitations = relationship("Invitation", back_populates="inviter", cascade="all, delete-orphan")
     
-    # Appointment relationships - FIXED (no duplicates)
+    # Appointment relationships
     appointments_as_patient = relationship(
         "Appointment", 
         back_populates="patient", 
@@ -60,10 +60,10 @@ class User(Base):
         foreign_keys="Appointment.doctor_id"
     )
     
-    # Doctor-specific relationship (if you keep the Doctor model for additional info)
+    # Doctor-specific relationship
     doctor_profile = relationship("Doctor", back_populates="user", uselist=False)
     
-    # ✅ ADD THESE TWO NOTIFICATION RELATIONSHIPS:
+    # Notifications
     notifications_sent = relationship(
         "Notification",
         foreign_keys="Notification.source_user_id",
@@ -79,3 +79,31 @@ class User(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     last_login = Column(DateTime, nullable=True)
+
+    # --- Custom ID Generator ---
+    @staticmethod
+    def generate_id(session: Session):
+        """
+        Generate user_id like YYYYMMDDNNN:
+        - YYYYMMDD = current date
+        - NNN = incremental number for users created today
+        Example: 20251004001, 20251004002
+        """
+        from sqlalchemy import select
+
+        today_prefix = datetime.now().strftime("%Y%m%d")  # e.g., '20251004'
+
+        # Get the last user created today
+        last_user = session.execute(
+            select(User).where(User.user_id.startswith(today_prefix)).order_by(User.user_id.desc())
+        ).scalars().first()
+
+        if last_user:
+            # Extract numeric suffix and increment
+            last_suffix = int(last_user.user_id[-3:])
+            new_suffix = last_suffix + 1
+        else:
+            new_suffix = 1
+
+        # Format ID as YYYYMMDDNNN
+        return f"{today_prefix}{new_suffix:03d}"  # e.g., '20251004001'

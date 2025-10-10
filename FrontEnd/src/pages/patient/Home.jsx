@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
-import Navbar from "../../components/Navbar";
-import DoctorCard from "../../components/DoctorCard";
-import GetDoctorAPI from "../../services/patient/GetDoctorAPI";  // ✅ new import
+import Navbar from "@/components/Navbar";
+import DoctorCard from "@/components/DoctorCard";
+import GetDoctorAPI from "@/services/patient/GetDoctorAPI";  // ✅ new import
 
 const PatientInterface = () => {
   const [doctors, setDoctors] = useState([]);
