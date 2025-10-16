@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useCallback, useContext } from "react";
-import { AlertTriangle, UserPlus, User } from "lucide-react";
+import { AlertTriangle, User } from "lucide-react";
 
 import Navbar from "@/components/Navbar";
-import InviteModal from "./InviteModal.tsx";
 import Notification from "@/components/Notification";
 import adminAPI from "@/services/admin/AdminAPI";
 import AuthContext from "@/context/AuthContext";
@@ -32,10 +31,9 @@ interface NotificationData {
 }
 
 const AdminDashboard: React.FC = () => {
-  const { user, logout } = useContext(AuthContext);
+  const { user } = useContext(AuthContext);
 
   // UI State
-  const [showInviteModal, setShowInviteModal] = useState<boolean>(false);
   const [notification, setNotification] = useState<NotificationData | null>(null);
 
   // Search State
@@ -99,11 +97,6 @@ const AdminDashboard: React.FC = () => {
     return () => clearTimeout(timeoutId);
   }, [searchQuery, handleSearch]);
 
-  const handleInvitationSent = (result: NotificationData) => {
-    setNotification(result);
-    loadDashboardStats();
-  };
-
   const showNotification = (type: NotificationData["type"], message: string) => {
     setNotification({ type, message });
   };
@@ -121,13 +114,6 @@ const AdminDashboard: React.FC = () => {
         />
       )}
 
-      {/* Invite Modal */}
-      <InviteModal
-        showInviteModal={showInviteModal}
-        setShowInviteModal={setShowInviteModal}
-        onInvitationSent={handleInvitationSent}
-      />
-
       {/* Navbar */}
       <Navbar role="admin" />
 
@@ -141,8 +127,7 @@ const AdminDashboard: React.FC = () => {
                 Welcome back, {user?.name || "Admin"}!
               </h1>
               <p className="text-purple-100">
-                Manage your healthcare platform. Monitor users and send invitations
-                to new team members.
+                Manage your healthcare platform and monitor user activity.
               </p>
             </div>
           </div>
@@ -189,51 +174,29 @@ const AdminDashboard: React.FC = () => {
             ))}
           </div>
 
-          {/* Quick Actions + Search */}
+          {/* System Status + Search */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Quick Actions */}
+            {/* System Status */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
               <h2 className="text-lg font-semibold text-gray-800 mb-4">
-                Quick Actions
+                System Status
               </h2>
-              <div className="space-y-3">
-                <button
-                  onClick={() => setShowInviteModal(true)}
-                  className="w-full flex items-center space-x-3 p-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg hover:from-purple-700 hover:to-blue-700 transition-all duration-200 transform hover:scale-105"
-                >
-                  <UserPlus className="w-5 h-5" />
-                  <span className="font-medium">Invite New User</span>
-                </button>
-              </div>
-
-              {/* Quick Stats */}
-              <div className="mt-6 pt-6 border-t border-gray-100">
-                <h3 className="text-sm font-medium text-gray-600 mb-3">
-                  System Status
-                </h3>
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Active Sessions</span>
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">Active Sessions</span>
+                  <span className="text-sm font-medium text-gray-800">
+                    {isLoadingStats ? "..." : stats.active_sessions}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">Pending Approvals</span>
+                  <div className="flex items-center space-x-1">
+                    {stats.pending_approvals > 0 && (
+                      <AlertTriangle className="w-4 h-4 text-orange-500" />
+                    )}
                     <span className="text-sm font-medium text-gray-800">
-                      {isLoadingStats ? "..." : stats.active_sessions}
+                      {isLoadingStats ? "..." : stats.pending_approvals}
                     </span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Pending Invites</span>
-                    <span className="text-sm font-medium text-gray-800">
-                      {isLoadingStats ? "..." : stats.pending_invites}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Pending Approvals</span>
-                    <div className="flex items-center space-x-1">
-                      {stats.pending_approvals > 0 && (
-                        <AlertTriangle className="w-4 h-4 text-orange-500" />
-                      )}
-                      <span className="text-sm font-medium text-gray-800">
-                        {isLoadingStats ? "..." : stats.pending_approvals}
-                      </span>
-                    </div>
                   </div>
                 </div>
               </div>

@@ -1,7 +1,5 @@
-// ============================================================================
-// 4. ProtectedRoutes.tsx - Role-Based Route Protection
-// ============================================================================
-import React, { ReactNode } from "react";
+import React from "react";
+import type { ReactNode } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.js";
 
@@ -49,15 +47,21 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     return <Navigate to="/" replace />;
   }
 
+  // Get user role - check both 'role' and 'user_type' fields
+  const userRole = (user?.role || user?.user_type || "").toLowerCase();
+
   // Check if user's role is allowed for this route
-  if (allowedRoles.length > 0 && !allowedRoles.includes(user?.user_type)) {
-    switch (user?.user_type) {
+  if (allowedRoles.length > 0 && !allowedRoles.includes(userRole as UserRole)) {
+    console.warn(
+      `User role '${userRole}' not allowed for this route. Allowed roles:`,
+      allowedRoles
+    );
+    
+    switch (userRole) {
       case "admin":
         return <Navigate to="/admin/dashboard" replace />;
       case "doctor":
         return <Navigate to="/doctor/dashboard" replace />;
-      case "staff":
-        return <Navigate to="/staff/home" replace />;
       case "patient":
         return <Navigate to="/patient/home" replace />;
       default:
@@ -79,10 +83,6 @@ export const AdminRoute: React.FC<{ children: ReactNode }> = ({ children }) => (
 
 export const DoctorRoute: React.FC<{ children: ReactNode }> = ({ children }) => (
   <ProtectedRoute allowedRoles={["doctor"]}>{children}</ProtectedRoute>
-);
-
-export const StaffRoute: React.FC<{ children: ReactNode }> = ({ children }) => (
-  <ProtectedRoute allowedRoles={["staff"]}>{children}</ProtectedRoute>
 );
 
 export const PatientRoute: React.FC<{ children: ReactNode }> = ({ children }) => (

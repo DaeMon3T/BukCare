@@ -1,5 +1,4 @@
 # routers/v1/auth/signin.py
-
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from datetime import datetime
@@ -11,16 +10,13 @@ from core.security import (
     verify_password,
     ACCESS_TOKEN_EXPIRE_SECONDS,
 )
-from models.users import User
+from models.users import User, UserRole
 from schemas.auth import LoginRequest
 
 router = APIRouter()
 
 
 def build_response(user: User, access_token: str, refresh_token: str):
-    """
-    Build the response object for a successful login.
-    """
     return {
         "tokens": {
             "access_token": access_token,
@@ -35,7 +31,7 @@ def build_response(user: User, access_token: str, refresh_token: str):
             "lname": user.lname,
             "name": f"{user.fname} {user.lname}",
             "picture": user.picture,
-            "role": user.role.value,
+            "role": user.role.value if user.role else None,
             "is_verified": user.is_verified,
             "is_profile_complete": user.is_profile_complete,
         },
@@ -49,9 +45,6 @@ def build_response(user: User, access_token: str, refresh_token: str):
     response_description="Login response containing user info and tokens",
 )
 def login(data: LoginRequest, db: Session = Depends(get_db)):
-    """
-    Traditional email/password login endpoint.
-    """
     # Fetch user by email
     user = db.query(User).filter(User.email == data.email).first()
 
@@ -62,21 +55,26 @@ def login(data: LoginRequest, db: Session = Depends(get_db)):
             detail="Invalid email or password"
         )
 
-    # Create access and refresh tokens
+    # Create tokens
     access_token = create_access_token({
         "user_id": user.id,
         "email": user.email,
-        "role": user.role.value
+        "role": user.role.value if user.role else None
     })
     refresh_token = create_refresh_token({
         "user_id": user.id,
         "email": user.email
     })
 
-    # Update user refresh token and last login
+    # Update refresh token and last login
     user.refresh_token = refresh_token
     user.last_login = datetime.utcnow()
-    db.commit()
 
-    # Return structured response
+    # If admin, ensure they are marked complete and bypass frontend complete-profile
+    if user.role == UserRole.ADMIN:
+        user.is_profile_complete = True
+
+    db.commit()
+    db.refresh(user)
+
     return build_response(user, access_token, refresh_token)

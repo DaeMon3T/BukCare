@@ -1,5 +1,4 @@
-# routers/v1/auth/google.py
-
+# routers/v1/auth/google_signin.py
 import urllib.parse
 import requests
 from datetime import datetime
@@ -12,16 +11,11 @@ from google.auth.transport import requests as google_requests
 from core.config import settings
 from core.database import get_db
 from core.security import create_access_token, create_refresh_token
-from models.users import User
-
-from fastapi import APIRouter, Response
-from urllib.parse import urlencode
+from models.users import User, UserRole  # IMPORTANT: import UserRole
 
 router = APIRouter(prefix="/google")
 
-# -----------------------------------------------------------------------------
-# Step 1: Redirect user to Google's OAuth consent screen
-# -----------------------------------------------------------------------------
+
 @router.get("/login", summary="Redirect user to Google OAuth consent screen")
 def google_login():
     google_auth_endpoint = "https://accounts.google.com/o/oauth2/v2/auth"
@@ -36,9 +30,6 @@ def google_login():
     return RedirectResponse(f"{google_auth_endpoint}?{urllib.parse.urlencode(params)}")
 
 
-# -----------------------------------------------------------------------------
-# Step 2: Handle Google's OAuth redirect callback
-# -----------------------------------------------------------------------------
 @router.get("/callback", summary="Handle Google OAuth callback")
 def google_callback(
     code: str = Query(None),
@@ -73,7 +64,6 @@ def google_callback(
         settings.GOOGLE_CLIENT_ID,
     )
 
-    # Extract user info
     google_data = {
         "google_id": idinfo.get("sub"),
         "email": idinfo.get("email"),
@@ -86,28 +76,42 @@ def google_callback(
     if not google_data["email"]:
         raise HTTPException(status_code=400, detail="No email returned by Google")
 
-    # -------------------------------------------------------------------------
-    # Step 3: Check if user exists (Sign up or Sign in)
-    # -------------------------------------------------------------------------
+    # Find or create user
     user = db.query(User).filter(User.email == google_data["email"]).first()
 
     if not user:
-        # Create new Google user (role, contact, etc. to be completed later)
-        user = User.from_oauth(google_data)
+        # If you expect the frontend to pass a role during signup via query params,
+        # you can read it from the callback query (e.g., ?role=doctor). If not provided,
+        # default to PATIENT.
+        # Example (optional): role_param = your logic to fetch role from state
+        role_value = None  # default: no role provided from Google flow
+        role_enum = UserRole(role_value) if (role_value and role_value in UserRole._value2member_map_) else None
+
+        user = User.from_oauth({**google_data, "role": role_value})
+        # If role is admin (rare via OAuth), ensure profile complete
+        if user.role == UserRole.ADMIN:
+            user.is_profile_complete = True
+
         db.add(user)
         db.commit()
         db.refresh(user)
         action = "signup"
     else:
-        # Update existing user data if necessary
-        if user.update_from_oauth(google_data):
+        # Update existing user if needed
+        updated = user.update_from_oauth(google_data)
+        # Ensure last_login is updated
+        user.last_login = datetime.utcnow()
+
+        # If role became ADMIN, mark profile complete
+        if user.role == UserRole.ADMIN:
+            user.is_profile_complete = True
+
+        if updated:
             db.commit()
             db.refresh(user)
         action = "signin"
 
-    # -------------------------------------------------------------------------
-    # Step 4: Generate JWT tokens
-    # -------------------------------------------------------------------------
+    # Generate tokens
     access_token = create_access_token({
         "user_id": user.id,
         "email": user.email,
@@ -118,14 +122,21 @@ def google_callback(
         "email": user.email,
     })
 
+    # Save refresh token and update last_login
     user.refresh_token = refresh_token
+    user.last_login = datetime.utcnow()
     db.commit()
+    db.refresh(user)
 
-    # -------------------------------------------------------------------------
-    # Step 5: Redirect based on new or existing user
-    # -------------------------------------------------------------------------
-    if not user.is_profile_complete:
-        # New Google user → redirect to frontend "CompleteProfile" page
+    # Role-based redirect logic (correct enum comparison)
+    if user.role == UserRole.ADMIN:
+        # Admins bypass complete-profile and go directly to admin dashboard
+        redirect_url = (
+            f"{settings.FRONTEND_URL}/admin/dashboard?"
+            f"token={access_token}&refresh={refresh_token}"
+        )
+    elif not user.is_profile_complete:
+        # New or incomplete user → redirect to complete-profile (frontend will handle token on submit)
         redirect_url = (
             f"{settings.FRONTEND_URL}/complete-profile?"
             f"user_id={user.id}"
@@ -133,14 +144,14 @@ def google_callback(
             f"&fname={urllib.parse.quote(user.fname or '')}"
             f"&lname={urllib.parse.quote(user.lname or '')}"
             f"&picture={urllib.parse.quote(user.picture or '')}"
+            f"&token={access_token}&refresh={refresh_token}"
         )
     else:
-        # Existing user → redirect to home or dashboard
+        # Regular signed-in user with completed profile
         redirect_url = (
             f"{settings.FRONTEND_URL}/auth/success?"
-            f"action=signin"
-            f"&token={access_token}"
-            f"&refresh={refresh_token}"
+            f"action={action}"
+            f"&token={access_token}&refresh={refresh_token}"
         )
 
     return RedirectResponse(url=redirect_url)
