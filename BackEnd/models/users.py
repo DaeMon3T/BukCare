@@ -1,6 +1,6 @@
 # models/users.py
 from sqlalchemy import Column, String, Integer, Boolean, DateTime, ForeignKey, Enum
-from sqlalchemy.orm import relationship, Session
+from sqlalchemy.orm import relationship
 from datetime import datetime
 from core.database import Base
 import enum
@@ -8,35 +8,36 @@ import enum
 class UserRole(str, enum.Enum):
     ADMIN = "admin"
     DOCTOR = "doctor"
-    STAFF = "staff"
     PATIENT = "patient"
+
 
 class User(Base):
     __tablename__ = "users"
     
-    # Instead of autoincrement, we’ll manage our own custom ID
-    user_id = Column(String, primary_key=True, index=True, unique=True, nullable=False)
-
-    # Personal info
-    email = Column(String, unique=True, index=True, nullable=False)  
-    fname = Column(String, nullable=False)                           
-    lname = Column(String, nullable=False)                           
-    google_id = Column(String, unique=True, nullable=True)           
-    picture = Column(String, nullable=True)                          
-    locale = Column(String, nullable=True)                           
-    mname = Column(String, nullable=True)                           
-    sex = Column(Boolean, nullable=True)                            
-    dob = Column(DateTime, nullable=True)                           
-    contact_number = Column(String, nullable=True)                   
+    # Primary key
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    
+    # Basic user info
+    email = Column(String, unique=True, index=True, nullable=False)
+    fname = Column(String, nullable=False)
+    mname = Column(String, nullable=True)
+    lname = Column(String, nullable=False)
+    sex = Column(Boolean, nullable=True)
+    dob = Column(DateTime, nullable=True)
+    contact_number = Column(String, nullable=True)
+    
+    # OAuth2 specific info
+    google_id = Column(String, unique=True, nullable=True)
+    picture = Column(String, nullable=True)
     
     # Authentication
     password = Column(String, nullable=True)
     
     # Account status
-    role = Column(Enum(UserRole, name="user_role_enum"), default=UserRole.PATIENT)
+    role = Column(Enum(UserRole, name="user_role_enum"), nullable=True)  # role is now provided by frontend
     is_active = Column(Boolean, default=True)
-    is_verified = Column(Boolean, default=False)  
-    is_profile_complete = Column(Boolean, default=False)  
+    is_verified = Column(Boolean, default=False)
+    is_profile_complete = Column(Boolean, default=False)
     
     # Token management
     refresh_token = Column(String, nullable=True)
@@ -46,24 +47,20 @@ class User(Base):
     # Relationships
     address_id = Column(Integer, ForeignKey("addresses.address_id"), nullable=True)
     address = relationship("Address", back_populates="users")
-    sent_invitations = relationship("Invitation", back_populates="inviter", cascade="all, delete-orphan")
     
-    # Appointment relationships
     appointments_as_patient = relationship(
-        "Appointment", 
-        back_populates="patient", 
+        "Appointment",
+        back_populates="patient",
         foreign_keys="Appointment.patient_id"
     )
     appointments_as_doctor = relationship(
-        "Appointment", 
-        back_populates="doctor", 
+        "Appointment",
+        back_populates="doctor",
         foreign_keys="Appointment.doctor_id"
     )
     
-    # Doctor-specific relationship
     doctor_profile = relationship("Doctor", back_populates="user", uselist=False)
     
-    # Notifications
     notifications_sent = relationship(
         "Notification",
         foreign_keys="Notification.source_user_id",
@@ -80,30 +77,45 @@ class User(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     last_login = Column(DateTime, nullable=True)
 
-    # --- Custom ID Generator ---
-    @staticmethod
-    def generate_id(session: Session):
-        """
-        Generate user_id like YYYYMMDDNNN:
-        - YYYYMMDD = current date
-        - NNN = incremental number for users created today
-        Example: 20251004001, 20251004002
-        """
-        from sqlalchemy import select
+    # --- Helper for OAuth2 signup ---
+    @classmethod
+    def from_oauth(cls, data: dict):
+        """Create a new user from Google OAuth data (role provided externally)."""
+        role_value = data.get("role")
+        role = UserRole(role_value) if role_value in UserRole._value2member_map_ else None
 
-        today_prefix = datetime.now().strftime("%Y%m%d")  # e.g., '20251004'
+        return cls(
+            google_id=data.get("google_id"),
+            email=data.get("email"),
+            fname=data.get("fname"),
+            lname=data.get("lname"),
+            picture=data.get("picture"),
+            role=role,
+            is_verified=data.get("email_verified", True),
+            password=None,  # Google-authenticated users don't use passwords
+            last_login=datetime.utcnow(),
+        )
 
-        # Get the last user created today
-        last_user = session.execute(
-            select(User).where(User.user_id.startswith(today_prefix)).order_by(User.user_id.desc())
-        ).scalars().first()
+    def update_from_oauth(self, data: dict) -> bool:
+        """Update existing user fields if changed. Returns True if updated."""
+        updated = False
 
-        if last_user:
-            # Extract numeric suffix and increment
-            last_suffix = int(last_user.user_id[-3:])
-            new_suffix = last_suffix + 1
-        else:
-            new_suffix = 1
+        if not self.google_id:
+            self.google_id = data.get("google_id")
+            updated = True
 
-        # Format ID as YYYYMMDDNNN
-        return f"{today_prefix}{new_suffix:03d}"  # e.g., '20251004001'
+        for field in ["fname", "lname", "picture"]:
+            new_value = data.get(field)
+            if new_value and getattr(self, field) != new_value:
+                setattr(self, field, new_value)
+                updated = True
+
+        # Update role if provided and changed
+        if "role" in data and data["role"] in UserRole._value2member_map_:
+            new_role = UserRole(data["role"])
+            if self.role != new_role:
+                self.role = new_role
+                updated = True
+
+        self.last_login = datetime.utcnow()
+        return updated

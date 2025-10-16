@@ -1,4 +1,12 @@
 # ==========================
+# Environment files (ANY directory)
+# ==========================
+.env
+*.env
+.env*
+!.env.example
+
+# ==========================
 # Python / BackEnd
 # ==========================
 # Virtual environment
@@ -19,9 +27,6 @@ alembic/versions/*.pyc
 BackEnd/logs/
 *.log
 
-# Environment files
-BackEnd/.env
-
 # Database files (if any)
 *.db
 *.sqlite3
@@ -35,9 +40,6 @@ FrontEnd/node_modules/
 # Build / dist
 FrontEnd/dist/
 FrontEnd/build/
-
-# Environment files
-FrontEnd/.env
 
 # Logs
 npm-debug.log*

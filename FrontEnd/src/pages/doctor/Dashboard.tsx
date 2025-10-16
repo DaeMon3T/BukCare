@@ -1,10 +1,9 @@
 // src/pages/doctor/DoctorInterface.tsx
-import React, { useState } from "react";
-import type { FC } from "react"; // Add type-only import
+import { useState } from "react";
+import type { FC, JSX } from "react"; // Add type-only import
 import {
   Clock,
   Users,
-  Plus,
   Edit3,
   Eye,
   CheckCircle,
@@ -49,7 +48,7 @@ interface DoctorInterfaceProps {
 const DoctorInterface: FC<DoctorInterfaceProps> = ({
   user = { name: "Doctor", email: "doctor@clinic.com" },
   appointments = [],
-  availability = [],
+  //availability = [],
 }) => {
   const [showAvailabilityModal, setShowAvailabilityModal] = useState<boolean>(false);
   const [showAppointmentDetails, setShowAppointmentDetails] = useState<boolean>(false);
@@ -82,9 +81,7 @@ const DoctorInterface: FC<DoctorInterfaceProps> = ({
     }
   };
 
-  const updateAppointmentStatus = (appointmentId: number, newStatus: string) => {
-    console.log(`Update appointment ${appointmentId} to ${newStatus}`);
-  };
+//
 
   // 📅 Availability Modal
   const AvailabilityModal: FC = () => (

@@ -1,7 +1,11 @@
-from pydantic import BaseModel, EmailStr, Field, validator,conint
+from pydantic import BaseModel, EmailStr, Field, validator, conint
 from typing import Optional, List
 from datetime import date, datetime
 
+
+# ==========================
+# 🔐 AUTHENTICATION SCHEMAS
+# ==========================
 
 class RegisterRequest(BaseModel):
     """User registration request"""
@@ -14,11 +18,19 @@ class RegisterRequest(BaseModel):
     dob: Optional[date] = Field(None, description="Date of birth")
     sex: Optional[str] = Field(None, description="Sex (M/F/Other)")
 
+    class Config:
+        title = "RegisterRequest (Authentication)"
+        schema_extra = {"tag": "Authentication"}
+
 
 class LoginRequest(BaseModel):
     """Traditional email/password login request"""
     email: EmailStr
     password: str
+
+    class Config:
+        title = "LoginRequest (Authentication)"
+        schema_extra = {"tag": "Authentication"}
 
 
 class CompleteProfileRequest(BaseModel):
@@ -29,8 +41,10 @@ class CompleteProfileRequest(BaseModel):
     contact_number: str = Field(..., description="Contact number")
     address_id: Optional[int] = Field(None, description="Address ID")
     password: Optional[str] = Field(None, min_length=8, description="Optional password for email/password login")
-    
-    
+
+    class Config:
+        title = "CompleteProfileRequest (Authentication)"
+        schema_extra = {"tag": "Authentication"}
 
 
 class TokenResponse(BaseModel):
@@ -42,7 +56,9 @@ class TokenResponse(BaseModel):
     user: dict
 
     class Config:
-        json_schema_extra = {
+        title = "TokenResponse (Authentication)"
+        schema_extra = {
+            "tag": "Authentication",
             "example": {
                 "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
                 "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
@@ -60,87 +76,18 @@ class TokenResponse(BaseModel):
         }
 
 
-class RefreshTokenRequest(BaseModel):
-    """Request to refresh access token"""
-    refresh_token: str = Field(..., description="Valid refresh token")
-
-
-class PasswordResetRequest(BaseModel):
-    """Request to reset password"""
-    email: EmailStr
-
-
-class PasswordResetConfirm(BaseModel):
-    """Confirm password reset with token"""
-    token: str = Field(..., description="Password reset token from email")
-    new_password: str = Field(..., min_length=8, description="New password")
-
-
-class ChangePasswordRequest(BaseModel):
-    """Change password for authenticated user"""
-    old_password: str = Field(..., description="Current password")
-    new_password: str = Field(..., min_length=8, description="New password")
-
-    @validator('new_password')
-    def passwords_different(cls, v, values):
-        if 'old_password' in values and v == values['old_password']:
-            raise ValueError('New password must be different from old password')
-        return v
-
-
 class GoogleAuthRequest(BaseModel):
     """Request schema for Google OAuth authentication"""
     id_token: str = Field(..., description="Google ID token from OAuth flow")
 
+    class Config:
+        title = "GoogleAuthRequest (Authentication)"
+        schema_extra = {"tag": "Authentication"}
 
-class UserResponse(BaseModel):
-    """User information response"""
-    user_id: int
-    email: EmailStr
-    fname: str
-    lname: str
-    mname: Optional[str] = None
-    role: str
-    is_verified: bool
-    is_active: bool
-    contact_number: Optional[str] = None
-    dob: Optional[date] = None
-    sex: Optional[str] = None
-    created_at: Optional[datetime] = None
+class RefreshTokenRequest(BaseModel):
+    """Request to refresh access token"""
+    refresh_token: str = Field(..., description="Valid refresh token")
 
     class Config:
-        from_attributes = True
-
-
-class TokenData(BaseModel):
-    """JWT token payload data"""
-    user_id: int
-    email: EmailStr
-    role: str
-    exp: datetime
-    type: str  # "access" or "refresh"
-
-
-class EmailVerificationRequest(BaseModel):
-    """Request to verify email"""
-    token: str = Field(..., description="Email verification token")
-
-
-class ResendVerificationRequest(BaseModel):
-    """Request to resend verification email"""
-    email: EmailStr
-
-class DoctorSignupRequest(BaseModel):
-    invite_token: str
-    fname: str
-    lname: str
-    mname: Optional[str] = None
-    email: EmailStr
-    phone: str
-    license_number: str = Field(..., alias="licenseNumber")  # Accept both
-    password: str
-    specialization: List[str]
-    other_specialization: Optional[str] = Field(None, alias="otherSpecialization")  # Accept both
-    
-    class Config:
-        populate_by_name = True  # ✅ This allows both snake_case and camelCase
+        title = "RefreshTokenRequest (Authentication)"
+        schema_extra = {"tag": "Authentication"}

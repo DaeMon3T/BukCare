@@ -15,9 +15,9 @@ class Appointment(Base):
     
     appointment_id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     
-    # Foreign Keys now match User.user_id type
-    patient_id = Column(String, ForeignKey("users.user_id"), nullable=False)
-    doctor_id = Column(String, ForeignKey("users.user_id"), nullable=False)
+    # ✅ Fixed: Foreign keys now correctly match User.id (integer)
+    patient_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    doctor_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     
     appointment_date = Column(DateTime, nullable=False)
     status = Column(Enum(AppointmentStatus, name="appointmentstatus"), default=AppointmentStatus.PENDING, nullable=False)

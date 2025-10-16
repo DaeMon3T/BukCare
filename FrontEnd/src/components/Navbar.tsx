@@ -1,10 +1,21 @@
 import React, { useState, useContext } from "react";
 import { Link } from "react-router-dom";
-import { Search, Bell, ChevronDown, LogOut, Calendar } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Bell,
+  ChevronDown,
+  LogOut,
+  Menu,
+  X,
+  Home,
+  User,
+  ClipboardList,
+  Search,
+} from "lucide-react";
 import AuthContext from "../context/AuthContext.js";
 
 interface NavbarProps {
-  role?: "admin" | "doctor" | "staff" | "patient"; // restrict valid roles
+  role?: "admin" | "doctor" | "staff" | "patient";
 }
 
 interface User {
@@ -21,50 +32,65 @@ interface AuthContextType {
 const Navbar: React.FC<NavbarProps> = ({ role }) => {
   const userRole = role || "patient";
 
-  // Context (typed)
   const { user, logout } = useContext(AuthContext) as AuthContextType;
 
-  // States
-  const [showProfileDropdown, setShowProfileDropdown] = useState<boolean>(false);
-  const [showNotifications, setShowNotifications] = useState<boolean>(false);
+  const [showProfileDropdown, setShowProfileDropdown] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // Dynamic links
+  // 🔗 Dynamic routes
   const homeLink = `/${userRole}/home`;
   const appointmentsLink = `/${userRole}/appointments`;
+  const findDoctorsLink = `/${userRole}/find-doctor`;
   const profileLink = `/${userRole}/profile`;
 
   return (
     <header className="bg-white/80 backdrop-blur-md shadow-sm border-b border-gray-100 sticky top-0 z-50">
       <div className="w-full px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
-          {/* Logo */}
-          <div className="flex items-center">
+          {/* Left side */}
+          <div className="flex items-center space-x-3">
+            {/* Hamburger menu for mobile */}
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="lg:hidden p-2 rounded-lg hover:bg-gray-100"
+            >
+              <Menu className="w-6 h-6 text-gray-700" />
+            </button>
+
+            {/* Logo */}
             <Link to={homeLink} className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
-                <Calendar className="w-5 h-5 text-white" />
-              </div>
+              <img
+                src="/bukcare-logo.svg"
+                alt="BukCare Logo"
+                className="w-5 h-5 object-cover rounded-sm"
+              />
               <span className="text-xl font-semibold text-gray-800">BukCare</span>
             </Link>
           </div>
 
-          {/* Search */}
-          <div className="flex-1 max-w-lg mx-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-              <input
-                type="text"
-                placeholder="Search doctors, appointments..."
-                className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-              />
-            </div>
-          </div>
-
           {/* Right side */}
           <div className="flex items-center space-x-4">
-            {/* Links */}
-            <Link to={appointmentsLink} className="text-gray-700 hover:text-blue-600">
-              Appointments
-            </Link>
+            {/* Desktop Links */}
+            <div className="hidden lg:flex items-center space-x-6">
+              <Link to={homeLink} className="text-gray-700 hover:text-blue-600">
+                Home
+              </Link>
+
+              <Link
+                to={findDoctorsLink}
+                className="text-gray-700 hover:text-blue-600"
+              >
+                Find Doctors
+              </Link>
+
+              <Link
+                to={appointmentsLink}
+                className="text-gray-700 hover:text-blue-600"
+              >
+                Appointments
+              </Link>
+            </div>
 
             {/* Notifications */}
             <div className="relative">
@@ -96,7 +122,6 @@ const Navbar: React.FC<NavbarProps> = ({ role }) => {
                 onClick={() => setShowProfileDropdown(!showProfileDropdown)}
                 className="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-50 transition-colors duration-200"
               >
-                {/* Profile Picture */}
                 <div className="w-8 h-8 rounded-full overflow-hidden">
                   <img
                     src={user?.picture || "/default-avatar.png"}
@@ -104,7 +129,6 @@ const Navbar: React.FC<NavbarProps> = ({ role }) => {
                     className="w-full h-full object-cover"
                   />
                 </div>
-
                 <div className="hidden md:block text-left">
                   <p className="text-sm font-medium text-gray-800">{user?.name || "Guest"}</p>
                   <p className="text-xs text-gray-600 capitalize">{userRole}</p>
@@ -143,6 +167,94 @@ const Navbar: React.FC<NavbarProps> = ({ role }) => {
           </div>
         </div>
       </div>
+
+      {/* 📱 Mobile Sidebar Drawer */}
+      <AnimatePresence>
+        {sidebarOpen && (
+          <>
+            {/* Overlay */}
+            <motion.div
+              className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setSidebarOpen(false)}
+            />
+
+            {/* Sidebar */}
+            <motion.div
+              initial={{ x: -300 }}
+              animate={{ x: 0 }}
+              exit={{ x: -300 }}
+              transition={{ type: "spring", stiffness: 300, damping: 30 }}
+              className="fixed top-0 left-0 h-full w-64 bg-white shadow-lg z-50 p-4"
+            >
+              <div className="flex justify-between items-center mb-6">
+                <Link to={homeLink} className="flex items-center space-x-2">
+                  <img
+                    src="/bukcare-logo.svg"
+                    alt="BukCare Logo"
+                    className="w-5 h-5 object-cover rounded-sm"
+                  />
+                  <span className="text-xl font-semibold text-gray-800">BukCare</span>
+                </Link>
+                <button onClick={() => setSidebarOpen(false)}>
+                  <X className="w-6 h-6 text-gray-600" />
+                </button>
+              </div>
+
+              <nav className="space-y-4">
+                <Link
+                  to={homeLink}
+                  onClick={() => setSidebarOpen(false)}
+                  className="flex items-center space-x-3 text-gray-700 hover:text-blue-600"
+                >
+                  <Home className="w-5 h-5" />
+                  <span>Home</span>
+                </Link>
+
+                <Link
+                  to={findDoctorsLink}
+                  onClick={() => setSidebarOpen(false)}
+                  className="flex items-center space-x-3 text-gray-700 hover:text-blue-600"
+                >
+                  <Search className="w-5 h-5" />
+                  <span>Find Doctors</span>
+                </Link>
+
+                <Link
+                  to={appointmentsLink}
+                  onClick={() => setSidebarOpen(false)}
+                  className="flex items-center space-x-3 text-gray-700 hover:text-blue-600"
+                >
+                  <ClipboardList className="w-5 h-5" />
+                  <span>Appointments</span>
+                </Link>
+
+                <Link
+                  to={profileLink}
+                  onClick={() => setSidebarOpen(false)}
+                  className="flex items-center space-x-3 text-gray-700 hover:text-blue-600"
+                >
+                  <User className="w-5 h-5" />
+                  <span>Profile</span>
+                </Link>
+
+                <button
+                  onClick={() => {
+                    logout();
+                    setSidebarOpen(false);
+                  }}
+                  className="flex items-center space-x-3 text-red-600 hover:text-red-700 w-full"
+                >
+                  <LogOut className="w-5 h-5" />
+                  <span>Logout</span>
+                </button>
+              </nav>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </header>
   );
 };

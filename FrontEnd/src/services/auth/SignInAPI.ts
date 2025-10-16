@@ -1,10 +1,6 @@
-// ============================================================================
-// SignInAPI.ts - Authentication API Service
-// ============================================================================
+// src/services/auth/SignInAPI.ts
+import BaseAPI from "../BaseAPI";
 
-const API_BASE_URL = 'http://127.0.0.1:8000/api/v1';
-
-// Type Definitions
 export interface Credentials {
   email: string;
   password: string;
@@ -13,8 +9,8 @@ export interface Credentials {
 export interface Tokens {
   access_token: string;
   refresh_token: string;
-  token_type: string;
-  expires_in: number;
+  token_type?: string;
+  expires_in?: number;
 }
 
 export interface User {
@@ -22,7 +18,8 @@ export interface User {
   email: string;
   fname: string;
   lname: string;
-  user_type: string;
+  picture?: string;
+  role: string;
   is_profile_complete: boolean;
   is_verified: boolean;
   is_active: boolean;
@@ -33,128 +30,12 @@ export interface AuthResponse {
   user: User;
 }
 
-export interface RefreshTokenRequest {
-  refresh_token: string;
-}
-
-export interface GoogleSignInRequest {
-  id_token: string;
-}
-
-export interface ApiError {
-  detail?: string;
-}
-
-/**
- * Sign in with email and password
- * @param credentials - User credentials
- * @returns Authentication response with tokens and user data
- */
 export const signIn = async (credentials: Credentials): Promise<AuthResponse> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/auth/login`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(credentials),
-    });
-
-    if (!response.ok) {
-      const errorData: ApiError = await response.json();
-      throw new Error(errorData.detail || 'Sign in failed');
-    }
-
-    const data: AuthResponse = await response.json();
-    
-    // Expected response format:
-    // {
-    //   "tokens": {
-    //     "access_token": "...",
-    //     "refresh_token": "...",
-    //     "token_type": "bearer",
-    //     "expires_in": 1800
-    //   },
-    //   "user": {
-    //     "user_id": 1,
-    //     "email": "user@example.com",
-    //     "fname": "John",
-    //     "lname": "Doe",
-    //     "user_type": "patient",
-    //     "is_profile_complete": true,  // ← IMPORTANT: Backend must return this
-    //     "is_verified": true,
-    //     "is_active": true
-    //   }
-    // }
-    
-    return data;
-  } catch (error) {
-    console.error('Sign in error:', error);
-    throw error;
+    const response = await BaseAPI.post<AuthResponse>("/auth/signin", credentials);
+    return response.data;
+  } catch (error: any) {
+    console.error("Sign in error:", error);
+    throw new Error(error.response?.data?.detail || "Sign in failed");
   }
-};
-
-/**
- * Sign in with Google OAuth
- * @param idToken - Google ID token
- * @returns Authentication response with tokens and user data
- */
-export const signInWithGoogle = async (idToken: string): Promise<AuthResponse> => {
-  try {
-    const response = await fetch(`${API_BASE_URL}/auth/google`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ id_token: idToken } as GoogleSignInRequest),
-    });
-
-    if (!response.ok) {
-      const errorData: ApiError = await response.json();
-      throw new Error(errorData.detail || 'Google sign in failed');
-    }
-
-    const data: AuthResponse = await response.json();
-    return data;
-  } catch (error) {
-    console.error('Google sign in error:', error);
-    throw error;
-  }
-};
-
-/**
- * Refresh access token
- * @param refreshToken - Valid refresh token
- * @returns New tokens
- */
-export const refreshAccessToken = async (refreshToken: string): Promise<Tokens> => {
-  try {
-    const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ refresh_token: refreshToken } as RefreshTokenRequest),
-    });
-
-    if (!response.ok) {
-      const errorData: ApiError = await response.json();
-      throw new Error(errorData.detail || 'Token refresh failed');
-    }
-
-    return await response.json() as Tokens;
-  } catch (error) {
-    console.error('Token refresh error:', error);
-    throw error;
-  }
-};
-
-/**
- * Sign out (client-side cleanup)
- */
-export const signOut = (): void => {
-  // Clear tokens from localStorage
-  localStorage.removeItem('access_token');
-  localStorage.removeItem('refresh_token');
-  localStorage.removeItem('user');
 };

@@ -100,6 +100,8 @@ echo ""
 echo -e "${YELLOW}[6/6] Applying migration to database...${NC}"
 alembic upgrade head
 if [ $? -eq 0 ]; then
+
+
     echo -e "${GREEN}✓ Migration applied successfully${NC}"
 else
     echo -e "${RED}✗ Failed to apply migration${NC}"

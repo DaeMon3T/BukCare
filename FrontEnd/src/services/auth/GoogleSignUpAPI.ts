@@ -1,9 +1,12 @@
-// src/services/auth/GoogleSignUpAPI.ts
-import BaseAPI from "../BaseAPI.js";
+import BaseAPI from "../BaseAPI";
 
 export interface GoogleSignUpResponse {
-  access_token: string;
-  refresh_token: string;
+  tokens: {
+    access_token: string;
+    refresh_token: string;
+    token_type: string;
+    expires_in: number;
+  };
   user: {
     user_id: string;
     email: string;
@@ -13,18 +16,18 @@ export interface GoogleSignUpResponse {
     picture?: string;
     user_type: string;
     is_profile_complete: boolean;
+    role: string;
+    is_verified: boolean;
   };
 }
 
 export async function googleSignUp(idToken: string): Promise<GoogleSignUpResponse> {
   try {
-    const response = await BaseAPI.post<GoogleSignUpResponse>("/auth/google", {
+    const response = await BaseAPI.post<GoogleSignUpResponse>("/auth/google/signup", {
       id_token: idToken,
     });
-
-    return response.data; // Axios wraps the response in `data`
+    return response.data;
   } catch (error: any) {
-    // Extract backend error message if available
     const message =
       error.response?.data?.detail || error.message || "Google signup failed";
     throw new Error(message);

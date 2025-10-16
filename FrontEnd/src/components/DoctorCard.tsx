@@ -5,7 +5,8 @@ interface Specialization {
   descriptions?: string;
 }
 
-interface Doctor {
+export interface Doctor {
+  doctor_id: number;
   avatar: string;
   name: string;
   specialization?: Specialization;

@@ -1,6 +1,20 @@
-from .address import Province, CityMunicipality, Address
-from .users import User
-from .doctor import Doctor
-from .appointment import Appointment
-from .notification import Notification
-from .invitation import Invitation 
+# models/__init__.py
+
+"""
+Automatically import all model files so that SQLAlchemy Base.metadata
+includes every table definition when Alembic runs.
+"""
+
+from core.database import Base  # Ensure all models use the same Base
+
+# Import all model modules here
+from . import (
+    address,
+    appointment,
+    doctor,
+    notification,
+    users,
+)
+
+# Optional: expose Base for convenience
+__all__ = ["Base"]

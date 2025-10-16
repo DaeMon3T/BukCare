@@ -1,5 +1,5 @@
 // src/services/patient/GetDoctorAPI.ts
-import BaseAPI from "../BaseAPI.ts";
+import BaseAPI from "../BaseAPI";
 
 export interface Doctor {
   id: number;

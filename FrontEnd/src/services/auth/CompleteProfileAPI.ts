@@ -1,35 +1,43 @@
 import BaseAPI from "../BaseAPI.js";
 
-interface CompleteProfilePayload {
+export interface CompleteProfilePayload {
   user_id: string;
-  sex: "male" | "female" | "other";
-  dob: string; // e.g. "YYYY-MM-DD"
+  sex: boolean;
+  dob: string; // YYYY-MM-DD
   contact_number: string;
-  address_id: string;
+  address_id?: string;
   password: string;
 }
 
-interface ApiResponse<T = any> {
-  data: T;
-  message?: string;
-  detail?: string;
-  [key: string]: any;
+export interface CompleteProfileResponse {
+  tokens: {
+    access_token: string;
+    refresh_token: string;
+  };
+  user: {
+    user_id: string;
+    email: string;
+    fname: string;
+    lname: string;
+    picture?: string;
+    role: string;
+    is_profile_complete: boolean;
+  };
 }
 
-/**
- * Complete the user profile after Google OAuth
- * @param payload - User profile details
- * @returns Promise containing response data
- */
 export const completeProfile = async (
   payload: CompleteProfilePayload
-): Promise<ApiResponse> => {
+): Promise<CompleteProfileResponse> => {
   try {
-    const response = await BaseAPI.post<ApiResponse>("/auth/complete-profile", payload);
+    const response = await BaseAPI.post<CompleteProfileResponse>(
+      "/auth/complete-profile",
+      payload
+    );
     return response.data;
   } catch (error: any) {
     const message =
       error.response?.data?.detail ||
+      error.response?.data?.message ||
       error.message ||
       "Failed to complete profile";
     throw new Error(message);

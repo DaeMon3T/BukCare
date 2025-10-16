@@ -128,55 +128,15 @@ const Landing: React.FC = () => {
         </div>
       </section>
 
-      {/* Testimonials */}
-      <section className="py-16 px-6">
-        <h2 className="text-3xl font-bold text-center mb-10 drop-shadow-lg">
-          What Patients Say
-        </h2>
-        <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto text-center">
-          {[
-            {
-              img: "https://randomuser.me/api/portraits/women/65.jpg",
-              quote: `"Booking my appointments has never been easier!"`,
-              name: "Maria S.",
-            },
-            {
-              img: "https://randomuser.me/api/portraits/men/33.jpg",
-              quote: `"My whole family's health in my hands. Love it!"`,
-              name: "John D.",
-            },
-            {
-              img: "https://randomuser.me/api/portraits/women/22.jpg",
-              quote: `"Quick, private, and professional. Highly recommend!"`,
-              name: "Anne K.",
-            },
-          ].map((item, i) => (
-            <div
-              key={i}
-              className="bg-white/20 p-8 rounded-2xl shadow-lg text-[#1A1A40]"
-            >
-              <img
-                src={item.img}
-                alt={`patient${i}`}
-                className="rounded-full w-16 h-16 mx-auto mb-4 border-2 border-[#FFC43D]"
-              />
-              <p className="mb-4 italic">{item.quote}</p>
-              <h4 className="font-semibold text-[#0057B8]">{item.name}</h4>
-            </div>
-          ))}
-        </div>
-      </section>
-
       {/* Navigation Shortcuts */}
       <section className="py-16 px-6 bg-white/10">
         <h2 className="text-3xl font-bold text-center mb-10 drop-shadow-lg">
           Find Out More
         </h2>
-        <div className="grid md:grid-cols-4 gap-8 max-w-4xl mx-auto text-center">
+        <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto text-center">
           {[
             { to: "/about", title: "About Us", desc: "Our mission & values" },
             { to: "/services", title: "Services", desc: "All specialties" },
-            { to: "/faq", title: "FAQs", desc: "Common questions" },
             { to: "/contact", title: "Contact", desc: "We're here to help" },
           ].map((link, i) => (
             <Link

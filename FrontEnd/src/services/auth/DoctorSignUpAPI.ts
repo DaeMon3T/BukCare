@@ -27,7 +27,14 @@ export interface DoctorRegistrationData {
   otherSpecialization?: string | null;
 }
 
-interface ApiResponse<T = any> {
+export interface DoctorRegistrationResponse {
+  message?: string;
+  detail?: string;
+  user_id?: number;
+  [key: string]: any;
+}
+
+export interface ApiResponse<T = any> {
   data: T;
   message?: string;
   detail?: string;
@@ -46,11 +53,11 @@ export const validateInvitation = async (
     );
 
     // Verify it's a doctor invitation
-    if (response.data.role !== "doctor") {
+    if (response.data.data?.role !== "doctor") {
       throw new Error("This invitation is not for a doctor account");
     }
 
-    return response.data;
+    return response.data.data;
   } catch (error: any) {
     console.error("Invitation validation error:", error);
     const message =
@@ -66,28 +73,24 @@ export const validateInvitation = async (
 // -----------------------------
 export const registerDoctor = async (
   doctorData: DoctorRegistrationData
-): Promise<ApiResponse> => {
+): Promise<DoctorRegistrationResponse> => {
   try {
-    const response = await BaseAPI.post<ApiResponse>("/auth/doctor-signup", {
-      invite_token: doctorData.invite_token,
-      fname: doctorData.fname,
-      lname: doctorData.lname,
-      mname: doctorData.mname || null,
-      email: doctorData.email,
-      phone: doctorData.phone,
-      licenseNumber: doctorData.licenseNumber,
-      password: doctorData.password,
-      specialization: doctorData.specialization,
-      otherSpecialization: doctorData.otherSpecialization || null,
-    });
+    const response = await BaseAPI.post<DoctorRegistrationResponse>(
+      "/auth/doctor-signup", 
+      doctorData
+    );
 
     return response.data;
   } catch (error: any) {
     console.error("Doctor registration error:", error);
+    
+    // Enhanced error extraction
     const message =
       error.response?.data?.detail ||
+      error.response?.data?.message ||
       error.message ||
       "Doctor registration failed";
+      
     throw new Error(message);
   }
 };

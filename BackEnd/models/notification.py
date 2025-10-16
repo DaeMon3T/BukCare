@@ -8,9 +8,12 @@ class Notification(Base):
     __tablename__ = "notifications"
     
     notification_id = Column(Integer, primary_key=True, index=True)
-    source_user_id = Column(String, ForeignKey("users.user_id"), nullable=True)
-    target_user_id = Column(String, ForeignKey("users.user_id"), nullable=False)
+    
+    # ✅ Fixed FK references and type
+    source_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    target_user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     appointment_id = Column(Integer, ForeignKey("appointments.appointment_id"), nullable=True)
+    
     message = Column(Text, nullable=False)
     created_at = Column(DateTime, server_default=func.now(), nullable=False)
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now(), nullable=False)
