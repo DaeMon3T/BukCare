@@ -1,57 +1,125 @@
 # routers/v1/auth/complete_profile.py
-from fastapi import APIRouter, Depends, HTTPException
+
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from sqlalchemy.orm import Session
 from datetime import datetime
-from pydantic import BaseModel
+from typing import Optional
 from core.database import get_db
 from models.users import User
-from core.security import (
-    create_access_token, 
-    create_refresh_token,
-    get_password_hash  # ✅ Import the hash function
-)
+from models.doctor import Doctor
+from models.patient import Patient
+from models.address import Address
+from core.security import create_access_token, create_refresh_token, get_password_hash
+from core.config import settings
+import cloudinary.uploader
+from core.cloudinary_config import cloudinary
+import json
 
 router = APIRouter()
 
 
-class CompleteProfileRequest(BaseModel):
-    user_id: int
-    sex: bool
-    dob: str
-    contact_number: str
-    address_id: int | None = None
-    password: str
-
-
 @router.post("/complete-profile")
-def complete_profile(request: CompleteProfileRequest, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.user_id == request.user_id).first()
+async def complete_profile(
+    user_id: int = Form(...),
+    role: str = Form(...),
+    sex: str = Form(...),
+    dob: str = Form(...),
+    contact_number: str = Form(...),
+    province_id: str = Form(...),
+    city_id: str = Form(...),
+    barangay: str = Form(...),
+    password: str = Form(...),
+    confirmPassword: str = Form(...),
+    license_number: Optional[str] = Form(None),
+    years_of_experience: Optional[str] = Form(None),
+    specializations: Optional[str] = Form(None),
+    prc_license_front: Optional[UploadFile] = File(None),
+    prc_license_back: Optional[UploadFile] = File(None),
+    prc_license_selfie: Optional[UploadFile] = File(None),
+    db: Session = Depends(get_db),
+):
+    # Validate passwords
+    if password != confirmPassword:
+        raise HTTPException(status_code=400, detail="Passwords do not match")
+
+    # Find user
+    user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
+    # Create address
+    address = Address(
+        barangay=barangay,
+        city_id=int(city_id)
+    )
+    db.add(address)
+    db.flush()  # get address_id
+
     # Update user profile
-    user.sex = request.sex
-    user.dob = datetime.strptime(request.dob, "%Y-%m-%d")
-    user.contact_number = request.contact_number
-    user.password = get_password_hash(request.password)  # ✅ Hash the password!
+    user.sex = sex == "1"
+    user.dob = datetime.strptime(dob, "%Y-%m-%d").date()
+    user.contact_number = contact_number
+    user.password = get_password_hash(password)
+    user.address_id = address.address_id
     user.is_profile_complete = True
-    
+
+    # Doctor-specific handling
+    if role.lower() == "doctor":
+        doctor = Doctor(
+            user_id=user.id,
+            license_number=license_number,
+            years_of_experience=int(years_of_experience) if years_of_experience else None,
+            address_id=address.address_id,
+            is_verified=False
+        )
+
+        # Upload files to Cloudinary
+        if prc_license_front:
+            result = cloudinary.uploader.upload(prc_license_front.file, folder=f"licenses/{user.id}")
+            doctor.prc_license_front = result["secure_url"]
+
+        if prc_license_back:
+            result = cloudinary.uploader.upload(prc_license_back.file, folder=f"licenses/{user.id}")
+            doctor.prc_license_back = result["secure_url"]
+
+        if prc_license_selfie:
+            result = cloudinary.uploader.upload(prc_license_selfie.file, folder=f"licenses/{user.id}")
+            doctor.prc_license_selfie = result["secure_url"]
+
+        # Parse specializations JSON string
+        if specializations:
+            try:
+                specs = json.loads(specializations)
+                doctor.specializations_json = json.dumps(specs)
+            except:
+                doctor.specializations_json = specializations
+
+        db.add(doctor)
+
+    elif role.lower() == "patient":
+        patient = Patient(
+            user_id=user.id,
+            address_id=address.address_id
+        )
+        db.add(patient)
+
+    # Commit all changes
     db.commit()
     db.refresh(user)
 
-    # Re-issue tokens
+    # Generate tokens
     access_token = create_access_token({
-        "user_id": user.user_id, 
+        "user_id": user.id,
         "email": user.email,
         "role": user.role.value
     })
     refresh_token = create_refresh_token({
-        "user_id": user.user_id, 
+        "user_id": user.id,
         "email": user.email
     })
-    
+
     user.refresh_token = refresh_token
-    user.last_login = datetime.utcnow()  # Update last login
+    user.last_login = datetime.utcnow()
     db.commit()
 
     return {
@@ -61,7 +129,7 @@ def complete_profile(request: CompleteProfileRequest, db: Session = Depends(get_
             "token_type": "bearer",
         },
         "user": {
-            "user_id": user.user_id,
+            "user_id": user.id,
             "email": user.email,
             "fname": user.fname,
             "lname": user.lname,

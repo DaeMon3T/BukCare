@@ -180,21 +180,6 @@ export function validateBarangay(barangay: string): ValidationResult {
 }
 
 /**
- * Validate zip code format (4 digits)
- */
-export function validateZipCode(zipCode: string): ValidationResult {
-  if (!zipCode) {
-    return { isValid: false, message: 'Zip code is required' };
-  }
-
-  const isValid = /^\d{4}$/.test(zipCode.trim());
-  return {
-    isValid,
-    message: isValid ? '' : 'Zip code must be 4 digits'
-  };
-}
-
-/**
  * Validate PRC License Number
  */
 export function validatePRCLicense(licenseNumber: string): ValidationResult {
@@ -315,17 +300,17 @@ export function validateFileUpload(file: File | null | undefined, fieldName: str
  * Validate all doctor files together
  */
 export function validateAllFiles(
-  prcLicense: File | null | undefined,
-  prcBack: File | null | undefined,
-  selfie: File | null | undefined
+  prcLicenseFront: File | null | undefined,
+  prcLicenseBack: File | null | undefined,
+  prcLicenseSelfie: File | null | undefined
 ): ValidationResult {
-  const prcCheck = validateFileUpload(prcLicense, 'PRC License Front');
+  const prcCheck = validateFileUpload(prcLicenseFront, 'PRC License Front');
   if (!prcCheck.isValid) return prcCheck;
 
-  const prcBackCheck = validateFileUpload(prcBack, 'PRC License Back');
+  const prcBackCheck = validateFileUpload(prcLicenseBack, 'PRC License Back');
   if (!prcBackCheck.isValid) return prcBackCheck;
 
-  const selfieCheck = validateFileUpload(selfie, 'Selfie with PRC ID');
+  const selfieCheck = validateFileUpload(prcLicenseSelfie, 'PRC License Selfie');
   if (!selfieCheck.isValid) return selfieCheck;
 
   return { isValid: true, message: '' };
@@ -378,9 +363,9 @@ export function validateDoctorProfile(data: {
   years_of_experience?: string;
   specializations: string[];
   otherSpecialization?: string;
-  prc_license_url?: File | null;
-  id_back_front_url?: File | null;
-  selfie_with_prc_url?: File | null;
+  prc_license_front?: File | null;
+  prc_license_back?: File | null;
+  prc_license_selfie?: File | null;
 }): ValidationResult {
   const patientCheck = validatePatientProfile(data);
   if (!patientCheck.isValid) return patientCheck;
@@ -401,9 +386,9 @@ export function validateDoctorProfile(data: {
   }
 
   const filesCheck = validateAllFiles(
-    data.prc_license_url,
-    data.id_back_front_url,
-    data.selfie_with_prc_url
+    data.prc_license_front,
+    data.prc_license_back,
+    data.prc_license_selfie
   );
   if (!filesCheck.isValid) return filesCheck;
 

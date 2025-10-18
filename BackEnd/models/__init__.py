@@ -1,5 +1,3 @@
-# models/__init__.py
-
 """
 Automatically import all model files so that SQLAlchemy Base.metadata
 includes every table definition when Alembic runs.
@@ -13,6 +11,7 @@ from . import (
     appointment,
     doctor,
     notification,
+    patient,
     users,
 )
 

@@ -1,4 +1,3 @@
-# models/users.py
 from sqlalchemy import Column, String, Integer, Boolean, DateTime, ForeignKey, Enum
 from sqlalchemy.orm import relationship
 from datetime import datetime
@@ -34,7 +33,7 @@ class User(Base):
     password = Column(String, nullable=True)
     
     # Account status
-    role = Column(Enum(UserRole, name="user_role_enum"), nullable=True)  # role is now provided by frontend
+    role = Column(Enum(UserRole, name="user_role_enum"), nullable=True)
     is_active = Column(Boolean, default=True)
     is_verified = Column(Boolean, default=False)
     is_profile_complete = Column(Boolean, default=False)
@@ -60,6 +59,7 @@ class User(Base):
     )
     
     doctor_profile = relationship("Doctor", back_populates="user", uselist=False)
+    patient_profile = relationship("Patient", back_populates="user", uselist=False)
     
     notifications_sent = relationship(
         "Notification",
@@ -92,7 +92,7 @@ class User(Base):
             picture=data.get("picture"),
             role=role,
             is_verified=data.get("email_verified", True),
-            password=None,  # Google-authenticated users don't use passwords
+            password=None,
             last_login=datetime.utcnow(),
         )
 

@@ -26,6 +26,11 @@ class Settings(BaseSettings):
     GOOGLE_CLIENT_ID: str
     GOOGLE_CLIENT_SECRET: str
     OAUTH_REDIRECT_URI: str
+
+    # Cloudinary Configuration
+    CLOUDINARY_CLOUD_NAME: str
+    CLOUDINARY_API_KEY: str
+    CLOUDINARY_API_SECRET: str
     
     # Email Configuration
     EMAIL_HOST_USER: str

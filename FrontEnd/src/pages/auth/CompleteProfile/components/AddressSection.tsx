@@ -1,6 +1,3 @@
-// ============================================
-// components/AddressSection.tsx
-// ============================================
 import React from "react";
 import type { FormData, ProvinceData, CityData, BarangayData } from "../types";
 
@@ -83,18 +80,6 @@ const AddressSection: React.FC<AddressSectionProps> = ({
             </option>
           ))}
         </select>
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium mb-2 text-white/90">ZIP Code</label>
-        <input
-          type="text"
-          name="zip_code"
-          value={formData.zip_code}
-          readOnly
-          placeholder="Auto-filled"
-          className="w-full px-4 py-3.5 text-base rounded-xl bg-white/20 text-white cursor-not-allowed"
-        />
       </div>
     </div>
   );

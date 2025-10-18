@@ -62,6 +62,7 @@ def google_callback(
         tokens["id_token"],
         google_requests.Request(),
         settings.GOOGLE_CLIENT_ID,
+        clock_skew_in_seconds=10 
     )
 
     google_data = {

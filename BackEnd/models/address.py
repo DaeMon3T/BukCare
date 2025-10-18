@@ -1,4 +1,3 @@
-# models/address.py
 from sqlalchemy import Column, String, Integer, ForeignKey
 from sqlalchemy.orm import relationship
 from core.database import Base
@@ -17,7 +16,6 @@ class City(Base):
     
     city_id = Column(Integer, primary_key=True, index=True)
     name = Column(String(100), nullable=False)
-    zip_code = Column(String(10), nullable=True)
     province_id = Column(Integer, ForeignKey("provinces.province_id"), nullable=False)
     
     # Relationships
@@ -35,3 +33,4 @@ class Address(Base):
     city = relationship("City", back_populates="addresses")
     users = relationship("User", back_populates="address")
     doctors = relationship("Doctor", back_populates="address")
+    patients = relationship("Patient", back_populates="address")

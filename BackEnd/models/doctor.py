@@ -1,5 +1,4 @@
-# models/doctor.py
-from sqlalchemy import Column, String, Integer, ForeignKey, Table, Boolean, Time
+from sqlalchemy import Column, String, Integer, ForeignKey, Table, Boolean, Time, Text
 from sqlalchemy.orm import relationship
 from core.database import Base
 
@@ -25,17 +24,22 @@ class Doctor(Base):
     __tablename__ = "doctors"
     
     doctor_id = Column(Integer, primary_key=True, index=True)
-    # ✅ Fixed foreign key reference
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, unique=True)
 
-    # Verification uploads
-    prc_license_url = Column(String, nullable=True)
-    selfie_with_prc_url = Column(String, nullable=True)
-    id_back_front_url = Column(String, nullable=True)
+    # License verification uploads - match frontend field names
+    prc_license_front = Column(String, nullable=True)
+    prc_license_back = Column(String, nullable=True)
+    prc_license_selfie = Column(String, nullable=True)
 
     license_number = Column(String, nullable=True)
     years_of_experience = Column(Integer, nullable=True)
     address_id = Column(Integer, ForeignKey("addresses.address_id"), nullable=True)
+    
+    # Verification status
+    is_verified = Column(Boolean, default=False)
+    
+    # Store specializations as JSON string (for custom specializations)
+    specializations_json = Column(Text, nullable=True)
 
     # Relationships
     user = relationship("User", back_populates="doctor_profile")

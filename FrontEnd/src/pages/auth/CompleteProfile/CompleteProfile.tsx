@@ -1,5 +1,5 @@
 // ============================================
-// FILE 8: CompleteProfile.tsx
+// FILE: CompleteProfile.tsx (with debugging)
 // ============================================
 import React, { useState, useEffect } from "react";
 import type { ChangeEvent as ReactChangeEvent, FormEvent as ReactFormEvent } from "react";
@@ -49,7 +49,6 @@ const CompleteProfile: React.FC = () => {
     barangay: "",
     city_id: "",
     province_id: "",
-    zip_code: "",
     license_number: "",
     years_of_experience: "",
     prc_license_front: null,
@@ -66,16 +65,6 @@ const CompleteProfile: React.FC = () => {
     formData.city_id
   );
 
-  // Handle city zip code auto-fill
-  useEffect(() => {
-    if (formData.city_id) {
-      const selectedCity = citiesData.find((c) => c.city_id === formData.city_id);
-      if (selectedCity) {
-        setFormData((prev) => ({ ...prev, zip_code: selectedCity.zip_code }));
-      }
-    }
-  }, [formData.city_id, citiesData]);
-
   const handleChange = (e: ReactChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
 
@@ -85,15 +74,12 @@ const CompleteProfile: React.FC = () => {
         [name]: value,
         city_id: "",
         barangay: "",
-        zip_code: "",
       });
     } else if (name === "city_id") {
-      const selectedCity = citiesData.find((c) => c.city_id === value);
       setFormData({
         ...formData,
         [name]: value,
         barangay: "",
-        zip_code: selectedCity?.zip_code || "",
       });
     } else {
       setFormData({ ...formData, [name]: value });
@@ -135,35 +121,85 @@ const CompleteProfile: React.FC = () => {
   };
 
   const handleSubmit = async (e: ReactFormEvent) => {
+    console.log("🔵 CompleteProfile: handleSubmit called");
     e.preventDefault();
     setError("");
     setLoading(true);
 
+    console.log("📋 FormData:", {
+      sex: formData.sex,
+      dob: formData.dob,
+      contact_number: formData.contact_number,
+      province_id: formData.province_id,
+      city_id: formData.city_id,
+      barangay: formData.barangay,
+      role: role,
+    });
+
+    // Validate formData object FIRST before creating FormData
     const validationResult =
       role === "doctor"
         ? validateDoctorProfile(formData)
         : validatePatientProfile(formData);
 
+    console.log("✓ Validation result:", validationResult);
+
     if (!validationResult.isValid) {
+      console.error("❌ Validation failed:", validationResult.message);
       setError(validationResult.message);
       setLoading(false);
       return;
     }
 
     try {
+      console.log("📦 Creating FormData payload...");
       const payload = new FormData();
       payload.append("user_id", String(userId));
       payload.append("role", role || "");
-      Object.entries(formData).forEach(([key, value]) => {
-        if (value) payload.append(key, value as any);
-      });
+      
+      // Append all form fields
+      payload.append("sex", formData.sex);
+      payload.append("dob", formData.dob);
+      payload.append("contact_number", formData.contact_number);
+      payload.append("province_id", formData.province_id);
+      payload.append("city_id", formData.city_id);
+      payload.append("barangay", formData.barangay);
+      payload.append("password", formData.password);
+      payload.append("confirmPassword", formData.confirmPassword);
 
+      // Doctor-specific fields
+      if (role === "doctor") {
+        console.log("🏥 Adding doctor-specific fields...");
+        if (formData.license_number)
+          payload.append("license_number", formData.license_number);
+        if (formData.years_of_experience)
+          payload.append("years_of_experience", formData.years_of_experience);
+        
+        // Convert specializations array to JSON string
+        if (formData.specializations && formData.specializations.length > 0) {
+          payload.append("specializations", JSON.stringify(formData.specializations));
+        }
+
+        // Append file uploads
+        if (formData.prc_license_front)
+          payload.append("prc_license_front", formData.prc_license_front);
+        if (formData.prc_license_back)
+          payload.append("prc_license_back", formData.prc_license_back);
+        if (formData.prc_license_selfie)
+          payload.append("prc_license_selfie", formData.prc_license_selfie);
+      }
+
+      console.log("🚀 Calling API: /auth/complete-profile");
       const data = await completeProfile(payload);
+      console.log("✅ API Response:", data);
+      
       login(data.tokens, data.user);
+      console.log("🎉 Profile completed successfully!");
       navigate(role === "doctor" ? "/doctor/dashboard" : "/patient/home", {
         replace: true,
       });
     } catch (err: any) {
+      console.error("❌ Error:", err);
       setError(err.message || "Something went wrong.");
     } finally {
       setLoading(false);
