@@ -15,7 +15,7 @@ import {
 import AuthContext from "../context/AuthContext.js";
 
 interface NavbarProps {
-  role?: "admin" | "doctor" | "staff" | "patient";
+  role?: "admin" | "doctor" | "patient";
 }
 
 interface User {

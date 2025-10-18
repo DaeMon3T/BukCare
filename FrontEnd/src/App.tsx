@@ -10,7 +10,7 @@ import { AdminRoute, DoctorRoute, PatientRoute } from './routes/ProtectedRoutes'
 import SignIn from './pages/auth/SignIn';
 import SignUp from './pages/auth/SignUp';
 import ForgotPassword from './pages/auth/ForgotPassword';
-import CompleteProfile from './pages/auth/CompleteProfile';
+import CompleteProfile from './pages/auth/CompleteProfile/CompleteProfile';
 
 // Public Pages
 import Landing from './pages/public/Landing';

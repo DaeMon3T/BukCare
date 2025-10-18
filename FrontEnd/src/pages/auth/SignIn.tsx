@@ -13,19 +13,18 @@ interface FormData {
 const SignIn: React.FC = () => {
   const [formData, setFormData] = useState<FormData>({ email: "", password: "" });
   const [error, setError] = useState<string>("");
-  const [loading, setLoading] = useState<boolean>(false);
+  const [emailLoading, setEmailLoading] = useState<boolean>(false);
+  const [googleLoading, setGoogleLoading] = useState<boolean>(false);
 
   const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
-  // ✅ Handle form input changes
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
     if (error) setError("");
   };
 
-  // ✅ Role-based redirect logic
   const getRoleBasedRedirectPath = (role?: string): string => {
     switch (role?.toLowerCase()) {
       case "admin":
@@ -39,37 +38,24 @@ const SignIn: React.FC = () => {
     }
   };
 
-  // ✅ Handle successful login response
   const handleLoginSuccess = (result: any) => {
     if (!result.user || !result.tokens) {
       setError("Invalid login response from server.");
       return;
     }
 
-    console.log("🔍 Full result object:", result);
-    console.log("🔍 User object:", result.user);
-    console.log("🔍 Role field:", result.user.role);
-    console.log("🔍 User type field:", result.user.user_type);
-
-    // Save tokens and user info to context
     login(result.tokens, result.user);
 
     const userRole = (result.user.role || result.user.user_type || "").toLowerCase();
-    console.log("✅ Detected role:", userRole);
-    console.log("✅ Is admin?:", userRole === "admin");
 
-    // ✅ Admins go directly to dashboard
     if (userRole === "admin") {
-      console.log("🚀 Redirecting admin to /admin/dashboard");
       setTimeout(() => {
         navigate("/admin/dashboard", { replace: true });
       }, 100);
       return;
     }
 
-    // ✅ Non-admins with incomplete profiles
     if (!result.user.is_profile_complete) {
-      console.log("🧩 Redirecting to complete-profile");
       navigate("/complete-profile", {
         replace: true,
         state: {
@@ -83,23 +69,19 @@ const SignIn: React.FC = () => {
       return;
     }
 
-    // ✅ Others (doctor, patient)
     const redirectPath =
       (location.state as { from?: { pathname: string } })?.from?.pathname ||
       getRoleBasedRedirectPath(userRole);
-    console.log("➡️ Redirecting to:", redirectPath);
     navigate(redirectPath, { replace: true });
   };
 
-  // ✅ Handle form submission
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setLoading(true);
+    setEmailLoading(true);
     setError("");
 
     try {
       const result = await signIn(formData);
-      console.log("🔍 Backend Response:", result);
       handleLoginSuccess(result);
     } catch (err: any) {
       const errMsg =
@@ -109,17 +91,19 @@ const SignIn: React.FC = () => {
         "Sign-in failed. Please try again.";
       setError(errMsg);
     } finally {
-      setLoading(false);
+      setEmailLoading(false);
     }
   };
 
-  // ✅ Handle Google redirect
-  const handleGoogleRedirect = (e: React.MouseEvent<HTMLButtonElement>) => {
+  const handleGoogleRedirect = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setLoading(true);
+    setGoogleLoading(true);
     window.location.href = `${import.meta.env.VITE_API_URL}/auth/google/login`;
   };
+
+  // Check if any loading state is active
+  const isLoading = emailLoading || googleLoading;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#1A1A40] via-[#0057B8] to-[#00A8E8] text-white">
@@ -148,6 +132,7 @@ const SignIn: React.FC = () => {
 
           {/* Sign-In Card */}
           <div className="bg-white/20 backdrop-blur-md p-8 rounded-2xl shadow-2xl border border-white/20">
+            {/* Email/Password Form */}
             <form className="space-y-6" onSubmit={handleSubmit}>
               {error && (
                 <div className="bg-red-500/20 border border-red-400/50 text-red-100 px-4 py-3 rounded-xl backdrop-blur-sm">
@@ -155,7 +140,6 @@ const SignIn: React.FC = () => {
                 </div>
               )}
 
-              {/* Email */}
               <div>
                 <label
                   htmlFor="email"
@@ -175,7 +159,6 @@ const SignIn: React.FC = () => {
                 />
               </div>
 
-              {/* Password */}
               <div>
                 <label
                   htmlFor="password"
@@ -195,7 +178,6 @@ const SignIn: React.FC = () => {
                 />
               </div>
 
-              {/* Forgot Password */}
               <div className="flex justify-end">
                 <Link
                   to="/forgot-password"
@@ -205,50 +187,51 @@ const SignIn: React.FC = () => {
                 </Link>
               </div>
 
-              {/* Submit Button */}
               <button
                 type="submit"
-                disabled={loading}
+                disabled={isLoading}
                 className="w-full bg-[#FFC43D] text-[#1A1A40] font-bold py-3 px-6 rounded-xl shadow-lg hover:bg-[#FFD84C] transition transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
               >
-                {loading ? "Signing In..." : "Sign In"}
+                {emailLoading ? "Signing In..." : "Sign In"}
               </button>
+            </form>
 
-              {/* Divider */}
-              <div className="flex items-center my-6">
-                <hr className="flex-grow border-white/20" />
-                <span className="px-4 text-white/60 text-sm font-medium">OR</span>
-                <hr className="flex-grow border-white/20" />
-              </div>
+            {/* Divider */}
+            <div className="flex items-center my-6">
+              <hr className="flex-grow border-white/20" />
+              <span className="px-4 text-white/60 text-sm font-medium">OR</span>
+              <hr className="flex-grow border-white/20" />
+            </div>
 
-              {/* Google Sign-In */}
+            {/* Google Sign-In Button (outside form) */}
+            <div>
               <button
                 type="button"
                 onClick={handleGoogleRedirect}
-                disabled={loading}
-                className="flex items-center justify-center w-full py-3 bg-white text-gray-800 font-semibold rounded-xl shadow-lg hover:bg-gray-100 transition disabled:opacity-50"
+                disabled={isLoading}
+                className="flex items-center justify-center w-full py-3 bg-white text-gray-800 font-semibold rounded-xl shadow-lg hover:bg-gray-100 transition transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
               >
                 <img
                   src="https://developers.google.com/identity/images/g-logo.png"
                   alt="Google"
                   className="w-5 h-5 mr-3"
                 />
-                {loading ? "Redirecting..." : "Sign in with Google"}
+                {googleLoading ? "Redirecting..." : "Sign in with Google"}
               </button>
+            </div>
 
-              {/* Signup Link */}
-              <div className="text-center mt-8 pt-6 border-t border-white/20">
-                <span className="text-white/80">
-                  Don't have an account?{" "}
-                  <Link
-                    to="/signup"
-                    className="text-[#FFC43D] hover:text-[#FFD84C] transition font-semibold"
-                  >
-                    Sign up here
-                  </Link>
-                </span>
-              </div>
-            </form>
+            {/* Signup Link */}
+            <div className="text-center mt-8 pt-6 border-t border-white/20">
+              <span className="text-white/80">
+                Don't have an account?{" "}
+                <Link
+                  to="/signup"
+                  className="text-[#FFC43D] hover:text-[#FFD84C] transition font-semibold"
+                >
+                  Sign up here
+                </Link>
+              </span>
+            </div>
 
             {/* Terms and Privacy */}
             <div className="text-center mt-6">

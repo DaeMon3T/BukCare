@@ -145,7 +145,7 @@ def google_callback(
             f"&lname={urllib.parse.quote(user.lname or '')}"
             f"&picture={urllib.parse.quote(user.picture or '')}"
             f"&token={access_token}&refresh={refresh_token}"
-        )
+        )   
     else:
         # Regular signed-in user with completed profile
         redirect_url = (

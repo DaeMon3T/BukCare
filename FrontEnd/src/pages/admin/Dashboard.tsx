@@ -10,10 +10,7 @@ import AuthContext from "@/context/AuthContext";
 interface DashboardStats {
   total_patients: number;
   total_doctors: number;
-  total_staff: number;
   pending_approvals: number;
-  active_sessions: number;
-  pending_invites: number;
 }
 
 // Type for search results
@@ -45,10 +42,7 @@ const AdminDashboard: React.FC = () => {
   const [stats, setStats] = useState<DashboardStats>({
     total_patients: 0,
     total_doctors: 0,
-    total_staff: 0,
     pending_approvals: 0,
-    active_sessions: 0,
-    pending_invites: 0,
   });
   const [isLoadingStats, setIsLoadingStats] = useState<boolean>(true);
 
@@ -133,7 +127,7 @@ const AdminDashboard: React.FC = () => {
           </div>
 
           {/* Stats Overview */}
-          <div className="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
             {[
               {
                 label: "Total Patients",
@@ -144,11 +138,6 @@ const AdminDashboard: React.FC = () => {
                 label: "Total Doctors",
                 value: stats.total_doctors,
                 color: "green",
-              },
-              {
-                label: "Total Staff",
-                value: stats.total_staff,
-                color: "purple",
               },
             ].map((item) => (
               <div
@@ -182,12 +171,6 @@ const AdminDashboard: React.FC = () => {
                 System Status
               </h2>
               <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">Active Sessions</span>
-                  <span className="text-sm font-medium text-gray-800">
-                    {isLoadingStats ? "..." : stats.active_sessions}
-                  </span>
-                </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-600">Pending Approvals</span>
                   <div className="flex items-center space-x-1">
