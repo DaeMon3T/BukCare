@@ -11,7 +11,7 @@ from google.auth.transport import requests as google_requests
 from core.config import settings
 from core.database import get_db
 from core.security import create_access_token, create_refresh_token
-from models.users import User, UserRole  # IMPORTANT: import UserRole
+from models.users import User, UserRole  # Ensure your User model has from_oauth and update_from_oauth
 
 router = APIRouter(prefix="/google")
 
@@ -57,12 +57,12 @@ def google_callback(
 
     tokens = response.json()
 
-    # Verify and extract ID token info
+    # Verify ID token
     idinfo = id_token.verify_oauth2_token(
         tokens["id_token"],
         google_requests.Request(),
         settings.GOOGLE_CLIENT_ID,
-        clock_skew_in_seconds=10 
+        clock_skew_in_seconds=10
     )
 
     google_data = {
@@ -77,19 +77,16 @@ def google_callback(
     if not google_data["email"]:
         raise HTTPException(status_code=400, detail="No email returned by Google")
 
-    # Find or create user
+    # Find existing user
     user = db.query(User).filter(User.email == google_data["email"]).first()
+    action = "signin"
 
     if not user:
-        # If you expect the frontend to pass a role during signup via query params,
-        # you can read it from the callback query (e.g., ?role=doctor). If not provided,
-        # default to PATIENT.
-        # Example (optional): role_param = your logic to fetch role from state
-        role_value = None  # default: no role provided from Google flow
-        role_enum = UserRole(role_value) if (role_value and role_value in UserRole._value2member_map_) else None
-
+        # New user
+        role_value = None  # default role if frontend does not pass a role
         user = User.from_oauth({**google_data, "role": role_value})
-        # If role is admin (rare via OAuth), ensure profile complete
+
+        # Mark admin users as profile complete
         if user.role == UserRole.ADMIN:
             user.is_profile_complete = True
 
@@ -98,21 +95,19 @@ def google_callback(
         db.refresh(user)
         action = "signup"
     else:
-        # Update existing user if needed
+        # Existing user: update fields
         updated = user.update_from_oauth(google_data)
-        # Ensure last_login is updated
         user.last_login = datetime.utcnow()
 
-        # If role became ADMIN, mark profile complete
+        # Admin users should always bypass complete-profile
         if user.role == UserRole.ADMIN:
             user.is_profile_complete = True
 
         if updated:
             db.commit()
             db.refresh(user)
-        action = "signin"
 
-    # Generate tokens
+    # Generate JWT tokens
     access_token = create_access_token({
         "user_id": user.id,
         "email": user.email,
@@ -123,21 +118,16 @@ def google_callback(
         "email": user.email,
     })
 
-    # Save refresh token and update last_login
+    # Save refresh token & last login
     user.refresh_token = refresh_token
     user.last_login = datetime.utcnow()
     db.commit()
     db.refresh(user)
 
-    # Role-based redirect logic (correct enum comparison)
+    # Determine redirect
     if user.role == UserRole.ADMIN:
-        # Admins bypass complete-profile and go directly to admin dashboard
-        redirect_url = (
-            f"{settings.FRONTEND_URL}/admin/dashboard?"
-            f"token={access_token}&refresh={refresh_token}"
-        )
+        redirect_url = f"{settings.FRONTEND_URL}/admin/dashboard?token={access_token}&refresh={refresh_token}"
     elif not user.is_profile_complete:
-        # New or incomplete user → redirect to complete-profile (frontend will handle token on submit)
         redirect_url = (
             f"{settings.FRONTEND_URL}/complete-profile?"
             f"user_id={user.id}"
@@ -146,9 +136,8 @@ def google_callback(
             f"&lname={urllib.parse.quote(user.lname or '')}"
             f"&picture={urllib.parse.quote(user.picture or '')}"
             f"&token={access_token}&refresh={refresh_token}"
-        )   
+        )
     else:
-        # Regular signed-in user with completed profile
         redirect_url = (
             f"{settings.FRONTEND_URL}/auth/success?"
             f"action={action}"

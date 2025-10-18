@@ -1,5 +1,5 @@
 // ============================================================================
-// App.tsx - Fixed Import Paths
+// App.tsx - Full Routes with OAuth Success
 // ============================================================================
 import type { FC } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
@@ -11,6 +11,7 @@ import SignIn from './pages/auth/SignIn';
 import SignUp from './pages/auth/SignUp';
 import ForgotPassword from './pages/auth/ForgotPassword';
 import CompleteProfile from './pages/auth/CompleteProfile/CompleteProfile';
+import OAuthSuccess from './pages/auth/OAuthSuccess'; // <-- New page for Google OAuth
 
 // Public Pages
 import Landing from './pages/public/Landing';
@@ -57,6 +58,7 @@ const App: FC = () => {
             <Route path="/signup" element={<SignUp />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/complete-profile" element={<CompleteProfile />} />
+            <Route path="/auth/success" element={<OAuthSuccess />} /> {/* <-- New */}
 
             {/* Admin Routes */}
             <Route path="/admin/dashboard" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
