@@ -1,4 +1,5 @@
 import getpass
+import models  # ensures single metadata instance
 from core.database import SessionLocal
 from models.users import User, UserRole
 from passlib.context import CryptContext

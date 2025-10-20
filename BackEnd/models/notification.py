@@ -1,24 +1,22 @@
-# models/notification.py
-from sqlalchemy import Column, String, Integer, ForeignKey, DateTime, Boolean, Text
+from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, DateTime, Text
 from sqlalchemy.orm import relationship
-from sqlalchemy.sql import func
+from datetime import datetime
 from core.database import Base
+
 
 class Notification(Base):
     __tablename__ = "notifications"
-    
-    notification_id = Column(Integer, primary_key=True, index=True)
-    
-    # ✅ Fixed FK references and type
-    source_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
-    target_user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    appointment_id = Column(Integer, ForeignKey("appointments.appointment_id"), nullable=True)
-    
+
+    id = Column(Integer, primary_key=True, index=True)
+    source_user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
+    target_user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    appointment_id = Column(Integer, ForeignKey("appointments.id", ondelete="CASCADE"), nullable=True)
+
+    title = Column(String(255), nullable=False)
     message = Column(Text, nullable=False)
-    created_at = Column(DateTime, server_default=func.now(), nullable=False)
-    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now(), nullable=False)
-    status = Column(Boolean, default=False, nullable=False)  # False=Unread, True=Read
-    
+    is_read = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
     # Relationships
     source_user = relationship("User", foreign_keys=[source_user_id], back_populates="notifications_sent")
     target_user = relationship("User", foreign_keys=[target_user_id], back_populates="notifications_received")

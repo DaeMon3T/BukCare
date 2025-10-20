@@ -1,0 +1,29 @@
+version: '3.9'
+
+services:
+  db:
+    image: postgres:latest
+    container_name: postgres_db
+    restart: always
+    environment:
+      POSTGRES_USER: bukcare
+      POSTGRES_PASSWORD: bukcare@2025
+      POSTGRES_DB: bukcare
+    ports:
+      - "5432:5432"
+    volumes:
+      # Mount EBS volume here for persistent storage
+      - /mnt/ebs/postgres_data:/var/lib/postgresql/data
+    networks:
+      - backend
+
+# ------------------------------------------------------------
+# NOTE:
+# This database container is planned to be deployed on AWS EC2.
+# The `/mnt/ebs/postgres_data` path should point to an attached
+# EBS volume to ensure persistent and durable data storage.
+# ------------------------------------------------------------
+
+networks:
+  backend:
+    driver: bridge

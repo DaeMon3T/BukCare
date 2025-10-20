@@ -1,8 +1,9 @@
-# models/appointment.py
-from sqlalchemy import Column, String, DateTime, ForeignKey, Enum, func, Integer
+from sqlalchemy import Column, Integer, ForeignKey, DateTime, Text, Enum
 from sqlalchemy.orm import relationship
+from datetime import datetime
 from core.database import Base
 import enum
+
 
 class AppointmentStatus(str, enum.Enum):
     PENDING = "pending"
@@ -10,24 +11,26 @@ class AppointmentStatus(str, enum.Enum):
     CANCELLED = "cancelled"
     COMPLETED = "completed"
 
+
 class Appointment(Base):
     __tablename__ = "appointments"
-    
-    appointment_id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    
-    # ✅ Fixed: Foreign keys now correctly match User.id (integer)
-    patient_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    doctor_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    
+
+    id = Column(Integer, primary_key=True, index=True)
+    patient_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    doctor_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+
     appointment_date = Column(DateTime, nullable=False)
-    status = Column(Enum(AppointmentStatus, name="appointmentstatus"), default=AppointmentStatus.PENDING, nullable=False)
-    
-    # Timestamps
-    created_at = Column(DateTime, server_default=func.now(), nullable=False)
-    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now(), nullable=False)
-    
+    reason = Column(Text, nullable=True)
+    status = Column(Enum(AppointmentStatus, name="appointment_status_enum"), default=AppointmentStatus.PENDING, nullable=False)
+    notes = Column(Text, nullable=True)
+
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
     # Relationships
-    patient = relationship("User", back_populates="appointments_as_patient", foreign_keys=[patient_id])
-    doctor = relationship("User", back_populates="appointments_as_doctor", foreign_keys=[doctor_id])
-    
-    notifications = relationship("Notification", back_populates="appointment")
+    patient = relationship("User", foreign_keys=[patient_id], back_populates="appointments_as_patient")
+    doctor = relationship("User", foreign_keys=[doctor_id], back_populates="appointments_as_doctor")
+    notifications = relationship("Notification", back_populates="appointment", cascade="all, delete-orphan")
+
+    def __repr__(self):
+        return f"<Appointment(id={self.id}, patient_id={self.patient_id}, doctor_id={self.doctor_id}, status={self.status})>"

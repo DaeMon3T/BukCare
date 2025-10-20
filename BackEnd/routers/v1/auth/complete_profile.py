@@ -1,5 +1,3 @@
-# routers/v1/auth/complete_profile.py
-
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from sqlalchemy.orm import Session
 from datetime import datetime
@@ -7,8 +5,7 @@ from typing import Optional
 from core.database import get_db
 from models.users import User
 from models.doctor import Doctor
-from models.patient import Patient
-from models.address import Address
+from models.location import Province, City, Barangay
 from core.security import create_access_token, create_refresh_token, get_password_hash
 from core.config import settings
 import cloudinary.uploader
@@ -25,11 +22,10 @@ async def complete_profile(
     sex: str = Form(...),
     dob: str = Form(...),
     contact_number: str = Form(...),
-    province_id: str = Form(...),
-    city_id: str = Form(...),
+    province: str = Form(...),
+    city: str = Form(...),
     barangay: str = Form(...),
     password: str = Form(...),
-    confirmPassword: str = Form(...),
     license_number: Optional[str] = Form(None),
     years_of_experience: Optional[str] = Form(None),
     specializations: Optional[str] = Form(None),
@@ -38,38 +34,62 @@ async def complete_profile(
     prc_license_selfie: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db),
 ):
-    # Validate passwords
-    if password != confirmPassword:
-        raise HTTPException(status_code=400, detail="Passwords do not match")
-
     # Find user
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # Create address
-    address = Address(
-        barangay=barangay,
-        city_id=int(city_id)
-    )
-    db.add(address)
-    db.flush()  # get address_id
+    # ✅ Province: check if exists, if not create
+    province_obj = db.query(Province).filter(
+        Province.name.ilike(province.strip())
+    ).first()
+    
+    if not province_obj:
+        province_obj = Province(name=province.strip())
+        db.add(province_obj)
+        db.flush()  # Flush to get the ID without committing
 
-    # Update user profile
+    # ✅ City: check if exists (by name AND province), if not create
+    city_obj = db.query(City).filter(
+        City.name.ilike(city.strip()),
+        City.province_id == province_obj.id
+    ).first()
+    
+    if not city_obj:
+        city_obj = City(name=city.strip(), province_id=province_obj.id)
+        db.add(city_obj)
+        db.flush()  # Flush to get the ID without committing
+
+    # ✅ Barangay: check if exists (by name AND city), if not create
+    barangay_obj = db.query(Barangay).filter(
+        Barangay.name.ilike(barangay.strip()),
+        Barangay.city_id == city_obj.id
+    ).first()
+    
+    if not barangay_obj:
+        barangay_obj = Barangay(name=barangay.strip(), city_id=city_obj.id)
+        db.add(barangay_obj)
+        db.flush()  # Flush to get the ID without committing
+
+    # ✅ Update user profile
     user.sex = sex == "1"
     user.dob = datetime.strptime(dob, "%Y-%m-%d").date()
     user.contact_number = contact_number
     user.password = get_password_hash(password)
-    user.address_id = address.address_id
     user.is_profile_complete = True
+    user.province_id = province_obj.id
+    user.city_id = city_obj.id
+    user.barangay_id = barangay_obj.id
 
-    # Doctor-specific handling
+    # ✅ Doctor-specific handling
     if role.lower() == "doctor":
         doctor = Doctor(
             user_id=user.id,
             license_number=license_number,
             years_of_experience=int(years_of_experience) if years_of_experience else None,
-            address_id=address.address_id,
+            province_id=province_obj.id,
+            city_id=city_obj.id,
+            barangay_id=barangay_obj.id,
             is_verified=False
         )
 
@@ -91,23 +111,16 @@ async def complete_profile(
             try:
                 specs = json.loads(specializations)
                 doctor.specializations_json = json.dumps(specs)
-            except:
+            except Exception:
                 doctor.specializations_json = specializations
 
         db.add(doctor)
 
-    elif role.lower() == "patient":
-        patient = Patient(
-            user_id=user.id,
-            address_id=address.address_id
-        )
-        db.add(patient)
-
-    # Commit all changes
+    # ✅ Commit all changes at once
     db.commit()
     db.refresh(user)
 
-    # Generate tokens
+    # ✅ Generate tokens
     access_token = create_access_token({
         "user_id": user.id,
         "email": user.email,
@@ -122,6 +135,7 @@ async def complete_profile(
     user.last_login = datetime.utcnow()
     db.commit()
 
+    # ✅ Return success response
     return {
         "tokens": {
             "access_token": access_token,
@@ -138,5 +152,6 @@ async def complete_profile(
             "role": user.role.value,
             "is_verified": user.is_verified,
             "is_profile_complete": user.is_profile_complete,
+            "address": f"{barangay_obj.name}, {city_obj.name}, {province_obj.name}"
         }
     }

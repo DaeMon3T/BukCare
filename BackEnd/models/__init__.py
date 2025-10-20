@@ -1,19 +1,9 @@
-"""
-Automatically import all model files so that SQLAlchemy Base.metadata
-includes every table definition when Alembic runs.
-"""
-
 from core.database import Base  # Ensure all models use the same Base
 
-# Import all model modules here
-from . import (
-    address,
-    appointment,
-    doctor,
-    notification,
-    patient,
-    users,
-)
 
-# Optional: expose Base for convenience
-__all__ = ["Base"]
+# Explicitly import models in correct dependency order:
+import models.location       # Defines Province, City, Barangay
+import models.users          # Depends on Province/City/Barangay
+import models.doctor         # Depends on users + location
+import models.appointment    # Depends on users + doctor
+import models.notification   # Depends on appointment

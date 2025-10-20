@@ -1,7 +1,7 @@
 // ============================================
-// FILE: CompleteProfile.tsx (with debugging)
+// FILE: CompleteProfile.tsx (FIXED - Using API Service)
 // ============================================
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import type { ChangeEvent as ReactChangeEvent, FormEvent as ReactFormEvent } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
@@ -120,6 +120,18 @@ const CompleteProfile: React.FC = () => {
     }));
   };
 
+  // ✅ Get province name from ID
+  const getProvinceNameById = (id: string) => {
+    const province = provincesData?.find((p: any) => String(p.id) === String(id));
+    return province?.name || "";
+  };
+
+  // ✅ Get city name from ID
+  const getCityNameById = (id: string) => {
+    const city = citiesData?.find((c: any) => String(c.id) === String(id));
+    return city?.name || "";
+  };
+
   const handleSubmit = async (e: ReactFormEvent) => {
     console.log("🔵 CompleteProfile: handleSubmit called");
     e.preventDefault();
@@ -161,11 +173,17 @@ const CompleteProfile: React.FC = () => {
       payload.append("sex", formData.sex);
       payload.append("dob", formData.dob);
       payload.append("contact_number", formData.contact_number);
-      payload.append("province_id", formData.province_id);
-      payload.append("city_id", formData.city_id);
+      
+      // ✅ FIXED: Send province/city names, not IDs
+      const provinceName = getProvinceNameById(formData.province_id);
+      const cityName = getCityNameById(formData.city_id);
+      
+      console.log(`🗺️ Locations: ${provinceName} -> ${cityName} -> ${formData.barangay}`);
+      
+      payload.append("province", provinceName);
+      payload.append("city", cityName);
       payload.append("barangay", formData.barangay);
       payload.append("password", formData.password);
-      payload.append("confirmPassword", formData.confirmPassword);
 
       // Doctor-specific fields
       if (role === "doctor") {
@@ -189,7 +207,7 @@ const CompleteProfile: React.FC = () => {
           payload.append("prc_license_selfie", formData.prc_license_selfie);
       }
 
-      console.log("🚀 Calling API: /auth/complete-profile");
+      console.log("🚀 Calling completeProfile API service");
       const data = await completeProfile(payload);
       console.log("✅ API Response:", data);
       

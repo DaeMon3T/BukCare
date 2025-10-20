@@ -1,10 +1,12 @@
-// ============================================
-// components/ProfileForm.tsx
-// ============================================
-import React from "react";
+import React, { useState, useMemo } from "react";
 import type { FormData, GoogleData, ProvinceData, CityData, BarangayData } from "../types";
 import AddressSection from "./AddressSection";
 import DoctorSection from "./DoctorSection";
+import { Eye, EyeOff, AlertCircle } from "lucide-react";
+import {
+  validatePassword,
+  validateConfirmPassword,
+} from "@/utils/validation";
 
 interface ProfileFormProps {
   role: "doctor" | "patient";
@@ -43,6 +45,23 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
   onRemoveSpecialization,
   onSubmit,
 }) => {
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  // Real-time validation
+  const passwordValidation = useMemo(
+    () => validatePassword(formData.password),
+    [formData.password]
+  );
+
+  const confirmPasswordValidation = useMemo(
+    () => validateConfirmPassword(formData.password, formData.confirmPassword),
+    [formData.password, formData.confirmPassword]
+  );
+
+  const passwordHasError = formData.password && formData.password.length > 0 && !passwordValidation.isValid;
+  const confirmPasswordHasError = formData.confirmPassword && formData.confirmPassword.length > 0 && !confirmPasswordValidation.isValid;
+
   return (
     <div className="bg-white/10 backdrop-blur-2xl p-10 rounded-2xl shadow-2xl border border-white/20 max-h-[90vh] overflow-y-auto scrollbar-thin scrollbar-thumb-white/20 hover:scrollbar-thumb-white/40">
       <button onClick={onBack} className="text-sm text-white/80 hover:text-white mb-3">
@@ -147,27 +166,64 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
         )}
 
         <div className="grid grid-cols-2 gap-4">
-          <div>
+          <div className="relative">
             <label className="block text-sm font-medium mb-2 text-white/90">Password</label>
             <input
-              type="password"
+              type={showPassword ? "text" : "password"}
               name="password"
               placeholder="Enter password"
               value={formData.password}
               onChange={onChange}
-              className="w-full px-4 py-3.5 text-base rounded-xl bg-white/20 text-white placeholder-white/60 focus:ring-2 focus:ring-[#FFC43D]/70 transition-colors duration-200"
+              className={`w-full px-4 py-3.5 text-base rounded-xl bg-white/20 text-white placeholder-white/60 transition-colors duration-200 pr-12 ${
+                passwordHasError
+                  ? "focus:ring-2 focus:ring-red-500/70 border-2 border-red-500/50"
+                  : "focus:ring-2 focus:ring-[#FFC43D]/70"
+              }`}
             />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-10 text-white/60 hover:text-white/90 transition-colors"
+              tabIndex={-1}
+            >
+              {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+            </button>
+            {passwordHasError && (
+              <div className="flex items-center gap-1 mt-2 text-red-300 text-xs">
+                <AlertCircle size={14} />
+                <span>{passwordValidation.message}</span>
+              </div>
+            )}
           </div>
-          <div>
+
+          <div className="relative">
             <label className="block text-sm font-medium mb-2 text-white/90">Confirm Password</label>
             <input
-              type="password"
+              type={showConfirmPassword ? "text" : "password"}
               name="confirmPassword"
               placeholder="Confirm password"
               value={formData.confirmPassword}
               onChange={onChange}
-              className="w-full px-4 py-3.5 text-base rounded-xl bg-white/20 text-white placeholder-white/60 focus:ring-2 focus:ring-[#FFC43D]/70 transition-colors duration-200"
+              className={`w-full px-4 py-3.5 text-base rounded-xl bg-white/20 text-white placeholder-white/60 transition-colors duration-200 pr-12 ${
+                confirmPasswordHasError
+                  ? "focus:ring-2 focus:ring-red-500/70 border-2 border-red-500/50"
+                  : "focus:ring-2 focus:ring-[#FFC43D]/70"
+              }`}
             />
+            <button
+              type="button"
+              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+              className="absolute right-3 top-10 text-white/60 hover:text-white/90 transition-colors"
+              tabIndex={-1}
+            >
+              {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+            </button>
+            {confirmPasswordHasError && (
+              <div className="flex items-center gap-1 mt-2 text-red-300 text-xs">
+                <AlertCircle size={14} />
+                <span>{confirmPasswordValidation.message}</span>
+              </div>
+            )}
           </div>
         </div>
 

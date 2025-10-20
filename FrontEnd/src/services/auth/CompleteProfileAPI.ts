@@ -2,18 +2,17 @@ import BaseAPI from "../BaseAPI";
 
 export interface CompleteProfilePayload {
   user_id: string;
-  role: string; // "patient" or "doctor"
-  sex: string; // "0" or "1"
-  dob: string; // YYYY-MM-DD
+  role: string;
+  sex: string;
+  dob: string;
   contact_number: string;
-  province_id: string;
-  city_id: string;
+  province: string;
+  city: string;
   barangay: string;
   password: string;
-  confirmPassword: string;
   license_number?: string;
   years_of_experience?: string;
-  specializations?: string; // JSON string array
+  specializations?: string;
 }
 
 export interface DoctorProfilePayload extends CompleteProfilePayload {
@@ -38,6 +37,7 @@ export interface CompleteProfileResponse {
     role: string;
     is_verified: boolean;
     is_profile_complete: boolean;
+    address: string;
   };
 }
 
@@ -47,46 +47,45 @@ export const completeProfile = async (
   try {
     let response;
 
-    // If payload is already FormData, use it directly
     if (payload instanceof FormData) {
+      console.log("📤 Sending FormData directly");
+      console.log("FormData contents:", Array.from(payload.entries()));
       response = await BaseAPI.post<CompleteProfileResponse>(
         "/auth/complete-profile",
         payload,
-        {
-          headers: { "Content-Type": "multipart/form-data" },
-        }
+        { headers: { "Content-Type": "multipart/form-data" } }
       );
-    }
-    // If it's a doctor with files, convert to FormData
+    } 
+    // Doctor with files
     else if (
       (payload as DoctorProfilePayload).prc_license_front ||
       (payload as DoctorProfilePayload).prc_license_back ||
       (payload as DoctorProfilePayload).prc_license_selfie
     ) {
+      console.log("📤 Building FormData for Doctor with files");
       const formData = new FormData();
-      
-      // Add all text fields
-      formData.append("user_id", payload.user_id);
+
+      // Required fields
+      formData.append("user_id", String(payload.user_id));
       formData.append("role", payload.role);
       formData.append("sex", payload.sex);
       formData.append("dob", payload.dob);
       formData.append("contact_number", payload.contact_number);
-      formData.append("province_id", payload.province_id);
-      formData.append("city_id", payload.city_id);
+      formData.append("province", payload.province);
+      formData.append("city", payload.city);
       formData.append("barangay", payload.barangay);
       formData.append("password", payload.password);
-      formData.append("confirmPassword", payload.confirmPassword);
 
-      // Add optional doctor fields
+      // Optional doctor fields
       const doctorPayload = payload as DoctorProfilePayload;
       if (doctorPayload.license_number)
         formData.append("license_number", doctorPayload.license_number);
       if (doctorPayload.years_of_experience)
-        formData.append("years_of_experience", doctorPayload.years_of_experience);
+        formData.append("years_of_experience", String(doctorPayload.years_of_experience));
       if (doctorPayload.specializations)
         formData.append("specializations", doctorPayload.specializations);
 
-      // Add file fields
+      // Files
       if (doctorPayload.prc_license_front)
         formData.append("prc_license_front", doctorPayload.prc_license_front);
       if (doctorPayload.prc_license_back)
@@ -94,29 +93,61 @@ export const completeProfile = async (
       if (doctorPayload.prc_license_selfie)
         formData.append("prc_license_selfie", doctorPayload.prc_license_selfie);
 
+      console.log("📤 FormData entries:", Array.from(formData.entries()).map(([key, val]) => [
+        key,
+        val instanceof File ? `[File: ${val.name}]` : val
+      ]));
+
       response = await BaseAPI.post<CompleteProfileResponse>(
         "/auth/complete-profile",
         formData,
-        {
-          headers: { "Content-Type": "multipart/form-data" },
-        }
+        { headers: { "Content-Type": "multipart/form-data" } }
       );
-    }
-    // Otherwise, use regular JSON for patient
+    } 
+    // Patient (JSON body)
     else {
+      console.log("📤 Sending Patient data as JSON");
+      console.log("Payload:", payload);
       response = await BaseAPI.post<CompleteProfileResponse>(
         "/auth/complete-profile",
         payload
       );
     }
 
+    console.log("✅ Success:", response.data);
     return response.data;
   } catch (error: any) {
-    const message =
-      error.response?.data?.detail ||
-      error.response?.data?.message ||
-      error.message ||
-      "Failed to complete profile";
+    console.error("❌ Error:", error);
+    console.error("Response status:", error.response?.status);
+    console.error("Full response data:", JSON.stringify(error.response?.data, null, 2));
+    
+    // Parse validation errors from FastAPI
+    if (error.response?.data?.detail) {
+      const detail = error.response.data.detail;
+      if (Array.isArray(detail)) {
+        console.error("❌ Validation errors:");
+        detail.forEach((err: any) => {
+          console.error(`  Field: ${JSON.stringify(err.loc)}`);
+          console.error(`  Message: ${err.msg}`);
+          console.error(`  Type: ${err.type}`);
+          console.error("---");
+        });
+      } else {
+        console.error("❌ Error detail:", detail);
+      }
+    }
+
+    let message = "Failed to complete profile";
+    if (error.response?.data?.detail) {
+      if (Array.isArray(error.response.data.detail)) {
+        message = error.response.data.detail
+          .map((err: any) => `${err.loc[err.loc.length - 1]}: ${err.msg}`)
+          .join("; ");
+      } else {
+        message = JSON.stringify(error.response.data.detail);
+      }
+    }
+    
     throw new Error(message);
   }
 };

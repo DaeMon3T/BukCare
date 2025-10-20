@@ -13,7 +13,7 @@ from core.database import get_db
 from core.security import create_access_token, create_refresh_token
 from models.users import User, UserRole  # Ensure your User model has from_oauth and update_from_oauth
 
-router = APIRouter(prefix="/google")
+router = APIRouter(prefix="/google", tags=["Authentication"])
 
 
 @router.get("/login", summary="Redirect user to Google OAuth consent screen")
@@ -82,11 +82,10 @@ def google_callback(
     action = "signin"
 
     if not user:
-        # New user
-        role_value = None  # default role if frontend does not pass a role
-        user = User.from_oauth({**google_data, "role": role_value})
+        # 👤 New user — default to PATIENT role for safety
+        user = User.from_oauth({**google_data, "role": UserRole.PATIENT})
 
-        # Mark admin users as profile complete
+        # Admins (created manually) are always complete
         if user.role == UserRole.ADMIN:
             user.is_profile_complete = True
 
@@ -95,11 +94,11 @@ def google_callback(
         db.refresh(user)
         action = "signup"
     else:
-        # Existing user: update fields
+        # 🧩 Existing user — update data if changed
         updated = user.update_from_oauth(google_data)
         user.last_login = datetime.utcnow()
 
-        # Admin users should always bypass complete-profile
+        # Admins always skip profile completion
         if user.role == UserRole.ADMIN:
             user.is_profile_complete = True
 
@@ -107,7 +106,7 @@ def google_callback(
             db.commit()
             db.refresh(user)
 
-    # Generate JWT tokens
+    # 🪪 Generate JWT tokens
     access_token = create_access_token({
         "user_id": user.id,
         "email": user.email,
@@ -118,16 +117,27 @@ def google_callback(
         "email": user.email,
     })
 
-    # Save refresh token & last login
+    # 💾 Update refresh token and last login
     user.refresh_token = refresh_token
     user.last_login = datetime.utcnow()
     db.commit()
     db.refresh(user)
 
-    # Determine redirect
+    # 🚦 Redirect based on user state
     if user.role == UserRole.ADMIN:
+        # Admins go straight to dashboard
         redirect_url = f"{settings.FRONTEND_URL}/admin/dashboard?token={access_token}&refresh={refresh_token}"
+
+    elif user.role == UserRole.PENDING:
+        # Pending doctors are waiting for admin approval
+        redirect_url = (
+            f"{settings.FRONTEND_URL}/pending-approval?"
+            f"user_id={user.id}&email={urllib.parse.quote(user.email)}"
+            f"&token={access_token}&refresh={refresh_token}"
+        )
+
     elif not user.is_profile_complete:
+        # Incomplete profile (new doctor or patient)
         redirect_url = (
             f"{settings.FRONTEND_URL}/complete-profile?"
             f"user_id={user.id}"
@@ -137,7 +147,9 @@ def google_callback(
             f"&picture={urllib.parse.quote(user.picture or '')}"
             f"&token={access_token}&refresh={refresh_token}"
         )
+
     else:
+        # Fully onboarded users (doctor/patient)
         redirect_url = (
             f"{settings.FRONTEND_URL}/auth/success?"
             f"action={action}"
