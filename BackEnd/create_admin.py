@@ -32,13 +32,16 @@ def create_admin():
     # Hash the password
     hashed_pw = hash_password(password)
 
-    # Create admin user (SQLAlchemy will auto-generate 'id')
+    # ✅ Create admin user with all required boolean fields set to True
     admin_user = User(
         email=email,
         password=hashed_pw,
         role=UserRole.ADMIN,
         fname=fname,
-        lname=lname
+        lname=lname,
+        is_active=True,
+        is_verified=True,
+        is_profile_complete=True,
     )
 
     # Save to DB

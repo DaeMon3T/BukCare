@@ -1,8 +1,8 @@
 """Initial migration
 
-Revision ID: 897b4c226cda
+Revision ID: 4015f3c73d5b
 Revises: 
-Create Date: 2025-10-21 16:49:41.375478
+Create Date: 2025-10-21 21:41:28.135173
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '897b4c226cda'
+revision: str = '4015f3c73d5b'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -60,12 +60,12 @@ def upgrade() -> None:
     sa.Column('mname', sa.String(), nullable=True),
     sa.Column('lname', sa.String(), nullable=False),
     sa.Column('sex', sa.Boolean(), nullable=True),
+    sa.Column('role', sa.Enum('ADMIN', 'DOCTOR', 'PATIENT', 'PENDING', name='userrole'), nullable=False),
     sa.Column('dob', sa.DateTime(), nullable=True),
     sa.Column('contact_number', sa.String(), nullable=True),
     sa.Column('google_id', sa.String(), nullable=True),
     sa.Column('picture', sa.String(), nullable=True),
     sa.Column('password', sa.String(), nullable=True),
-    sa.Column('role', sa.Enum('ADMIN', 'DOCTOR', 'PATIENT', 'PENDING', name='userrole'), nullable=False),
     sa.Column('is_active', sa.Boolean(), nullable=True),
     sa.Column('is_verified', sa.Boolean(), nullable=True),
     sa.Column('is_profile_complete', sa.Boolean(), nullable=True),

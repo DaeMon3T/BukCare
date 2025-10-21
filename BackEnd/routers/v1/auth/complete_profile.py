@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from datetime import datetime
 from typing import Optional
 from core.database import get_db
-from models.users import User
+from models.users import User, UserRole
 from models.doctor import Doctor
 from models.location import Province, City, Barangay
 from core.security import create_access_token, create_refresh_token, get_password_hash
@@ -43,7 +43,7 @@ async def complete_profile(
     province_obj = db.query(Province).filter(
         Province.name.ilike(province.strip())
     ).first()
-    
+
     if not province_obj:
         province_obj = Province(name=province.strip())
         db.add(province_obj)
@@ -54,7 +54,7 @@ async def complete_profile(
         City.name.ilike(city.strip()),
         City.province_id == province_obj.id
     ).first()
-    
+
     if not city_obj:
         city_obj = City(name=city.strip(), province_id=province_obj.id)
         db.add(city_obj)
@@ -65,7 +65,7 @@ async def complete_profile(
         Barangay.name.ilike(barangay.strip()),
         Barangay.city_id == city_obj.id
     ).first()
-    
+
     if not barangay_obj:
         barangay_obj = Barangay(name=barangay.strip(), city_id=city_obj.id)
         db.add(barangay_obj)
@@ -80,6 +80,14 @@ async def complete_profile(
     user.province_id = province_obj.id
     user.city_id = city_obj.id
     user.barangay_id = barangay_obj.id
+
+    # ✅ FIX: Update user role properly
+    if role.lower() == "doctor":
+        user.role = UserRole.DOCTOR
+    elif role.lower() == "patient":
+        user.role = UserRole.PATIENT
+    else:
+        user.role = UserRole.PENDING
 
     # ✅ Doctor-specific handling
     if role.lower() == "doctor":

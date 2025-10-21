@@ -55,8 +55,8 @@ def build_response(user: User, access_token: str, refresh_token: str, action: st
 def handle_google_auth(idinfo: dict, db: Session, redirect_flow: bool = False):
     """
     Handles both Google Sign In and Sign Up.
-    - If the email doesn't exist → create user (no role yet)
-    - If it exists → sign them in and update info
+    - New user → created, profile incomplete
+    - Existing user → logs in and role preserved
     """
 
     google_data = {
@@ -75,10 +75,10 @@ def handle_google_auth(idinfo: dict, db: Session, redirect_flow: bool = False):
     action = "signin"
 
     if not user:
-        # 🆕 New Google user — must complete profile before accessing app
+        # 🆕 New Google user — must complete profile
         user = User.from_oauth({
             **google_data,
-            "role": None,  # frontend assigns during complete-profile
+            "role": None,
             "is_profile_complete": False,
         })
         db.add(user)
@@ -86,12 +86,15 @@ def handle_google_auth(idinfo: dict, db: Session, redirect_flow: bool = False):
         db.refresh(user)
         action = "signup"
     else:
-        # Existing user — update info and login
+        # Existing user — update info
         user.update_from_oauth(google_data)
         user.last_login = datetime.utcnow()
 
-        if user.role == UserRole.ADMIN:
-            user.is_profile_complete = True
+        # ✅ Ensure user role consistency
+        if not user.role:
+            user.is_profile_complete = False  # must complete profile before routing
+        elif user.role == UserRole.ADMIN:
+            user.is_profile_complete = True  # admin always complete
 
         db.commit()
         db.refresh(user)
@@ -114,30 +117,30 @@ def handle_google_auth(idinfo: dict, db: Session, redirect_flow: bool = False):
 
     # 🌐 Redirect-based Google login flow
     if redirect_flow:
-        if not user.is_profile_complete:
-            # New or incomplete user → redirect to complete-profile
-            redirect_url = (
-                f"{settings.FRONTEND_URL}/complete-profile?"
-                f"user_id={user.id}"
-                f"&email={urllib.parse.quote(user.email)}"
-                f"&fname={urllib.parse.quote(user.fname or '')}"
-                f"&lname={urllib.parse.quote(user.lname or '')}"
-                f"&picture={urllib.parse.quote(user.picture or '')}"
-                f"&token={access_token}&refresh={refresh_token}"
-            )
-        elif user.role == UserRole.ADMIN:
-            redirect_url = f"{settings.FRONTEND_URL}/admin/dashboard?token={access_token}&refresh={refresh_token}"
-        elif user.role == UserRole.DOCTOR:
-            redirect_url = f"{settings.FRONTEND_URL}/doctor/dashboard?token={access_token}&refresh={refresh_token}"
-        elif user.role == UserRole.PATIENT:
-            redirect_url = f"{settings.FRONTEND_URL}/patient/dashboard?token={access_token}&refresh={refresh_token}"
-        else:
-            redirect_url = f"{settings.FRONTEND_URL}/auth/success?token={access_token}&refresh={refresh_token}"
+        # ✅ Determine proper redirect based on user state
+        role_value = user.role.value if user.role else ""
+        profile_complete = user.is_profile_complete
+
+        redirect_url = (
+            f"{settings.FRONTEND_URL}/auth/callback?"
+            f"token={access_token}"
+            f"&refresh={refresh_token}"
+            f"&user_id={user.id}"
+            f"&email={urllib.parse.quote(user.email)}"
+            f"&fname={urllib.parse.quote(user.fname or '')}"
+            f"&lname={urllib.parse.quote(user.lname or '')}"
+            f"&picture={urllib.parse.quote(user.picture or '')}"
+            f"&role={urllib.parse.quote(role_value)}"
+            f"&is_profile_complete={'true' if profile_complete else 'false'}"
+            f"&is_verified={'true' if user.is_verified else 'false'}"
+            f"&is_active={'true' if user.is_active else 'false'}"
+        )
 
         return RedirectResponse(url=redirect_url)
 
-    # 🧾 API-based Google login (One Tap / popup)
+    # 🧾 API-based Google login (for One-Tap)
     return build_response(user, access_token, refresh_token, action)
+
 
 
 # -----------------------------------------
@@ -150,10 +153,15 @@ def login(data: LoginRequest, db: Session = Depends(get_db)):
     if not user or not user.password or not verify_password(data.password, user.password):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password")
 
+    # 🛠 Ensure proper role assignment before tokens
+    if not user.role:
+        raise HTTPException(status_code=400, detail="User role not assigned. Please contact admin.")
+
+    # 🔐 Token creation
     access_token = create_access_token({
         "user_id": user.id,
         "email": user.email,
-        "role": user.role.value if user.role else None,
+        "role": user.role.value,
     })
     refresh_token = create_refresh_token({
         "user_id": user.id,
@@ -163,6 +171,7 @@ def login(data: LoginRequest, db: Session = Depends(get_db)):
     user.refresh_token = refresh_token
     user.last_login = datetime.utcnow()
 
+    # ✅ Admin always has complete profile
     if user.role == UserRole.ADMIN:
         user.is_profile_complete = True
 
@@ -170,6 +179,7 @@ def login(data: LoginRequest, db: Session = Depends(get_db)):
     db.refresh(user)
 
     return build_response(user, access_token, refresh_token, "signin")
+
 
 
 # -----------------------------------------
@@ -192,32 +202,42 @@ def google_login():
 @router.get("/google/callback", summary="Handle Google OAuth callback", response_class=RedirectResponse)
 def google_callback(code: str = Query(None), error: str = Query(None), db: Session = Depends(get_db)):
     if error:
-        raise HTTPException(status_code=400, detail=f"Google error: {error}")
+        # Redirect to frontend with error
+        error_url = f"{settings.FRONTEND_URL}/auth/callback?error={urllib.parse.quote(error)}"
+        return RedirectResponse(url=error_url)
+    
     if not code:
-        raise HTTPException(status_code=400, detail="Missing authorization code")
+        error_url = f"{settings.FRONTEND_URL}/auth/callback?error={urllib.parse.quote('Missing authorization code')}"
+        return RedirectResponse(url=error_url)
 
-    token_url = "https://oauth2.googleapis.com/token"
-    data = {
-        "code": code,
-        "client_id": settings.GOOGLE_CLIENT_ID,
-        "client_secret": settings.GOOGLE_CLIENT_SECRET,
-        "redirect_uri": settings.OAUTH_REDIRECT_URI,
-        "grant_type": "authorization_code",
-    }
+    try:
+        token_url = "https://oauth2.googleapis.com/token"
+        data = {
+            "code": code,
+            "client_id": settings.GOOGLE_CLIENT_ID,
+            "client_secret": settings.GOOGLE_CLIENT_SECRET,
+            "redirect_uri": settings.OAUTH_REDIRECT_URI,
+            "grant_type": "authorization_code",
+        }
 
-    response = requests.post(token_url, data=data)
-    if not response.ok:
-        raise HTTPException(status_code=400, detail="Failed to exchange code for token")
+        response = requests.post(token_url, data=data)
+        if not response.ok:
+            error_url = f"{settings.FRONTEND_URL}/auth/callback?error={urllib.parse.quote('Failed to exchange code for token')}"
+            return RedirectResponse(url=error_url)
 
-    tokens = response.json()
-    idinfo = id_token.verify_oauth2_token(
-        tokens["id_token"],
-        google_requests.Request(),
-        settings.GOOGLE_CLIENT_ID,
-        clock_skew_in_seconds=10
-    )
+        tokens = response.json()
+        idinfo = id_token.verify_oauth2_token(
+            tokens["id_token"],
+            google_requests.Request(),
+            settings.GOOGLE_CLIENT_ID,
+            clock_skew_in_seconds=10
+        )
 
-    return handle_google_auth(idinfo, db, redirect_flow=True)
+        return handle_google_auth(idinfo, db, redirect_flow=True)
+    
+    except Exception as e:
+        error_url = f"{settings.FRONTEND_URL}/auth/callback?error={urllib.parse.quote(str(e))}"
+        return RedirectResponse(url=error_url)
 
 
 @router.post("/google/signin", summary="Google Sign-In / Sign-Up via ID Token")

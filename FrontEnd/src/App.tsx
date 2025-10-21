@@ -1,11 +1,14 @@
 // ============================================================================
-// App.tsx - Full Routes with OAuth Success + Toast Notifications
+// App.tsx - Full Routes with Google Callback Handler
 // ============================================================================
 import type { FC } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { Toaster } from 'react-hot-toast'; // ✅ Added
+import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './context/AuthContext';
 import { AdminRoute, DoctorRoute, PatientRoute } from './routes/ProtectedRoutes';
+
+// Auth Components
+import GoogleCallbackHandler from './components/auth/GoogleCallbackHandler';
 
 // Auth Pages
 import SignIn from './pages/auth/SignIn';
@@ -44,7 +47,6 @@ const App: FC = () => {
   return (
     <AuthProvider>
       <Router>
-        {/* ✅ Toasts appear globally */}
         <Toaster position="top-center" reverseOrder={false} />
 
         <div className="App">
@@ -62,6 +64,9 @@ const App: FC = () => {
             <Route path="/signup" element={<SignUp />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/complete-profile" element={<CompleteProfile />} />
+            
+            {/* ✅ Google OAuth Callback Handler */}
+            <Route path="/auth/callback" element={<GoogleCallbackHandler />} />
             <Route path="/auth/success" element={<OAuthSuccess />} />
 
             {/* Admin Routes */}

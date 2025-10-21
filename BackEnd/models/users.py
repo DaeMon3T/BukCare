@@ -22,6 +22,7 @@ class User(Base):
     mname = Column(String, nullable=True)
     lname = Column(String, nullable=False)
     sex = Column(Boolean, nullable=True)
+    role = Column(Enum(UserRole), nullable=False, default=UserRole.PENDING)
     dob = Column(DateTime, nullable=True)
     contact_number = Column(String, nullable=True)
 
@@ -29,7 +30,7 @@ class User(Base):
     picture = Column(String, nullable=True)
     password = Column(String, nullable=True)
 
-    role = Column(Enum(UserRole), nullable=False, default=UserRole.PATIENT)
+    
 
     is_active = Column(Boolean, default=True)
     is_verified = Column(Boolean, default=False)
@@ -99,7 +100,7 @@ class User(Base):
         if role_value in UserRole._value2member_map_:
             role = UserRole(role_value)
         else:
-            role = UserRole.PATIENT  # Default role for new OAuth users
+            role = UserRole.PENDING  # Default role for new OAuth users
 
         # For doctors registering via OAuth, default to PENDING until approved
         if role == UserRole.DOCTOR:

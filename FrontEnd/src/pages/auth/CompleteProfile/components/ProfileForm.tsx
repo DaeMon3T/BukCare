@@ -1,5 +1,11 @@
 import React, { useState, useMemo } from "react";
-import type { FormData, GoogleData, ProvinceData, CityData, BarangayData } from "../types";
+import type {
+  FormData,
+  GoogleData,
+  ProvinceData,
+  CityData,
+  BarangayData,
+} from "../types";
 import AddressSection from "./AddressSection";
 import DoctorSection from "./DoctorSection";
 import { Eye, EyeOff, AlertCircle } from "lucide-react";
@@ -19,7 +25,9 @@ interface ProfileFormProps {
   barangaysData: BarangayData[];
   loadingProvinces: boolean;
   onBack: () => void;
-  onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
+  onChange: (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => void;
   onFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onToggleSpecialization: (specId: string) => void;
   onAddOtherSpecialization: () => void;
@@ -55,60 +63,87 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
   );
 
   const confirmPasswordValidation = useMemo(
-    () => validateConfirmPassword(formData.password, formData.confirmPassword),
+    () =>
+      validateConfirmPassword(formData.password, formData.confirmPassword),
     [formData.password, formData.confirmPassword]
   );
 
-  const passwordHasError = formData.password && formData.password.length > 0 && !passwordValidation.isValid;
-  const confirmPasswordHasError = formData.confirmPassword && formData.confirmPassword.length > 0 && !confirmPasswordValidation.isValid;
+  const passwordHasError =
+    formData.password &&
+    formData.password.length > 0 &&
+    !passwordValidation.isValid;
+
+  const confirmPasswordHasError =
+    formData.confirmPassword &&
+    formData.confirmPassword.length > 0 &&
+    !confirmPasswordValidation.isValid;
+
+  // Contact number validation
+  const contactHasError =
+    formData.contact_number &&
+    formData.contact_number.length > 0 &&
+    formData.contact_number.length !== 11;
 
   return (
-    <div className="bg-white/10 backdrop-blur-2xl p-10 rounded-2xl shadow-2xl border border-white/20 max-h-[90vh] overflow-y-auto scrollbar-thin scrollbar-thumb-white/20 hover:scrollbar-thumb-white/40">
-      <button onClick={onBack} className="text-sm text-white/80 hover:text-white mb-3">
+    <div className="relative bg-white/10 backdrop-blur-xl p-10 rounded-3xl shadow-xl border border-white/20 max-h-[90vh] overflow-y-auto scrollbar-thin scrollbar-thumb-white/20 hover:scrollbar-thumb-white/40 transition-all duration-300 hover:shadow-2xl">
+      <button
+        onClick={onBack}
+        className="absolute top-6 left-6 text-white/80 hover:text-white transition-all duration-200"
+      >
         ← Back
       </button>
 
-      <h2 className="text-3xl font-bold mb-6 text-center text-white">
-        Complete Your <span className="text-[#FFC43D] capitalize">{role}</span> Profile
+      <h2 className="text-3xl font-extrabold mb-8 text-center text-white tracking-wide">
+        Complete Your{" "}
+        <span className="text-[#FFC43D] capitalize">{role}</span> Profile
       </h2>
 
-      <div className="flex flex-col items-center mb-6">
-        <img
-          src={googleData.picture || "/default-avatar.png"}
-          alt="Profile"
-          className="w-24 h-24 rounded-full border-4 border-[#FFC43D] mb-3"
-        />
+      <div className="flex flex-col items-center mb-8">
+        <div className="relative">
+          <img
+            src={googleData.picture || "/default-avatar.png"}
+            alt="Profile"
+            className="w-28 h-28 rounded-full border-4 border-[#FFC43D] mb-3 shadow-lg"
+          />
+        </div>
         <h3 className="text-xl font-semibold text-[#FFC43D]">
           {googleData.fname} {googleData.lname}
         </h3>
-        <p className="text-white/80 text-sm">{googleData.email}</p>
+        <p className="text-white/70 text-sm">{googleData.email}</p>
       </div>
 
       {error && (
-        <div className="bg-red-500/20 border border-red-400/50 text-red-100 px-4 py-3 rounded-xl mb-6 text-sm">
+        <div className="bg-[#FFC43D]/20 border border-[#FFC43D]/50 text-[#FFC43D] px-4 py-3 rounded-xl mb-6 text-sm text-center shadow-sm">
           {error}
         </div>
       )}
 
       <form onSubmit={onSubmit} className="space-y-6">
+        {/* Email */}
         <div>
-          <label className="block text-sm font-medium mb-2 text-white/90">Email</label>
+          <label className="block text-sm font-medium mb-2 text-white/90">
+            Email
+          </label>
           <input
             type="email"
             value={googleData.email}
             readOnly
-            className="w-full px-4 py-3.5 text-base rounded-xl bg-white/20 text-white cursor-not-allowed"
+            autoComplete="off"
+            className="w-full px-4 py-3.5 text-base rounded-xl bg-white/20 text-white cursor-not-allowed border border-transparent"
           />
         </div>
 
+        {/* Sex and DOB */}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium mb-2 text-white/90">Sex</label>
+            <label className="block text-sm font-medium mb-2 text-white/90">
+              Sex
+            </label>
             <select
               name="sex"
               value={formData.sex}
               onChange={onChange}
-              className="w-full px-4 py-3.5 text-base rounded-xl bg-white/20 text-white appearance-none cursor-pointer focus:ring-2 focus:ring-[#FFC43D]/70 transition-colors duration-200"
+              className="w-full px-4 py-3.5 text-base rounded-xl bg-white/20 text-white border border-transparent focus:border-[#FFC43D]/70 focus:ring-2 focus:ring-[#FFC43D]/70 appearance-none cursor-pointer transition-all duration-200"
             >
               <option value="" className="text-black">
                 Select
@@ -121,30 +156,49 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
               </option>
             </select>
           </div>
+
           <div>
-            <label className="block text-sm font-medium mb-2 text-white/90">Date of Birth</label>
+            <label className="block text-sm font-medium mb-2 text-white/90">
+              Date of Birth
+            </label>
             <input
               type="date"
               name="dob"
               value={formData.dob}
               onChange={onChange}
-              className="w-full px-4 py-3.5 text-base rounded-xl bg-white/20 text-white focus:ring-2 focus:ring-[#FFC43D]/70 transition-colors duration-200"
+              autoComplete="off"
+              className="w-full px-4 py-3.5 text-base rounded-xl bg-white/20 text-white border border-transparent focus:border-[#FFC43D]/70 focus:ring-2 focus:ring-[#FFC43D]/70 transition-all duration-200"
             />
           </div>
         </div>
 
+        {/* Contact Number */}
         <div>
-          <label className="block text-sm font-medium mb-2 text-white/90">Contact Number</label>
+          <label className="block text-sm font-medium mb-2 text-white/90">
+            Contact Number
+          </label>
           <input
             type="tel"
             name="contact_number"
             placeholder="09XXXXXXXXX"
             value={formData.contact_number}
             onChange={onChange}
-            className="w-full px-4 py-3.5 text-base rounded-xl bg-white/20 text-white placeholder-white/60 focus:ring-2 focus:ring-[#FFC43D]/70 transition-colors duration-200"
+            autoComplete="off"
+            className={`w-full px-4 py-3.5 text-base rounded-xl bg-white/20 text-white placeholder-white/60 border transition-all duration-200 ${
+              contactHasError
+                ? "border-[#FFC43D] focus:border-[#FFC43D] focus:ring-2 focus:ring-[#FFC43D]/50"
+                : "border-transparent focus:border-[#FFC43D]/70 focus:ring-2 focus:ring-[#FFC43D]/70"
+            }`}
           />
+          {contactHasError && (
+            <div className="flex items-center gap-1 mt-2 text-[#FFC43D]/90 text-xs">
+              <AlertCircle size={14} />
+              <span>Contact number must be 11 digits (09XXXXXXXXX)</span>
+            </div>
+          )}
         </div>
 
+        {/* Address Section */}
         <AddressSection
           formData={formData}
           provincesData={provincesData}
@@ -154,6 +208,7 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
           onChange={onChange}
         />
 
+        {/* Doctor Section */}
         {role === "doctor" && (
           <DoctorSection
             formData={formData}
@@ -165,19 +220,24 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
           />
         )}
 
+        {/* Password + Confirm Password */}
         <div className="grid grid-cols-2 gap-4">
+          {/* Password */}
           <div className="relative">
-            <label className="block text-sm font-medium mb-2 text-white/90">Password</label>
+            <label className="block text-sm font-medium mb-2 text-white/90">
+              Password
+            </label>
             <input
               type={showPassword ? "text" : "password"}
               name="password"
               placeholder="Enter password"
               value={formData.password}
               onChange={onChange}
-              className={`w-full px-4 py-3.5 text-base rounded-xl bg-white/20 text-white placeholder-white/60 transition-colors duration-200 pr-12 ${
+              autoComplete="new-password"
+              className={`w-full px-4 py-3.5 text-base rounded-xl bg-white/20 text-white placeholder-white/60 border pr-12 transition-all duration-200 ${
                 passwordHasError
-                  ? "focus:ring-2 focus:ring-red-500/70 border-2 border-red-500/50"
-                  : "focus:ring-2 focus:ring-[#FFC43D]/70"
+                  ? "border-[#FFC43D] focus:border-[#FFC43D] focus:ring-2 focus:ring-[#FFC43D]/50"
+                  : "border-transparent focus:border-[#FFC43D]/70 focus:ring-2 focus:ring-[#FFC43D]/70"
               }`}
             />
             <button
@@ -189,37 +249,43 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
               {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
             </button>
             {passwordHasError && (
-              <div className="flex items-center gap-1 mt-2 text-red-300 text-xs">
+              <div className="flex items-center gap-1 mt-2 text-[#FFC43D]/90 text-xs">
                 <AlertCircle size={14} />
                 <span>{passwordValidation.message}</span>
               </div>
             )}
           </div>
 
+          {/* Confirm Password */}
           <div className="relative">
-            <label className="block text-sm font-medium mb-2 text-white/90">Confirm Password</label>
+            <label className="block text-sm font-medium mb-2 text-white/90">
+              Confirm Password
+            </label>
             <input
               type={showConfirmPassword ? "text" : "password"}
               name="confirmPassword"
               placeholder="Confirm password"
               value={formData.confirmPassword}
               onChange={onChange}
-              className={`w-full px-4 py-3.5 text-base rounded-xl bg-white/20 text-white placeholder-white/60 transition-colors duration-200 pr-12 ${
+              autoComplete="new-password"
+              className={`w-full px-4 py-3.5 text-base rounded-xl bg-white/20 text-white placeholder-white/60 border pr-12 transition-all duration-200 ${
                 confirmPasswordHasError
-                  ? "focus:ring-2 focus:ring-red-500/70 border-2 border-red-500/50"
-                  : "focus:ring-2 focus:ring-[#FFC43D]/70"
+                  ? "border-[#FFC43D] focus:border-[#FFC43D] focus:ring-2 focus:ring-[#FFC43D]/50"
+                  : "border-transparent focus:border-[#FFC43D]/70 focus:ring-2 focus:ring-[#FFC43D]/70"
               }`}
             />
             <button
               type="button"
-              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+              onClick={() =>
+                setShowConfirmPassword(!showConfirmPassword)
+              }
               className="absolute right-3 top-10 text-white/60 hover:text-white/90 transition-colors"
               tabIndex={-1}
             >
               {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
             </button>
             {confirmPasswordHasError && (
-              <div className="flex items-center gap-1 mt-2 text-red-300 text-xs">
+              <div className="flex items-center gap-1 mt-2 text-[#FFC43D]/90 text-xs">
                 <AlertCircle size={14} />
                 <span>{confirmPasswordValidation.message}</span>
               </div>
@@ -227,10 +293,11 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
           </div>
         </div>
 
+        {/* Submit Button */}
         <button
           type="submit"
           disabled={loading}
-          className="w-full bg-[#FFC43D] hover:bg-[#FFD75A] text-[#1A1A40] font-bold py-3.5 rounded-xl transition-all duration-300 transform hover:scale-[1.02] disabled:opacity-70"
+          className="w-full bg-[#FFC43D] hover:bg-[#FFD75A] text-[#1A1A40] font-bold py-3.5 rounded-xl transition-all duration-300 transform hover:scale-[1.02] disabled:opacity-70 shadow-lg"
         >
           {loading ? "Saving..." : "Complete Profile"}
         </button>
