@@ -1,10 +1,10 @@
 import React from "react";
 import type { ReactNode } from "react";
 import { Navigate, useLocation } from "react-router-dom";
-import { useAuth } from "../context/AuthContext.js";
+import { useAuth } from "../context/AuthContext";
 
 // Define allowed roles
-type UserRole = "admin" | "doctor" | "staff" | "patient";
+type UserRole = "admin" | "doctor" | "patient";
 
 // Define prop types
 interface ProtectedRouteProps {
@@ -34,17 +34,8 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
   // Redirect to login if user is not authenticated
   if (!isAuthenticated) {
-    // If trying to access protected routes, go to signin
-    if (
-      location.pathname.startsWith("/admin") ||
-      location.pathname.startsWith("/doctor") ||
-      location.pathname.startsWith("/staff") ||
-      location.pathname.startsWith("/patient")
-    ) {
-      return <Navigate to="/signin" replace />;
-    }
-    // Otherwise go to landing page
-    return <Navigate to="/" replace />;
+    // Save the attempted location so we can redirect back after login
+    return <Navigate to="/signin" state={{ from: location }} replace />;
   }
 
   // Get user role - check both 'role' and 'user_type' fields
@@ -56,7 +47,8 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
       `User role '${userRole}' not allowed for this route. Allowed roles:`,
       allowedRoles
     );
-    
+
+    // Redirect to appropriate dashboard based on user role
     switch (userRole) {
       case "admin":
         return <Navigate to="/admin/dashboard" replace />;

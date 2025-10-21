@@ -1,6 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import type { ChangeEvent, FormEvent } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
+import toast from "react-hot-toast";
 import Footer from "@/components/Footer";
 import { signIn } from "@/services/auth/SignInAPI";
 import { useAuth } from "@/context/AuthContext";
@@ -16,16 +17,22 @@ const SignIn: React.FC = () => {
   const [emailLoading, setEmailLoading] = useState<boolean>(false);
   const [googleLoading, setGoogleLoading] = useState<boolean>(false);
 
-  const { login } = useAuth();
+  const { login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Debug: Log when component mounts and when auth state changes
+  useEffect(() => {
+    console.log("SignIn component - isAuthenticated:", isAuthenticated);
+    console.log("SignIn component - current location:", location.pathname);
+  }, [isAuthenticated, location.pathname]);
 
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
     if (error) setError("");
   };
 
-  const getRoleBasedRedirectPath = (role?: string): string => {
+  const getRoleRedirect = (role?: string) => {
     switch (role?.toLowerCase()) {
       case "admin":
         return "/admin/dashboard";
@@ -39,8 +46,11 @@ const SignIn: React.FC = () => {
   };
 
   const handleLoginSuccess = (result: any) => {
+    console.log("Login success - result:", result);
+    
     if (!result.user || !result.tokens) {
       setError("Invalid login response from server.");
+      toast.error("Invalid login response from server.");
       return;
     }
 
@@ -48,14 +58,10 @@ const SignIn: React.FC = () => {
 
     const userRole = (result.user.role || result.user.user_type || "").toLowerCase();
 
-    if (userRole === "admin") {
-      setTimeout(() => {
-        navigate("/admin/dashboard", { replace: true });
-      }, 100);
-      return;
-    }
+    toast.success(`Welcome back, ${result.user.fname || "User"}!`);
 
     if (!result.user.is_profile_complete) {
+      toast("Please complete your profile before continuing.", { icon: "📝" });
       navigate("/complete-profile", {
         replace: true,
         state: {
@@ -71,43 +77,65 @@ const SignIn: React.FC = () => {
 
     const redirectPath =
       (location.state as { from?: { pathname: string } })?.from?.pathname ||
-      getRoleBasedRedirectPath(userRole);
+      getRoleRedirect(userRole);
+
+    console.log("Navigating to:", redirectPath);
     navigate(redirectPath, { replace: true });
   };
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    e.stopPropagation(); // Prevent any event bubbling
+    
+    console.log("Form submitted");
+    console.log("Current pathname:", location.pathname);
+    
     setEmailLoading(true);
     setError("");
 
     try {
       const result = await signIn(formData);
+      console.log("signIn API result:", result);
       handleLoginSuccess(result);
     } catch (err: any) {
+      console.log("Login error caught:", err);
+      console.log("Error response:", err?.response);
+      console.log("Still on pathname:", location.pathname);
+      
       const errMsg =
         err?.response?.data?.detail ||
         err?.response?.data?.message ||
         err?.message ||
         "Sign-in failed. Please try again.";
+
       setError(errMsg);
-    } finally {
+      toast.error(errMsg);
+      
+      // CRITICAL: Explicitly prevent any navigation
+      console.log("Login failed - staying on /signin");
+      console.log("About to set loading to false");
+      
+      // Don't call navigate, don't do anything
       setEmailLoading(false);
+      return; // Exit immediately
     }
+    
+    // Only reaches here on success
+    setEmailLoading(false);
   };
 
   const handleGoogleRedirect = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setGoogleLoading(true);
+    toast.loading("Redirecting to Google...", { id: "google-redirect" });
     window.location.href = `${import.meta.env.VITE_API_URL}/auth/google/login`;
   };
 
-  // Check if any loading state is active
   const isLoading = emailLoading || googleLoading;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#1A1A40] via-[#0057B8] to-[#00A8E8] text-white">
-      {/* Navbar */}
       <nav className="flex items-center justify-between px-8 py-4 bg-[#1A1A40]/80 shadow sticky top-0 z-10">
         <Link
           to="/"
@@ -117,10 +145,8 @@ const SignIn: React.FC = () => {
         </Link>
       </nav>
 
-      {/* Main Container */}
       <div className="flex items-center justify-center min-h-[calc(100vh-80px)] px-6 py-12">
         <div className="max-w-md w-full">
-          {/* Header */}
           <div className="text-center mb-8">
             <h1 className="text-4xl font-extrabold mb-4 drop-shadow-xl">
               Welcome <span className="text-[#FFC43D]">Back</span>
@@ -130,9 +156,7 @@ const SignIn: React.FC = () => {
             </p>
           </div>
 
-          {/* Sign-In Card */}
           <div className="bg-white/20 backdrop-blur-md p-8 rounded-2xl shadow-2xl border border-white/20">
-            {/* Email/Password Form */}
             <form className="space-y-6" onSubmit={handleSubmit}>
               {error && (
                 <div className="bg-red-500/20 border border-red-400/50 text-red-100 px-4 py-3 rounded-xl backdrop-blur-sm">
@@ -141,10 +165,7 @@ const SignIn: React.FC = () => {
               )}
 
               <div>
-                <label
-                  htmlFor="email"
-                  className="block text-sm font-semibold text-white/90 mb-2"
-                >
+                <label htmlFor="email" className="block text-sm font-semibold text-white/90 mb-2">
                   Email Address
                 </label>
                 <input
@@ -160,10 +181,7 @@ const SignIn: React.FC = () => {
               </div>
 
               <div>
-                <label
-                  htmlFor="password"
-                  className="block text-sm font-semibold text-white/90 mb-2"
-                >
+                <label htmlFor="password" className="block text-sm font-semibold text-white/90 mb-2">
                   Password
                 </label>
                 <input
@@ -196,14 +214,12 @@ const SignIn: React.FC = () => {
               </button>
             </form>
 
-            {/* Divider */}
             <div className="flex items-center my-6">
               <hr className="flex-grow border-white/20" />
               <span className="px-4 text-white/60 text-sm font-medium">OR</span>
               <hr className="flex-grow border-white/20" />
             </div>
 
-            {/* Google Sign-In Button (outside form) */}
             <div>
               <button
                 type="button"
@@ -220,30 +236,21 @@ const SignIn: React.FC = () => {
               </button>
             </div>
 
-            {/* Signup Link */}
             <div className="text-center mt-8 pt-6 border-t border-white/20">
               <span className="text-white/80">
                 Don't have an account?{" "}
-                <Link
-                  to="/signup"
-                  className="text-[#FFC43D] hover:text-[#FFD84C] transition font-semibold"
-                >
+                <Link to="/signup" className="text-[#FFC43D] hover:text-[#FFD84C] transition font-semibold">
                   Sign up here
                 </Link>
               </span>
             </div>
 
-            {/* Terms and Privacy */}
             <div className="text-center mt-6">
               <p className="text-sm text-white/60">
                 By signing in, you agree to our{" "}
-                <Link to="/terms" className="text-[#FFC43D] hover:underline">
-                  Terms of Service
-                </Link>{" "}
+                <Link to="/terms" className="text-[#FFC43D] hover:underline">Terms of Service</Link>{" "}
                 and{" "}
-                <Link to="/privacy" className="text-[#FFC43D] hover:underline">
-                  Privacy Policy
-                </Link>
+                <Link to="/privacy" className="text-[#FFC43D] hover:underline">Privacy Policy</Link>
               </p>
             </div>
           </div>

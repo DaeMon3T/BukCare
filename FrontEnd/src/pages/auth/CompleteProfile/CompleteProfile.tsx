@@ -1,16 +1,14 @@
 // ============================================
-// FILE: CompleteProfile.tsx (FIXED - Using API Service)
+// FILE: CompleteProfile.tsx
 // ============================================
 import React, { useState } from "react";
 import type { ChangeEvent as ReactChangeEvent, FormEvent as ReactFormEvent } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
+import toast from "react-hot-toast";
 import { useAuth } from "@/context/AuthContext";
 import Footer from "@/components/Footer";
 import { completeProfile } from "@/services/auth/CompleteProfileAPI";
-import {
-  validateDoctorProfile,
-  validatePatientProfile,
-} from "@/utils/validation";
+import { validateDoctorProfile, validatePatientProfile } from "@/utils/validation";
 import ErrorBoundary from "./components/ErrorBoundary";
 import RoleSelection from "./components/RoleSelection";
 import ProfileForm from "./components/ProfileForm";
@@ -20,18 +18,27 @@ import type { FormData, GoogleData } from "./types";
 const CompleteProfile: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, login } = useAuth();
+  const { user } = useAuth();
   const locationState = location.state || {};
 
+  // --------------------------------------------
+  // ✅ Extract query parameters
+  // --------------------------------------------
   const searchParams = new URLSearchParams(location.search);
   const queryUserId = searchParams.get("user_id");
   const queryEmail = searchParams.get("email");
   const queryFname = searchParams.get("fname");
   const queryLname = searchParams.get("lname");
-  const queryPicture = searchParams.get("picture");
+  const queryPictureRaw = searchParams.get("picture");
+
+  // ✅ decode picture in case it was URL-encoded
+  const queryPicture = queryPictureRaw ? decodeURIComponent(queryPictureRaw) : "";
 
   const userId = queryUserId || locationState.user_id || user?.user_id;
 
+  // --------------------------------------------
+  // ✅ Merge data from query, state, or auth user
+  // --------------------------------------------
   const googleData: GoogleData = {
     email: queryEmail || locationState.email || user?.email || "",
     fname: queryFname || locationState.fname || user?.fname || "",
@@ -39,6 +46,9 @@ const CompleteProfile: React.FC = () => {
     picture: queryPicture || locationState.picture || user?.picture || "",
   };
 
+  // --------------------------------------------
+  // ✅ State
+  // --------------------------------------------
   const [role, setRole] = useState<"doctor" | "patient" | null>(null);
   const [formData, setFormData] = useState<FormData>({
     sex: "",
@@ -60,11 +70,17 @@ const CompleteProfile: React.FC = () => {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // --------------------------------------------
+  // ✅ Province/City/Barangay data
+  // --------------------------------------------
   const { provincesData, citiesData, barangaysData, loadingProvinces } = useLocationData(
     formData.province_id,
     formData.city_id
   );
 
+  // --------------------------------------------
+  // ✅ Handlers
+  // --------------------------------------------
   const handleChange = (e: ReactChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
 
@@ -120,85 +136,59 @@ const CompleteProfile: React.FC = () => {
     }));
   };
 
-  // ✅ Get province name from ID
   const getProvinceNameById = (id: string) => {
     const province = provincesData?.find((p: any) => String(p.id) === String(id));
     return province?.name || "";
   };
 
-  // ✅ Get city name from ID
   const getCityNameById = (id: string) => {
     const city = citiesData?.find((c: any) => String(c.id) === String(id));
     return city?.name || "";
   };
 
+  // --------------------------------------------
+  // ✅ Submit Handler
+  // --------------------------------------------
   const handleSubmit = async (e: ReactFormEvent) => {
-    console.log("🔵 CompleteProfile: handleSubmit called");
     e.preventDefault();
     setError("");
     setLoading(true);
 
-    console.log("📋 FormData:", {
-      sex: formData.sex,
-      dob: formData.dob,
-      contact_number: formData.contact_number,
-      province_id: formData.province_id,
-      city_id: formData.city_id,
-      barangay: formData.barangay,
-      role: role,
-    });
-
-    // Validate formData object FIRST before creating FormData
     const validationResult =
       role === "doctor"
         ? validateDoctorProfile(formData)
         : validatePatientProfile(formData);
 
-    console.log("✓ Validation result:", validationResult);
-
     if (!validationResult.isValid) {
-      console.error("❌ Validation failed:", validationResult.message);
       setError(validationResult.message);
       setLoading(false);
       return;
     }
 
     try {
-      console.log("📦 Creating FormData payload...");
       const payload = new FormData();
       payload.append("user_id", String(userId));
       payload.append("role", role || "");
-      
-      // Append all form fields
       payload.append("sex", formData.sex);
       payload.append("dob", formData.dob);
       payload.append("contact_number", formData.contact_number);
-      
-      // ✅ FIXED: Send province/city names, not IDs
+
       const provinceName = getProvinceNameById(formData.province_id);
       const cityName = getCityNameById(formData.city_id);
-      
-      console.log(`🗺️ Locations: ${provinceName} -> ${cityName} -> ${formData.barangay}`);
-      
+
       payload.append("province", provinceName);
       payload.append("city", cityName);
       payload.append("barangay", formData.barangay);
       payload.append("password", formData.password);
 
-      // Doctor-specific fields
       if (role === "doctor") {
-        console.log("🏥 Adding doctor-specific fields...");
         if (formData.license_number)
           payload.append("license_number", formData.license_number);
         if (formData.years_of_experience)
           payload.append("years_of_experience", formData.years_of_experience);
-        
-        // Convert specializations array to JSON string
-        if (formData.specializations && formData.specializations.length > 0) {
+        if (formData.specializations?.length)
           payload.append("specializations", JSON.stringify(formData.specializations));
-        }
 
-        // Append file uploads
         if (formData.prc_license_front)
           payload.append("prc_license_front", formData.prc_license_front);
         if (formData.prc_license_back)
@@ -207,37 +197,51 @@ const CompleteProfile: React.FC = () => {
           payload.append("prc_license_selfie", formData.prc_license_selfie);
       }
 
-      console.log("🚀 Calling completeProfile API service");
-      const data = await completeProfile(payload);
-      console.log("✅ API Response:", data);
-      
-      login(data.tokens, data.user);
-      console.log("🎉 Profile completed successfully!");
-      navigate(role === "doctor" ? "/doctor/dashboard" : "/patient/home", {
-        replace: true,
-      });
+      await completeProfile(payload);
+
+      toast.success("Profile completed successfully! Please sign in to continue.");
+
+      // ✅ Redirect to sign-in page
+      navigate("/signin", { replace: true });
     } catch (err: any) {
-      console.error("❌ Error:", err);
       setError(err.message || "Something went wrong.");
     } finally {
       setLoading(false);
     }
   };
 
+  // --------------------------------------------
+  // ✅ Render
+  // --------------------------------------------
   return (
     <ErrorBoundary>
       <div className="min-h-screen bg-gradient-to-br from-[#1A1A40] via-[#0057B8] to-[#00A8E8] text-white">
+        {/* ✅ AUTH-AWARE NAVBAR */}
         <nav className="flex items-center justify-between px-8 py-4 bg-[#1A1A40]/80 shadow sticky top-0 z-10">
           <Link to="/" className="text-2xl font-bold text-[#FFC43D]">
             BukCare
           </Link>
+
           <div className="space-x-6">
-            <Link to="/signin" className="hover:underline text-[#FFC43D]">
-              Sign In
-            </Link>
-            <Link to="/signup" className="hover:underline">
-              Sign Up
-            </Link>
+            {!user ? (
+              <>
+                <Link to="/signin" className="hover:underline text-[#FFC43D]">
+                  Sign In
+                </Link>
+                <Link to="/signup" className="hover:underline">
+                  Sign Up
+                </Link>
+              </>
+            ) : (
+              <>
+                <span className="font-semibold text-[#FFC43D]">
+                  Hi, {user?.fname || "User"}!
+                </span>
+                <button className="hover:underline text-red-400 font-semibold">
+                  Logout
+                </button>
+              </>
+            )}
           </div>
         </nav>
 

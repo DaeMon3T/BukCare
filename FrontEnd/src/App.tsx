@@ -1,8 +1,9 @@
 // ============================================================================
-// App.tsx - Full Routes with OAuth Success
+// App.tsx - Full Routes with OAuth Success + Toast Notifications
 // ============================================================================
 import type { FC } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast'; // ✅ Added
 import { AuthProvider } from './context/AuthContext';
 import { AdminRoute, DoctorRoute, PatientRoute } from './routes/ProtectedRoutes';
 
@@ -11,7 +12,7 @@ import SignIn from './pages/auth/SignIn';
 import SignUp from './pages/auth/SignUp';
 import ForgotPassword from './pages/auth/ForgotPassword';
 import CompleteProfile from './pages/auth/CompleteProfile/CompleteProfile';
-import OAuthSuccess from './pages/auth/OAuthSuccess'; // <-- New page for Google OAuth
+import OAuthSuccess from './pages/auth/OAuthSuccess';
 
 // Public Pages
 import Landing from './pages/public/Landing';
@@ -43,6 +44,9 @@ const App: FC = () => {
   return (
     <AuthProvider>
       <Router>
+        {/* ✅ Toasts appear globally */}
+        <Toaster position="top-center" reverseOrder={false} />
+
         <div className="App">
           <Routes>
             {/* Public Routes */}
@@ -58,22 +62,49 @@ const App: FC = () => {
             <Route path="/signup" element={<SignUp />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/complete-profile" element={<CompleteProfile />} />
-            <Route path="/auth/success" element={<OAuthSuccess />} /> {/* <-- New */}
+            <Route path="/auth/success" element={<OAuthSuccess />} />
 
             {/* Admin Routes */}
-            <Route path="/admin/dashboard" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
-            <Route path="/admin/profile" element={<AdminRoute><AdminProfile /></AdminRoute>} />
+            <Route
+              path="/admin/dashboard"
+              element={<AdminRoute><AdminDashboard /></AdminRoute>}
+            />
+            <Route
+              path="/admin/profile"
+              element={<AdminRoute><AdminProfile /></AdminRoute>}
+            />
 
             {/* Doctor Routes */}
-            <Route path="/doctor/dashboard" element={<DoctorRoute><DoctorDashboard /></DoctorRoute>} />
-            <Route path="/doctor/appointments" element={<DoctorRoute><DoctorAppointments /></DoctorRoute>} />
-            <Route path="/doctor/profile" element={<DoctorRoute><DoctorProfile /></DoctorRoute>} />
+            <Route
+              path="/doctor/dashboard"
+              element={<DoctorRoute><DoctorDashboard /></DoctorRoute>}
+            />
+            <Route
+              path="/doctor/appointments"
+              element={<DoctorRoute><DoctorAppointments /></DoctorRoute>}
+            />
+            <Route
+              path="/doctor/profile"
+              element={<DoctorRoute><DoctorProfile /></DoctorRoute>}
+            />
 
             {/* Patient Routes */}
-            <Route path="/patient/home" element={<PatientRoute><PatientHome /></PatientRoute>} />
-            <Route path="/patient/appointments" element={<PatientRoute><PatientAppointments /></PatientRoute>} />
-            <Route path="/patient/profile" element={<PatientRoute><PatientProfile /></PatientRoute>} />
-            <Route path="/patient/find-doctor" element={<PatientRoute><FindDoctor /></PatientRoute>} />
+            <Route
+              path="/patient/home"
+              element={<PatientRoute><PatientHome /></PatientRoute>}
+            />
+            <Route
+              path="/patient/appointments"
+              element={<PatientRoute><PatientAppointments /></PatientRoute>}
+            />
+            <Route
+              path="/patient/profile"
+              element={<PatientRoute><PatientProfile /></PatientRoute>}
+            />
+            <Route
+              path="/patient/find-doctor"
+              element={<PatientRoute><FindDoctor /></PatientRoute>}
+            />
 
             {/* Catch All */}
             <Route path="*" element={<Navigate to="/" replace />} />
