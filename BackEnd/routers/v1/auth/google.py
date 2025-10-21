@@ -1,4 +1,5 @@
 # routers/v1/auth/google_signin.py
+
 import urllib.parse
 import requests
 from datetime import datetime
@@ -11,11 +12,14 @@ from google.auth.transport import requests as google_requests
 from core.config import settings
 from core.database import get_db
 from core.security import create_access_token, create_refresh_token
-from models.users import User, UserRole  # Ensure your User model has from_oauth and update_from_oauth
+from models.users import User, UserRole  # Ensure your User model has .from_oauth() and .update_from_oauth()
 
 router = APIRouter(prefix="/google", tags=["Authentication"])
 
 
+# -----------------------------------------
+# 1️⃣ Redirect-based OAuth login
+# -----------------------------------------
 @router.get("/login", summary="Redirect user to Google OAuth consent screen")
 def google_login():
     google_auth_endpoint = "https://accounts.google.com/o/oauth2/v2/auth"
@@ -30,6 +34,9 @@ def google_login():
     return RedirectResponse(f"{google_auth_endpoint}?{urllib.parse.urlencode(params)}")
 
 
+# -----------------------------------------
+# 2️⃣ OAuth callback handler
+# -----------------------------------------
 @router.get("/callback", summary="Handle Google OAuth callback")
 def google_callback(
     code: str = Query(None),
@@ -41,7 +48,7 @@ def google_callback(
     if not code:
         raise HTTPException(status_code=400, detail="Missing authorization code")
 
-    # Exchange authorization code for tokens
+    # Exchange code for tokens
     token_url = "https://oauth2.googleapis.com/token"
     data = {
         "code": code,
@@ -65,6 +72,34 @@ def google_callback(
         clock_skew_in_seconds=10
     )
 
+    return _process_google_user(idinfo, db, redirect_flow=True)
+
+
+# -----------------------------------------
+# 3️⃣ Direct ID Token Sign-in (used by `googleSignIn()` frontend)
+# -----------------------------------------
+@router.post("/signin", summary="Sign in using Google ID token (One Tap or popup)")
+def google_signin(payload: dict, db: Session = Depends(get_db)):
+    id_token_str = payload.get("id_token")
+    if not id_token_str:
+        raise HTTPException(status_code=400, detail="Missing Google ID token")
+
+    try:
+        idinfo = id_token.verify_oauth2_token(
+            id_token_str,
+            google_requests.Request(),
+            settings.GOOGLE_CLIENT_ID
+        )
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Invalid Google ID token: {e}")
+
+    return _process_google_user(idinfo, db, redirect_flow=False)
+
+
+# -----------------------------------------
+# 🧩 Shared logic for OAuth and direct sign-in
+# -----------------------------------------
+def _process_google_user(idinfo, db: Session, redirect_flow: bool = False):
     google_data = {
         "google_id": idinfo.get("sub"),
         "email": idinfo.get("email"),
@@ -77,28 +112,25 @@ def google_callback(
     if not google_data["email"]:
         raise HTTPException(status_code=400, detail="No email returned by Google")
 
-    # Find existing user
     user = db.query(User).filter(User.email == google_data["email"]).first()
     action = "signin"
 
     if not user:
-        # 👤 New user — default to PATIENT role for safety
-        user = User.from_oauth({**google_data, "role": UserRole.PATIENT})
-
-        # Admins (created manually) are always complete
-        if user.role == UserRole.ADMIN:
-            user.is_profile_complete = True
-
+        # New user (no default role)
+        user = User.from_oauth({
+            **google_data,
+            "role": None,
+            "is_profile_complete": False
+        })
         db.add(user)
         db.commit()
         db.refresh(user)
         action = "signup"
     else:
-        # 🧩 Existing user — update data if changed
+        # Existing user
         updated = user.update_from_oauth(google_data)
         user.last_login = datetime.utcnow()
 
-        # Admins always skip profile completion
         if user.role == UserRole.ADMIN:
             user.is_profile_complete = True
 
@@ -106,7 +138,7 @@ def google_callback(
             db.commit()
             db.refresh(user)
 
-    # 🪪 Generate JWT tokens
+    # Tokens
     access_token = create_access_token({
         "user_id": user.id,
         "email": user.email,
@@ -117,43 +149,55 @@ def google_callback(
         "email": user.email,
     })
 
-    # 💾 Update refresh token and last login
+    # Save refresh token
     user.refresh_token = refresh_token
     user.last_login = datetime.utcnow()
     db.commit()
     db.refresh(user)
 
-    # 🚦 Redirect based on user state
-    if user.role == UserRole.ADMIN:
-        # Admins go straight to dashboard
-        redirect_url = f"{settings.FRONTEND_URL}/admin/dashboard?token={access_token}&refresh={refresh_token}"
+    # 🔁 If redirect flow → redirect user
+    if redirect_flow:
+        if user.role == UserRole.ADMIN:
+            redirect_url = f"{settings.FRONTEND_URL}/admin/dashboard?token={access_token}&refresh={refresh_token}"
+        elif user.role == UserRole.PENDING:
+            redirect_url = (
+                f"{settings.FRONTEND_URL}/pending-approval?"
+                f"user_id={user.id}&email={urllib.parse.quote(user.email)}"
+                f"&token={access_token}&refresh={refresh_token}"
+            )
+        elif not user.is_profile_complete:
+            redirect_url = (
+                f"{settings.FRONTEND_URL}/complete-profile?"
+                f"user_id={user.id}"
+                f"&email={urllib.parse.quote(user.email)}"
+                f"&fname={urllib.parse.quote(user.fname or '')}"
+                f"&lname={urllib.parse.quote(user.lname or '')}"
+                f"&picture={urllib.parse.quote(user.picture or '')}"
+                f"&token={access_token}&refresh={refresh_token}"
+            )
+        else:
+            redirect_url = (
+                f"{settings.FRONTEND_URL}/auth/success?"
+                f"action={action}"
+                f"&token={access_token}&refresh={refresh_token}"
+            )
+        return RedirectResponse(url=redirect_url)
 
-    elif user.role == UserRole.PENDING:
-        # Pending doctors are waiting for admin approval
-        redirect_url = (
-            f"{settings.FRONTEND_URL}/pending-approval?"
-            f"user_id={user.id}&email={urllib.parse.quote(user.email)}"
-            f"&token={access_token}&refresh={refresh_token}"
-        )
-
-    elif not user.is_profile_complete:
-        # Incomplete profile (new doctor or patient)
-        redirect_url = (
-            f"{settings.FRONTEND_URL}/complete-profile?"
-            f"user_id={user.id}"
-            f"&email={urllib.parse.quote(user.email)}"
-            f"&fname={urllib.parse.quote(user.fname or '')}"
-            f"&lname={urllib.parse.quote(user.lname or '')}"
-            f"&picture={urllib.parse.quote(user.picture or '')}"
-            f"&token={access_token}&refresh={refresh_token}"
-        )
-
-    else:
-        # Fully onboarded users (doctor/patient)
-        redirect_url = (
-            f"{settings.FRONTEND_URL}/auth/success?"
-            f"action={action}"
-            f"&token={access_token}&refresh={refresh_token}"
-        )
-
-    return RedirectResponse(url=redirect_url)
+    # 🔐 Otherwise return JSON
+    return {
+        "tokens": {
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+            "token_type": "bearer",
+        },
+        "user": {
+            "user_id": user.id,
+            "email": user.email,
+            "fname": user.fname,
+            "lname": user.lname,
+            "picture": user.picture,
+            "role": user.role.value if user.role else None,
+            "is_profile_complete": user.is_profile_complete,
+        },
+        "action": action
+    }
