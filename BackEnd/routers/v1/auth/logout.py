@@ -8,7 +8,6 @@ from models.users import User
 
 router = APIRouter(prefix="/logout", tags=["Authentication"])
 
-
 @router.post("")
 def logout(authorization: Optional[str] = Header(None), db: Session = Depends(get_db)):
     """Logout user by clearing refresh token"""
@@ -16,9 +15,9 @@ def logout(authorization: Optional[str] = Header(None), db: Session = Depends(ge
         token = authorization.replace("Bearer ", "")
         try:
             payload = jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
-            user_id = payload.get("user_id")
+            user_id = payload.get("id")  # ✅ match this with how you encode JWT
             if user_id:
-                user = db.query(User).filter(User.user_id == user_id).first()
+                user = db.query(User).filter(User.id == user_id).first()  # ✅ fixed field name
                 if user:
                     user.refresh_token = None
                     db.commit()

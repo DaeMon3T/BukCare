@@ -1,4 +1,4 @@
-import React, { useState, useContext } from "react";
+import React, { useState, useContext, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -20,6 +20,8 @@ interface NavbarProps {
 
 interface User {
   name?: string;
+  first_name?: string;
+  last_name?: string;
   email?: string;
   picture?: string;
 }
@@ -31,12 +33,19 @@ interface AuthContextType {
 
 const Navbar: React.FC<NavbarProps> = ({ role }) => {
   const userRole = role || "patient";
-
   const { user, logout } = useContext(AuthContext) as AuthContextType;
 
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // ✅ Compute the name dynamically
+  const displayName = useMemo(() => {
+    if (!user) return "Guest";
+    if (user.name && user.name.trim() !== "") return user.name;
+    const fullName = `${user.first_name || ""} ${user.last_name || ""}`.trim();
+    return fullName || "Guest";
+  }, [user]);
 
   // 🔗 Dynamic routes
   const homeLink = `/${userRole}/home`;
@@ -65,7 +74,9 @@ const Navbar: React.FC<NavbarProps> = ({ role }) => {
                 alt="BukCare Logo"
                 className="w-5 h-5 object-cover rounded-sm"
               />
-              <span className="text-xl font-semibold text-gray-800">BukCare</span>
+              <span className="text-xl font-semibold text-gray-800">
+                BukCare
+              </span>
             </Link>
           </div>
 
@@ -107,7 +118,9 @@ const Navbar: React.FC<NavbarProps> = ({ role }) => {
               {showNotifications && (
                 <div className="absolute right-0 mt-2 w-72 bg-white rounded-xl shadow-lg border border-gray-100 py-2 z-50">
                   <div className="px-4 py-2 border-b border-gray-100">
-                    <h3 className="font-semibold text-gray-800">Notifications</h3>
+                    <h3 className="font-semibold text-gray-800">
+                      Notifications
+                    </h3>
                   </div>
                   <div className="p-4 text-gray-500 text-sm text-center">
                     No notifications yet
@@ -130,7 +143,9 @@ const Navbar: React.FC<NavbarProps> = ({ role }) => {
                   />
                 </div>
                 <div className="hidden md:block text-left">
-                  <p className="text-sm font-medium text-gray-800">{user?.name || "Guest"}</p>
+                  <p className="text-sm font-medium text-gray-800">
+                    {displayName}
+                  </p>
                   <p className="text-xs text-gray-600 capitalize">{userRole}</p>
                 </div>
                 <ChevronDown className="w-4 h-4 text-gray-600" />
@@ -139,8 +154,10 @@ const Navbar: React.FC<NavbarProps> = ({ role }) => {
               {showProfileDropdown && (
                 <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-gray-100 py-2 z-50">
                   <div className="px-4 py-3 border-b border-gray-100">
-                    <p className="font-semibold text-gray-800">{user?.name || "Guest"}</p>
-                    <p className="text-sm text-gray-600">{user?.email || "No email"}</p>
+                    <p className="font-semibold text-gray-800">{displayName}</p>
+                    <p className="text-sm text-gray-600">
+                      {user?.email || "No email"}
+                    </p>
                   </div>
 
                   <div className="py-2">
@@ -196,7 +213,9 @@ const Navbar: React.FC<NavbarProps> = ({ role }) => {
                     alt="BukCare Logo"
                     className="w-5 h-5 object-cover rounded-sm"
                   />
-                  <span className="text-xl font-semibold text-gray-800">BukCare</span>
+                  <span className="text-xl font-semibold text-gray-800">
+                    BukCare
+                  </span>
                 </Link>
                 <button onClick={() => setSidebarOpen(false)}>
                   <X className="w-6 h-6 text-gray-600" />

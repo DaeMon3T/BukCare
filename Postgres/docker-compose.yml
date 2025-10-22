@@ -6,8 +6,8 @@ services:
     container_name: postgres_db
     restart: always
     environment:
-      POSTGRES_USER: ken
-      POSTGRES_PASSWORD: kenetwork
+      POSTGRES_USER: bukcare
+      POSTGRES_PASSWORD: bukcare2025
       POSTGRES_DB: bukcare
     ports:
       - "5432:5432"
@@ -19,8 +19,8 @@ services:
     container_name: pgadmin
     restart: always
     environment:
-      PGADMIN_DEFAULT_EMAIL: tokyoken24@gmail.com
-      PGADMIN_DEFAULT_PASSWORD: kenetwork
+      PGADMIN_DEFAULT_EMAIL: bukcare.app@gmail.com
+      PGADMIN_DEFAULT_PASSWORD: bukcare2025
     ports:
       - "5050:80"
     depends_on:

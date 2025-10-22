@@ -13,11 +13,14 @@ interface Tokens {
 }
 
 interface UserData {
-  id: number | string;
-  name: string;
+  id?: number | string | undefined;
+  user_id?: number | string | undefined;
+  name?: string | undefined;
+  fname?: string | undefined;
+  lname?: string | undefined;
   email: string;
-  role?: string;
-  picture?: string;
+  role?: string | undefined;
+  picture?: string | undefined;
   [key: string]: any;
 }
 
@@ -31,20 +34,12 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-/**
- * Custom hook to use authentication context
- */
 export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error("useAuth must be used within an AuthProvider");
-  }
+  if (!context) throw new Error("useAuth must be used within an AuthProvider");
   return context;
 };
 
-/**
- * Authentication Provider Component
- */
 interface AuthProviderProps {
   children: ReactNode;
 }
@@ -52,83 +47,71 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [initialized, setInitialized] = useState(false);
 
+  // Load user on mount
   useEffect(() => {
-    // Prevent multiple initializations
-    if (initialized) {
-      console.log("AuthContext: Already initialized, skipping");
-      return;
-    }
-
-    console.log("AuthContext: Initializing...");
     const token = localStorage.getItem("access_token");
     const userData = localStorage.getItem("user_data");
-
-    console.log("AuthContext: Found token?", !!token);
-    console.log("AuthContext: Found userData?", !!userData);
 
     if (token && userData) {
       try {
         const parsedUser: UserData = JSON.parse(userData);
-        console.log("AuthContext: Setting user:", parsedUser.email);
         setUser(parsedUser);
-      } catch (error) {
-        console.error("AuthContext: Error parsing user data:", error);
+      } catch {
         localStorage.clear();
         setUser(null);
       }
     } else {
-      console.log("AuthContext: No valid session found");
       setUser(null);
     }
 
     setLoading(false);
-    setInitialized(true);
-    console.log("AuthContext: Initialization complete");
-  }, [initialized]);
+  }, []);
 
+  // ✅ Combine name fields and ensure consistent shape
   const login = (tokens: Tokens, userData: UserData) => {
-    console.log("AuthContext: login() called for:", userData.email);
+    const fullName =
+      userData.name ||
+      `${userData.fname || ""} ${userData.lname || ""}`.trim() ||
+      "Guest";
+
+    const formattedUser: UserData = {
+      ...userData,
+      id: userData.user_id ?? userData.id ?? Date.now(), // always has a valid id
+      name: fullName,
+      picture: userData.picture || "/default-avatar.png",
+    };
+
     localStorage.setItem("access_token", tokens.access_token);
     localStorage.setItem("refresh_token", tokens.refresh_token);
-    localStorage.setItem("user_data", JSON.stringify(userData));
-    setUser(userData);
-    console.log("AuthContext: User logged in successfully");
+    localStorage.setItem("user_data", JSON.stringify(formattedUser));
+
+    setUser(formattedUser);
   };
 
+  // Logout
   const logout = async () => {
-    console.log("AuthContext: logout() called");
     try {
       const accessToken = localStorage.getItem("access_token");
       if (accessToken) {
-        const response = await fetch(
-          `${import.meta.env.VITE_API_URL}/auth/logout`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${accessToken}`,
-            },
-          }
-        );
-
-        if (!response.ok) {
-          console.error("Logout failed on backend:", response.status);
-        }
+        await fetch(`${import.meta.env.VITE_API_URL}/auth/logout`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
+          },
+        });
       }
     } catch (error) {
-      console.error("Error logging out on backend:", error);
+      console.error("Logout failed:", error);
     } finally {
-      console.log("AuthContext: Clearing session and redirecting to /");
       localStorage.clear();
       setUser(null);
-      // Only redirect to homepage when explicitly logging out
       window.location.href = "/";
     }
   };
 
-  const value: AuthContextType = useMemo(
+  const value = useMemo(
     () => ({
       user,
       login,
@@ -138,12 +121,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }),
     [user, loading]
   );
-
-  if (loading) {
-    console.log("AuthContext: Still loading...");
-  } else {
-    console.log("AuthContext: Ready - isAuthenticated:", !!user);
-  }
 
   return (
     <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
