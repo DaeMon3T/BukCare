@@ -2,19 +2,19 @@
 import { useEffect, useState, ChangeEvent } from "react";
 import Navbar from "@/components/Navbar";
 import { useAuth } from "@/context/AuthContext";
-import {
-  getUserProfile,
-  updateUserProfile,
-  updateProfilePicture,
-} from "@/services/users/UsersAPI";
+// import { getUserProfile, updateUserProfile, updateProfilePicture } from "@/services/users/UsersAPI";
 
 interface UserProfile {
   fname: string;
   mname: string;
   lname: string;
+  sex?: string;
   dob: string;
   contact_number: string;
   email: string;
+  barangay?: string;
+  city?: string;
+  province?: string;
   picture?: string;
 }
 
@@ -26,9 +26,13 @@ export default function Profile() {
     fname: "",
     mname: "",
     lname: "",
+    sex: "",
     dob: "",
     contact_number: "",
     email: "",
+    barangay: "",
+    city: "",
+    province: "",
   });
 
   const [picture, setPicture] = useState<string>("");
@@ -37,21 +41,28 @@ export default function Profile() {
   const [saving, setSaving] = useState<boolean>(false);
   const [uploadingPic, setUploadingPic] = useState<boolean>(false);
 
+  // --------------------------------------------
+  // ✅ Fetch Profile (API commented out)
+  // --------------------------------------------
   useEffect(() => {
     if (!userId) return;
 
     const fetchProfile = async () => {
       try {
-        const user: UserProfile = await getUserProfile(userId);
+        // const user: UserProfile = await getUserProfile(userId);
         setFormData({
-          fname: user.fname || "",
-          mname: user.mname || "",
-          lname: user.lname || "",
-          dob: user.dob ? user.dob.split("T")[0] : "",
-          contact_number: user.contact_number || "",
-          email: user.email || "",
+          fname: "",
+          mname: "",
+          lname: "",
+          sex: "",
+          dob: "",
+          contact_number: "",
+          email: authUser?.email || "",
+          barangay: "",
+          city: "",
+          province: "",
         });
-        setPicture(user.picture || "/assets/react.svg");
+        setPicture("/assets/react.svg");
       } catch (err) {
         console.error("Error fetching profile:", err);
       } finally {
@@ -60,9 +71,12 @@ export default function Profile() {
     };
 
     fetchProfile();
-  }, [userId]);
+  }, [userId, authUser]);
 
-  const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
+  // --------------------------------------------
+  // ✅ Handlers
+  // --------------------------------------------
+  const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
@@ -71,11 +85,11 @@ export default function Profile() {
     if (!userId) return;
     setSaving(true);
     try {
-      await updateUserProfile(userId, formData);
-      alert("Profile updated successfully!");
+      // await updateUserProfile(userId, formData);
+      alert("Profile updated successfully! (API call commented out)");
     } catch (err) {
       console.error(err);
-      alert("Failed to update profile.");
+      alert("Failed to update profile. (API call commented out)");
     } finally {
       setSaving(false);
     }
@@ -85,53 +99,64 @@ export default function Profile() {
     const file = e.target.files?.[0];
     if (!file) return;
     setSelectedFile(file);
-    setPicture(URL.createObjectURL(file)); // Instant preview
+    setPicture(URL.createObjectURL(file)); // preview
   };
 
   const handleUploadPicture = async () => {
     if (!userId || !selectedFile) return;
     setUploadingPic(true);
     try {
-      const updatedPicUrl: string = await updateProfilePicture(userId, selectedFile);
-      setPicture(updatedPicUrl);
+      // const updatedPicUrl: string = await updateProfilePicture(userId, selectedFile);
+      // setPicture(updatedPicUrl);
       setSelectedFile(null);
-      alert("Profile picture updated!");
+      alert("Profile picture updated! (API call commented out)");
     } catch (err) {
       console.error(err);
-      alert("Failed to update profile picture.");
+      alert("Failed to update profile picture. (API call commented out)");
     } finally {
       setUploadingPic(false);
     }
   };
 
+  // --------------------------------------------
+  // ✅ UI Rendering
+  // --------------------------------------------
   if (loading) {
     return (
-      <div className="h-screen flex items-center justify-center">
-        <p className="text-gray-500">Loading profile...</p>
+      <div className="h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50">
+        <p className="text-gray-500 animate-pulse">Loading profile...</p>
       </div>
     );
   }
 
   return (
-    <div className="h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 overflow-hidden">
+    <div className="min-h-screen flex flex-col bg-gradient-to-br from-blue-50 via-white to-purple-50">
       <Navbar role="patient" />
 
-      <main className="h-[calc(100vh-4rem)] overflow-y-auto">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {/* Profile Picture & Info */}
-          <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-6 text-white shadow-md mb-6 flex flex-col items-center space-y-3">
+      <main className="flex-grow overflow-y-auto">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+          {/* Profile Header */}
+          <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-6 text-white shadow-lg mb-8 flex flex-col items-center space-y-4 transition-transform duration-300 hover:scale-[1.01]">
             <div className="relative">
               <img
                 src={picture}
                 alt="Profile"
-                className="w-28 h-28 rounded-full object-cover border-4 border-white"
+                className="w-28 h-28 rounded-full object-cover border-4 border-white shadow-md"
               />
             </div>
 
-            {/* Change Picture */}
-            <div className="flex space-x-2">
-              <label className="bg-white text-blue-600 px-4 py-1 rounded-lg cursor-pointer hover:bg-gray-100 transition">
-                Change Profile Picture
+            {/* Email below picture */}
+            <p className="text-blue-100 text-sm">{formData.email}</p>
+
+            {/* Full Name */}
+            <h2 className="text-xl font-bold">
+              {formData.fname} {formData.mname} {formData.lname}
+            </h2>
+
+            {/* Change Picture + Upload */}
+            <div className="flex flex-wrap justify-center gap-2 mt-2">
+              <label className="bg-white text-blue-600 px-4 py-2 rounded-full cursor-pointer hover:bg-gray-100 transition">
+                Change Picture
                 <input
                   type="file"
                   accept="image/*"
@@ -139,48 +164,54 @@ export default function Profile() {
                   onChange={handleFileSelect}
                 />
               </label>
+
               {selectedFile && (
                 <button
                   type="button"
                   onClick={handleUploadPicture}
                   disabled={uploadingPic}
-                  className="bg-blue-500 px-4 py-1 rounded-lg hover:bg-blue-600 transition text-white"
+                  className="bg-blue-500 px-4 py-2 rounded-full hover:bg-blue-600 transition text-white disabled:opacity-60"
                 >
                   {uploadingPic ? "Uploading..." : "Upload"}
                 </button>
               )}
             </div>
-
-            <h2 className="text-xl font-bold">
-              {formData.fname} {formData.mname} {formData.lname}
-            </h2>
-            <p className="text-blue-100">{formData.email}</p>
           </div>
 
           {/* Profile Form */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+          <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-8">
             <form className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              {["fname", "mname", "lname", "dob", "contact_number"].map((field) => (
-                <div key={field}>
-                  <label className="block text-sm font-medium text-gray-700 mb-1 capitalize">
-                    {field.replace("_", " ")}
+              {[
+                { label: "First Name", name: "fname" },
+                { label: "Middle Name", name: "mname" },
+                { label: "Last Name", name: "lname" },
+                { label: "Sex", name: "sex" },
+                { label: "Date of Birth", name: "dob", type: "date" },
+                { label: "Contact Number", name: "contact_number" },
+                { label: "Barangay", name: "barangay" },
+                { label: "City", name: "city" },
+                { label: "Province", name: "province" },
+              ].map(({ label, name, type }) => (
+                <div key={name}>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    {label}
                   </label>
                   <input
-                    type={field === "dob" ? "date" : "text"}
-                    name={field}
-                    value={(formData as any)[field]}
+                    type={type || "text"}
+                    name={name}
+                    value={(formData as any)[name] || ""}
                     onChange={handleChange}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
                   />
                 </div>
               ))}
 
-              <div className="sm:col-span-2 flex justify-end mt-4">
+              <div className="sm:col-span-2 flex justify-end mt-6">
                 <button
                   type="button"
                   onClick={handleSave}
                   disabled={saving}
-                  className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
+                  className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition disabled:opacity-60"
                 >
                   {saving ? "Saving..." : "Save Changes"}
                 </button>

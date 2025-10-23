@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import type { ChangeEvent, FormEvent } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
+import LoadingGear from "@/components/common/LoadingGear";
 import toast from "react-hot-toast";
 import Footer from "@/components/Footer";
 import { signIn } from "@/services/auth/SignInAPI";
@@ -21,7 +22,6 @@ const SignIn: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Debug: Log when component mounts and when auth state changes
   useEffect(() => {
     console.log("SignIn component - isAuthenticated:", isAuthenticated);
     console.log("SignIn component - current location:", location.pathname);
@@ -46,8 +46,6 @@ const SignIn: React.FC = () => {
   };
 
   const handleLoginSuccess = (result: any) => {
-    console.log("Login success - result:", result);
-    
     if (!result.user || !result.tokens) {
       setError("Invalid login response from server.");
       toast.error("Invalid login response from server.");
@@ -55,9 +53,7 @@ const SignIn: React.FC = () => {
     }
 
     login(result.tokens, result.user);
-
     const userRole = (result.user.role || result.user.user_type || "").toLowerCase();
-
     toast.success(`Welcome back, ${result.user.fname || "User"}!`);
 
     if (!result.user.is_profile_complete) {
@@ -78,30 +74,19 @@ const SignIn: React.FC = () => {
     const redirectPath =
       (location.state as { from?: { pathname: string } })?.from?.pathname ||
       getRoleRedirect(userRole);
-
-    console.log("Navigating to:", redirectPath);
     navigate(redirectPath, { replace: true });
   };
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    e.stopPropagation(); // Prevent any event bubbling
-    
-    console.log("Form submitted");
-    console.log("Current pathname:", location.pathname);
-    
+    e.stopPropagation();
     setEmailLoading(true);
     setError("");
 
     try {
       const result = await signIn(formData);
-      console.log("signIn API result:", result);
       handleLoginSuccess(result);
     } catch (err: any) {
-      console.log("Login error caught:", err);
-      console.log("Error response:", err?.response);
-      console.log("Still on pathname:", location.pathname);
-      
       const errMsg =
         err?.response?.data?.detail ||
         err?.response?.data?.message ||
@@ -110,23 +95,13 @@ const SignIn: React.FC = () => {
 
       setError(errMsg);
       toast.error(errMsg);
-      
-      // CRITICAL: Explicitly prevent any navigation
-      console.log("Login failed - staying on /signin");
-      console.log("About to set loading to false");
-      
-      // Don't call navigate, don't do anything
+    } finally {
       setEmailLoading(false);
-      return; // Exit immediately
     }
-    
-    // Only reaches here on success
-    setEmailLoading(false);
   };
 
   const handleGoogleRedirect = (e: React.MouseEvent) => {
     e.preventDefault();
-    e.stopPropagation();
     setGoogleLoading(true);
     toast.loading("Redirecting to Google...", { id: "google-redirect" });
     window.location.href = `${import.meta.env.VITE_API_URL}/auth/google/login`;
@@ -135,17 +110,25 @@ const SignIn: React.FC = () => {
   const isLoading = emailLoading || googleLoading;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#1A1A40] via-[#0057B8] to-[#00A8E8] text-white">
+    <div className="relative min-h-screen bg-gradient-to-br from-[#1A1A40] via-[#0057B8] to-[#00A8E8] text-white">
       <nav className="flex items-center justify-between px-8 py-4 bg-[#1A1A40]/80 shadow sticky top-0 z-10">
-        <Link
-          to="/"
-          className="text-2xl font-bold tracking-tight text-[#FFC43D] drop-shadow"
-        >
+        <Link to="/" className="text-2xl font-bold tracking-tight text-[#FFC43D] drop-shadow">
           BukCare
         </Link>
       </nav>
 
-      <div className="flex items-center justify-center min-h-[calc(100vh-80px)] px-6 py-12">
+      {/* 🌀 Page overlay loader (transparent center) */}
+      {isLoading && (
+        <div className="absolute inset-0 flex items-center justify-center z-40">
+          <LoadingGear
+            text={emailLoading ? "Signing you in..." : "Redirecting to Google..."}
+            color="#FFC43D"
+            overlay={false}
+          />
+        </div>
+      )}
+
+      <div className="flex items-center justify-center min-h-[calc(100vh-80px)] px-6 py-12 relative z-10">
         <div className="max-w-md w-full">
           <div className="text-center mb-8">
             <h1 className="text-4xl font-extrabold mb-4 drop-shadow-xl">
@@ -176,7 +159,7 @@ const SignIn: React.FC = () => {
                   placeholder="Enter your email"
                   value={formData.email}
                   onChange={handleChange}
-                  className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-[#FFC43D] focus:border-transparent backdrop-blur-sm transition"
+                  className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-[#FFC43D] focus:border-transparent transition"
                 />
               </div>
 
@@ -192,7 +175,7 @@ const SignIn: React.FC = () => {
                   placeholder="Enter your password"
                   value={formData.password}
                   onChange={handleChange}
-                  className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-[#FFC43D] focus:border-transparent backdrop-blur-sm transition"
+                  className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-[#FFC43D] focus:border-transparent transition"
                 />
               </div>
 
@@ -208,9 +191,13 @@ const SignIn: React.FC = () => {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full bg-[#FFC43D] text-[#1A1A40] font-bold py-3 px-6 rounded-xl shadow-lg hover:bg-[#FFD84C] transition transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                className="w-full bg-[#FFC43D] text-[#1A1A40] font-bold py-3 px-6 rounded-xl shadow-lg hover:bg-[#FFD84C] transition transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
               >
-                {emailLoading ? "Signing In..." : "Sign In"}
+                {emailLoading ? (
+                  <LoadingGear text="Signing In..." color="#1A1A40" overlay={false} />
+                ) : (
+                  <span>Sign In</span>
+                )}
               </button>
             </form>
 
@@ -220,21 +207,25 @@ const SignIn: React.FC = () => {
               <hr className="flex-grow border-white/20" />
             </div>
 
-            <div>
-              <button
-                type="button"
-                onClick={handleGoogleRedirect}
-                disabled={isLoading}
-                className="flex items-center justify-center w-full py-3 bg-white text-gray-800 font-semibold rounded-xl shadow-lg hover:bg-gray-100 transition transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
-              >
-                <img
-                  src="https://developers.google.com/identity/images/g-logo.png"
-                  alt="Google"
-                  className="w-5 h-5 mr-3"
-                />
-                {googleLoading ? "Redirecting..." : "Sign in with Google"}
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={handleGoogleRedirect}
+              disabled={isLoading}
+              className="flex items-center justify-center w-full py-3 bg-white text-gray-800 font-semibold rounded-xl shadow-lg hover:bg-gray-100 transition transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed space-x-2"
+            >
+              {googleLoading ? (
+                <LoadingGear text="Redirecting..." color="#333" overlay={false} />
+              ) : (
+                <>
+                  <img
+                    src="https://developers.google.com/identity/images/g-logo.png"
+                    alt="Google"
+                    className="w-5 h-5"
+                  />
+                  <span>Sign in with Google</span>
+                </>
+              )}
+            </button>
 
             <div className="text-center mt-8 pt-6 border-t border-white/20">
               <span className="text-white/80">
@@ -248,9 +239,13 @@ const SignIn: React.FC = () => {
             <div className="text-center mt-6">
               <p className="text-sm text-white/60">
                 By signing in, you agree to our{" "}
-                <Link to="/terms" className="text-[#FFC43D] hover:underline">Terms of Service</Link>{" "}
+                <Link to="/terms" className="text-[#FFC43D] hover:underline">
+                  Terms of Service
+                </Link>{" "}
                 and{" "}
-                <Link to="/privacy" className="text-[#FFC43D] hover:underline">Privacy Policy</Link>
+                <Link to="/privacy" className="text-[#FFC43D] hover:underline">
+                  Privacy Policy
+                </Link>
               </p>
             </div>
           </div>

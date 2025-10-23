@@ -1,9 +1,10 @@
+# routers/v1/__init__.py
 from fastapi import APIRouter
 from .auth import router as auth_router
-
-# from . import users, admin, doctors, appointments, notifications, schedules
+from .doctors import router as doctors_router  # ✅ import your doctors router
 
 router = APIRouter()
 
-# Only include auth router
-router.include_router(auth_router)
+# ✅ Include routers
+router.include_router(auth_router, prefix="/auth", tags=["Authentication"])
+router.include_router(doctors_router, prefix="/doctors", tags=["Doctors"])

@@ -9,7 +9,7 @@ class UserRole(str, enum.Enum):
     ADMIN = "admin"
     DOCTOR = "doctor"
     PATIENT = "patient"
-    PENDING = "pending"  # for doctors waiting for admin approval
+    PENDING = "pending"  
 
 
 class User(Base):
@@ -94,7 +94,7 @@ class User(Base):
     def from_oauth(cls, data: dict):
         """
         Create a new User from Google OAuth data.
-        If role is missing or invalid, default to PATIENT.
+        If role is missing or invalid, default to PENDING.
         """
         role_value = data.get("role")
         if role_value in UserRole._value2member_map_:

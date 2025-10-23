@@ -1,4 +1,3 @@
-# routers/v1/doctors.py
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session, joinedload
 from typing import List
@@ -8,17 +7,20 @@ from models.doctor import Doctor
 from schemas.doctor import Doctor as DoctorSchema
 
 router = APIRouter()
+
 @router.get("/", response_model=List[DoctorSchema])
 def get_doctors(db: Session = Depends(get_db)):
     """
-    Get all doctors with their linked user info, specialization, and address
+    Get all doctors with their linked user info, specialization, and location
     """
     doctors = (
         db.query(Doctor)
         .options(
-            joinedload(Doctor.user),             # basic info (name, email, etc.)
-            joinedload(Doctor.specializations),   # specialization
-            joinedload(Doctor.address)           # address
+            joinedload(Doctor.user),
+            joinedload(Doctor.specializations),
+            joinedload(Doctor.province),
+            joinedload(Doctor.city),
+            joinedload(Doctor.barangay),
         )
         .all()
     )
@@ -34,7 +36,9 @@ def get_doctors(db: Session = Depends(get_db)):
             specialization=doc.specializations,
             license_number=doc.license_number,
             years_of_experience=doc.years_of_experience,
-            address=doc.address
+            address=f"{doc.barangay.name if doc.barangay else ''}, "
+                    f"{doc.city.name if doc.city else ''}, "
+                    f"{doc.province.name if doc.province else ''}"
         )
         for doc in doctors
     ]

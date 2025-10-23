@@ -3,8 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from core.config import settings
 from core.database import Base, engine
 
-# Import only the auth router
-from routers.v1 import auth
+# ✅ Import the full v1 router (which includes auth + doctors)
+from routers.v1 import router as v1_router
 
 def create_app() -> FastAPI:
     app = FastAPI(
@@ -13,10 +13,10 @@ def create_app() -> FastAPI:
         version="1.0.0"
     )
 
-    # Create DB tables
+    # ✅ Create all tables in the database
     Base.metadata.create_all(bind=engine)
 
-    # Setup CORS
+    # ✅ Configure CORS
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.allowed_origins_list,
@@ -25,11 +25,8 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
-    # API prefix
-    api_v1_prefix = "/api/v1"
-
-    # Only include auth routes for now
-    app.include_router(auth.router, prefix=f"{api_v1_prefix}/auth", tags=["Authentication"])
+    # ✅ Register versioned API routes
+    app.include_router(v1_router, prefix="/api/v1")
 
     return app
 
