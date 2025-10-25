@@ -60,3 +60,6 @@ yarn-debug.log*
 *.zip
 *.tar.gz
 *.egg-info/
+
+BackEnd/logs/
+*.log
