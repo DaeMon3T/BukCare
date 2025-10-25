@@ -18,8 +18,19 @@ Base = declarative_base()
 
 # Dependency for FastAPI routers
 def get_db():
+    """Get database session with proper error handling."""
     db = SessionLocal()
     try:
         yield db
+    except Exception as e:
+        db.rollback()
+        # Log the error for debugging
+        import logging
+        logging.error(f"Database error: {str(e)}")
+        raise e
     finally:
-        db.close()
+        try:
+            db.close()
+        except Exception as close_error:
+            import logging
+            logging.error(f"Error closing database session: {str(close_error)}")

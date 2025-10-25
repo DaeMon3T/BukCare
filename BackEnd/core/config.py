@@ -82,13 +82,24 @@ class Settings(BaseSettings):
     def allowed_origins_list(self) -> list:
         """Convert CORS_ALLOWED_ORIGINS JSON string to list"""
         import json
-        return json.loads(self.CORS_ALLOWED_ORIGINS)
+        try:
+            if hasattr(self, 'CORS_ALLOWED_ORIGINS') and self.CORS_ALLOWED_ORIGINS:
+                return json.loads(self.CORS_ALLOWED_ORIGINS)
+            else:
+                return ["http://localhost:3000", "http://localhost:5173", "http://localhost:8080"]
+        except (json.JSONDecodeError, AttributeError):
+            # Fallback to default if JSON parsing fails
+            return ["http://localhost:3000", "http://localhost:5173", "http://localhost:8080"]
     
     @property
     def allowed_hosts_list(self) -> list:
         """Convert ALLOWED_HOSTS JSON string to list"""
         import json
-        return json.loads(self.ALLOWED_HOSTS)
+        try:
+            return json.loads(self.ALLOWED_HOSTS)
+        except (json.JSONDecodeError, AttributeError):
+            # Fallback to default if JSON parsing fails
+            return ["localhost", "127.0.0.1"]
     
     @property
     def allowed_extensions_list(self) -> list:
@@ -101,8 +112,44 @@ class Settings(BaseSettings):
         log_path.mkdir(parents=True, exist_ok=True)
 
 
-# Initialize settings
-settings = Settings()
-
-# Create necessary directories
-settings.create_log_directory()
+# Initialize settings with validation
+try:
+    settings = Settings()
+    # Create necessary directories
+    settings.create_log_directory()
+except Exception as e:
+    import logging
+    logging.error(f"Failed to initialize settings: {str(e)}")
+    # Provide default settings for development
+    class DefaultSettings:
+        def __init__(self):
+            self.DATABASE_URL = "postgresql://user:password@localhost:5432/bukcare"
+            self.JWT_SECRET_KEY = "your-secret-key-here"
+            self.JWT_REFRESH_SECRET_KEY = "your-refresh-secret-key-here"
+            self.GOOGLE_CLIENT_ID = "your-google-client-id"
+            self.GOOGLE_CLIENT_SECRET = "your-google-client-secret"
+            self.OAUTH_REDIRECT_URI = "http://localhost:8000/api/v1/auth/google/callback"
+            self.CLOUDINARY_CLOUD_NAME = "your-cloudinary-name"
+            self.CLOUDINARY_API_KEY = "your-cloudinary-key"
+            self.CLOUDINARY_API_SECRET = "your-cloudinary-secret"
+            self.EMAIL_HOST_USER = "your-email@example.com"
+            self.EMAIL_HOST_PASSWORD = "your-email-password"
+            self.DEFAULT_FROM_EMAIL = "noreply@bukcare.com"
+            self.CORS_ALLOWED_ORIGINS = '["http://localhost:3000", "http://localhost:5173"]'
+            self.ALLOWED_HOSTS = '["localhost", "127.0.0.1"]'
+            self.FRONTEND_URL = "http://localhost:5173"
+        
+        def allowed_origins_list(self):
+            return ["http://localhost:3000", "http://localhost:5173"]
+        
+        def allowed_hosts_list(self):
+            return ["localhost", "127.0.0.1"]
+        
+        def allowed_extensions_list(self):
+            return ["jpg", "jpeg", "png", "pdf"]
+        
+        def create_log_directory(self):
+            pass
+    
+    settings = DefaultSettings()
+    print("Warning: Using default settings. Please configure your environment variables.")

@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import axios from "axios";
-import { useAuth } from "../../context/AuthContext";
 import {
   Users as UsersIcon,
   Search,
@@ -46,92 +44,91 @@ interface DashboardStats {
 }
 
 const Users: React.FC = () => {
-  const { token, user } = useAuth();
-  const [users, setUsers] = useState<User[]>([]);
-  const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
-  const [stats, setStats] = useState<DashboardStats | null>(null);
+  // Mock data for demonstration
+  const [users, setUsers] = useState<User[]>([
+    {
+      id: 1,
+      fname: "John",
+      lname: "Doe",
+      email: "john.doe@example.com",
+      contact_number: "+63 912 345 6789",
+      role: "patient",
+      is_active: true,
+      is_verified: true,
+      is_profile_complete: true,
+      created_at: "2024-01-15T10:30:00Z",
+      picture: "/default-avatar.png"
+    },
+    {
+      id: 2,
+      fname: "Jane",
+      lname: "Smith",
+      email: "jane.smith@example.com",
+      contact_number: "+63 923 456 7890",
+      role: "doctor",
+      is_active: true,
+      is_verified: true,
+      is_profile_complete: true,
+      created_at: "2024-02-20T14:20:00Z",
+      picture: "/default-avatar.png"
+    },
+    {
+      id: 3,
+      fname: "Michael",
+      mname: "Lee",
+      lname: "Johnson",
+      email: "michael.johnson@example.com",
+      contact_number: "+63 934 567 8901",
+      role: "pending",
+      is_active: false,
+      is_verified: false,
+      is_profile_complete: false,
+      created_at: "2024-03-10T09:15:00Z",
+      picture: "/default-avatar.png"
+    },
+    {
+      id: 4,
+      fname: "Sarah",
+      lname: "Williams",
+      email: "sarah.williams@example.com",
+      contact_number: "+63 945 678 9012",
+      role: "patient",
+      is_active: true,
+      is_verified: true,
+      is_profile_complete: true,
+      created_at: "2024-01-25T16:45:00Z",
+      picture: "/default-avatar.png"
+    },
+    {
+      id: 5,
+      fname: "David",
+      lname: "Brown",
+      email: "david.brown@example.com",
+      contact_number: "+63 956 789 0123",
+      role: "doctor",
+      is_active: true,
+      is_verified: true,
+      is_profile_complete: true,
+      created_at: "2024-02-05T11:30:00Z",
+      picture: "/default-avatar.png"
+    },
+  ]);
+
+  const [filteredUsers, setFilteredUsers] = useState<User[]>(users);
+  const [stats] = useState<DashboardStats>({
+    total_patients: 2,
+    total_doctors: 2,
+    total_staff: 1,
+    pending_approvals: 1,
+    active_sessions: 4,
+    pending_invites: 1,
+  });
+
   const [searchQuery, setSearchQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState<"all" | "patient" | "doctor" | "pending">("all");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
-  const [loading, setLoading] = useState(true);
+  const loading = false;
   const [activeDropdown, setActiveDropdown] = useState<number | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api/v1";
-
-  // Debug: Log token and user info
-  useEffect(() => {
-    console.log("🔍 DEBUG - Token:", token ? `${token.substring(0, 20)}...` : "NULL");
-    console.log("🔍 DEBUG - User:", user);
-    console.log("🔍 DEBUG - User Role:", user?.role);
-  }, [token, user]);
-
-  // Fetch dashboard stats
-  const fetchStats = async () => {
-    if (!token) {
-      console.log("⚠️ No token available for fetchStats");
-      return;
-    }
-    
-    console.log("📊 Fetching stats with token:", token.substring(0, 20) + "...");
-    console.log("📊 User role:", user?.role);
-    
-    try {
-      const response = await axios.get(`${API_BASE_URL}/admin/dashboard-stats`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      console.log("✅ Stats fetched successfully:", response.data);
-      setStats(response.data);
-    } catch (err: any) {
-      console.error("❌ Error fetching stats:", err.response?.status, err.response?.data);
-      console.error("❌ Request headers:", err.config?.headers);
-      if (err.response?.status === 401) {
-        setError("Authentication failed. Your session may have expired. Please log in again.");
-      }
-    }
-  };
-
-  // Fetch all users
-  const fetchUsers = async () => {
-    if (!token) {
-      setError("No authentication token found. Please log in again.");
-      setLoading(false);
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await axios.get(`${API_BASE_URL}/admin/users`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      setUsers(response.data);
-      setFilteredUsers(response.data);
-    } catch (err: any) {
-      console.error("Error fetching users:", err.response?.status, err.response?.data);
-      if (err.response?.status === 401) {
-        setError("Authentication failed. Your session may have expired. Please log in again.");
-      } else {
-        setError(err.response?.data?.detail || "Failed to fetch users");
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (token) {
-      fetchStats();
-      fetchUsers();
-    } else {
-      setError("No authentication token found. Please log in again.");
-      setLoading(false);
-    }
-  }, [token]);
 
   // Filter and search logic
   useEffect(() => {
@@ -160,32 +157,22 @@ const Users: React.FC = () => {
     setFilteredUsers(filtered);
   }, [searchQuery, roleFilter, statusFilter, users]);
 
-  const handleApproveDoctor = async (userId: number) => {
-    if (!token) return;
-
-    try {
-      await axios.put(
-        `${API_BASE_URL}/admin/approve-doctor/${userId}`,
-        {},
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-      
-      await fetchUsers();
-      await fetchStats();
-      setActiveDropdown(null);
-      alert("Doctor approved successfully!");
-    } catch (err: any) {
-      console.error("Error approving doctor:", err.response?.status, err.response?.data);
-      alert(err.response?.data?.detail || "Failed to approve doctor");
-    }
+  const handleApproveDoctor = (userId: number) => {
+    // UI-only: Update the user status locally
+    setUsers(prevUsers =>
+      prevUsers.map(user =>
+        user.id === userId
+          ? { ...user, role: "doctor", is_active: true, is_verified: true }
+          : user
+      )
+    );
+    setActiveDropdown(null);
+    alert("Doctor approved successfully! (UI Demo - No API call)");
   };
 
   const handleAction = (action: string, userId: number) => {
     console.log(`${action} user:`, userId);
+    alert(`Action: ${action} for user ID: ${userId} (UI Demo - No API call)`);
     setActiveDropdown(null);
   };
 
@@ -228,9 +215,7 @@ const Users: React.FC = () => {
     }
   };
 
-  const totalUsers = stats
-    ? stats.total_patients + stats.total_doctors + stats.total_staff
-    : users.length;
+  const totalUsers = stats.total_patients + stats.total_doctors + stats.total_staff;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-6">
@@ -241,16 +226,12 @@ const Users: React.FC = () => {
           <p className="text-gray-600">Manage patients and doctors in the system</p>
         </div>
 
-        {/* DEBUG INFO - Remove in production */}
-        <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-          <p className="font-semibold text-yellow-800 mb-2">🔍 Debug Information:</p>
-          <div className="space-y-1 text-sm font-mono">
-            <p>Token from Context: {token ? `${token.substring(0, 30)}...` : "❌ NULL"}</p>
-            <p>Token from localStorage: {localStorage.getItem("access_token") ? `${localStorage.getItem("access_token")?.substring(0, 30)}...` : "❌ NULL"}</p>
-            <p>User from Context: {user ? JSON.stringify({role: user.role, email: user.email}) : "❌ NULL"}</p>
-            <p>User from localStorage: {localStorage.getItem("user_data") || "❌ NULL"}</p>
-            <p>API Base URL: {API_BASE_URL}</p>
-          </div>
+        {/* Demo Notice */}
+        <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <p className="font-semibold text-blue-800 mb-2">💡 UI Demo Mode</p>
+          <p className="text-sm text-blue-700">
+            This is a UI-only demonstration with mock data. API integration can be added later.
+          </p>
         </div>
 
         {/* Stats Cards */}
@@ -280,9 +261,7 @@ const Users: React.FC = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-600 text-sm mb-1">Patients</p>
-                <p className="text-3xl font-bold text-gray-800">
-                  {stats?.total_patients || users.filter((u) => u.role === "patient").length}
-                </p>
+                <p className="text-3xl font-bold text-gray-800">{stats.total_patients}</p>
               </div>
               <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
                 <UsersIcon className="w-6 h-6 text-green-600" />
@@ -299,9 +278,7 @@ const Users: React.FC = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-600 text-sm mb-1">Doctors</p>
-                <p className="text-3xl font-bold text-gray-800">
-                  {stats?.total_doctors || users.filter((u) => u.role === "doctor").length}
-                </p>
+                <p className="text-3xl font-bold text-gray-800">{stats.total_doctors}</p>
               </div>
               <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
                 <UsersIcon className="w-6 h-6 text-purple-600" />
@@ -318,9 +295,7 @@ const Users: React.FC = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-600 text-sm mb-1">Pending Approvals</p>
-                <p className="text-3xl font-bold text-gray-800">
-                  {stats?.pending_approvals || users.filter((u) => u.role === "pending").length}
-                </p>
+                <p className="text-3xl font-bold text-gray-800">{stats.pending_approvals}</p>
               </div>
               <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
                 <Clock className="w-6 h-6 text-yellow-600" />
@@ -328,20 +303,6 @@ const Users: React.FC = () => {
             </div>
           </motion.div>
         </div>
-
-        {/* Error Message */}
-        {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
-            <p className="font-semibold">Error:</p>
-            <p>{error}</p>
-            <button
-              onClick={() => window.location.href = "/signin"}
-              className="mt-2 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
-            >
-              Go to Login
-            </button>
-          </div>
-        )}
 
         {/* Filters and Search */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">

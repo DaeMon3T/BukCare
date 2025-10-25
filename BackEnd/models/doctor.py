@@ -1,5 +1,6 @@
-from sqlalchemy import Column, String, Integer, ForeignKey, Table, Boolean, Time, Text
+from sqlalchemy import Column, String, Integer, ForeignKey, Table, Boolean, Time, Text, DateTime
 from sqlalchemy.orm import relationship
+from datetime import datetime
 from core.database import Base
 
 
@@ -55,6 +56,13 @@ class Doctor(Base):
 
     is_verified = Column(Boolean, default=False)  # admin approval
     specializations_json = Column(Text, nullable=True)
+    
+    # Additional doctor information
+    bio = Column(Text, nullable=True)
+    consultation_fee = Column(Integer, nullable=True)  # in cents
+    is_accepting_patients = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships (string references prevent circular imports)
     user = relationship("User", back_populates="doctor_profile")
@@ -78,12 +86,18 @@ class Doctor(Base):
 class DoctorAvailability(Base):
     __tablename__ = "doctor_availabilities"
 
-    availability_id = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, primary_key=True, index=True)
     doctor_id = Column(Integer, ForeignKey("doctors.doctor_id", ondelete="CASCADE"), nullable=False)
-
-    day_of_week = Column(String(10), nullable=False)  # e.g., "Monday"
+    
+    # Date-based availability (for specific dates)
+    date = Column(DateTime, nullable=True)
     start_time = Column(Time, nullable=False)
     end_time = Column(Time, nullable=False)
+    is_available = Column(Boolean, default=True)
+    notes = Column(Text, nullable=True)
+    
+    # Weekly availability (for recurring schedules)
+    day_of_week = Column(String(10), nullable=True)  # e.g., "Monday"
     is_active = Column(Boolean, default=True)
 
     doctor = relationship("Doctor", back_populates="availabilities")

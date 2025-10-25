@@ -11,6 +11,8 @@ import {
   User,
   ClipboardList,
   Search,
+  Users,
+  Calendar,
 } from "lucide-react";
 import AuthContext from "../context/AuthContext.js";
 
@@ -39,7 +41,7 @@ const Navbar: React.FC<NavbarProps> = ({ role }) => {
   const [showNotifications, setShowNotifications] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // ✅ Compute the name dynamically
+  // Compute the display name dynamically
   const displayName = useMemo(() => {
     if (!user) return "Guest";
     if (user.name && user.name.trim() !== "") return user.name;
@@ -47,11 +49,31 @@ const Navbar: React.FC<NavbarProps> = ({ role }) => {
     return fullName || "Guest";
   }, [user]);
 
-  // 🔗 Dynamic routes
-  const homeLink = `/${userRole}/home`;
-  const appointmentsLink = `/${userRole}/appointments`;
-  const findDoctorsLink = `/${userRole}/find-doctor`;
+  // Role-based navigation configuration
+  const getNavigationItems = () => {
+    switch (userRole) {
+      case "admin":
+        return [
+          { label: "Users", path: "/admin/users", icon: Users },
+        ];
+      case "doctor":
+        return [
+          { label: "Appointments", path: "/doctor/appointments", icon: Calendar },
+          { label: "Patients", path: "/doctor/patients", icon: Users },
+        ];
+      case "patient":
+      default:
+        return [
+          { label: "Home", path: "/patient/home", icon: Home },
+          { label: "Find Doctors", path: "/patient/find-doctor", icon: Search },
+          { label: "Appointments", path: "/patient/appointments", icon: ClipboardList },
+        ];
+    }
+  };
+
+  const navigationItems = getNavigationItems();
   const profileLink = `/${userRole}/profile`;
+  const homeLink = navigationItems[0]?.path || `/${userRole}/home`;
 
   return (
     <header className="bg-white/80 backdrop-blur-md shadow-sm border-b border-gray-100 sticky top-0 z-50">
@@ -84,23 +106,19 @@ const Navbar: React.FC<NavbarProps> = ({ role }) => {
           <div className="flex items-center space-x-4">
             {/* Desktop Links */}
             <div className="hidden lg:flex items-center space-x-6">
-              <Link to={homeLink} className="text-gray-700 hover:text-blue-600">
-                Home
-              </Link>
-
-              <Link
-                to={findDoctorsLink}
-                className="text-gray-700 hover:text-blue-600"
-              >
-                Find Doctors
-              </Link>
-
-              <Link
-                to={appointmentsLink}
-                className="text-gray-700 hover:text-blue-600"
-              >
-                Appointments
-              </Link>
+              {navigationItems.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <Link
+                    key={item.path}
+                    to={item.path}
+                    className="flex items-center space-x-2 text-gray-700 hover:text-blue-600 transition-colors"
+                  >
+                    <Icon className="w-5 h-5" />
+                    <span>{item.label}</span>
+                  </Link>
+                );
+              })}
             </div>
 
             {/* Notifications */}
@@ -185,7 +203,7 @@ const Navbar: React.FC<NavbarProps> = ({ role }) => {
         </div>
       </div>
 
-      {/* 📱 Mobile Sidebar Drawer */}
+      {/* Mobile Sidebar Drawer */}
       <AnimatePresence>
         {sidebarOpen && (
           <>
@@ -223,32 +241,20 @@ const Navbar: React.FC<NavbarProps> = ({ role }) => {
               </div>
 
               <nav className="space-y-4">
-                <Link
-                  to={homeLink}
-                  onClick={() => setSidebarOpen(false)}
-                  className="flex items-center space-x-3 text-gray-700 hover:text-blue-600"
-                >
-                  <Home className="w-5 h-5" />
-                  <span>Home</span>
-                </Link>
-
-                <Link
-                  to={findDoctorsLink}
-                  onClick={() => setSidebarOpen(false)}
-                  className="flex items-center space-x-3 text-gray-700 hover:text-blue-600"
-                >
-                  <Search className="w-5 h-5" />
-                  <span>Find Doctors</span>
-                </Link>
-
-                <Link
-                  to={appointmentsLink}
-                  onClick={() => setSidebarOpen(false)}
-                  className="flex items-center space-x-3 text-gray-700 hover:text-blue-600"
-                >
-                  <ClipboardList className="w-5 h-5" />
-                  <span>Appointments</span>
-                </Link>
+                {navigationItems.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <Link
+                      key={item.path}
+                      to={item.path}
+                      onClick={() => setSidebarOpen(false)}
+                      className="flex items-center space-x-3 text-gray-700 hover:text-blue-600"
+                    >
+                      <Icon className="w-5 h-5" />
+                      <span>{item.label}</span>
+                    </Link>
+                  );
+                })}
 
                 <Link
                   to={profileLink}

@@ -1,5 +1,4 @@
-from fastapi import APIRouter
-from .admin import router as admin_router
+# Admin-specific routes
+from .admin import router
 
-router = APIRouter()
-router.include_router(admin_router, prefix="/admin")
+__all__ = ["router"]

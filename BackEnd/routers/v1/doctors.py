@@ -31,14 +31,18 @@ def get_doctors(db: Session = Depends(get_db)):
     return [
         DoctorSchema(
             doctor_id=doc.doctor_id,
+            user_id=doc.user_id,
             name=f"{doc.user.fname} {doc.user.lname}",
             email=doc.user.email,
-            specialization=doc.specializations,
+            specialization=doc.specializations[0].name if doc.specializations else "General Practice",
             license_number=doc.license_number,
             years_of_experience=doc.years_of_experience,
             address=f"{doc.barangay.name if doc.barangay else ''}, "
                     f"{doc.city.name if doc.city else ''}, "
-                    f"{doc.province.name if doc.province else ''}"
+                    f"{doc.province.name if doc.province else ''}",
+            is_verified=doc.is_verified,
+            created_at=doc.created_at,
+            updated_at=doc.updated_at
         )
         for doc in doctors
     ]

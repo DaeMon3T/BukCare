@@ -2,25 +2,14 @@
 import BaseAPI from "../BaseAPI";
 
 export interface Doctor {
-  id: number;
-  user_id: number;
-  first_name: string;
-  last_name: string;
+  doctor_id: number;
+  name: string;
   email: string;
   specialization: string;
   license_number: string;
-  hospital_affiliation?: string;
-  phone_number?: string;
-  address?: string;
-  city?: string;
-  state?: string;
-  zip_code?: string;
-  years_of_experience?: number;
-  education?: string[];
-  certifications?: string[];
-  profile_picture?: string;
+  years_of_experience: number;
+  address: string;
   is_verified: boolean;
-  is_active: boolean;
   created_at: string;
   updated_at: string;
 }

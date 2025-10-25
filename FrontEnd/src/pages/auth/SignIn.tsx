@@ -123,7 +123,7 @@ const SignIn: React.FC = () => {
           <LoadingGear
             text={emailLoading ? "Signing you in..." : "Redirecting to Google..."}
             color="#FFC43D"
-            overlay={false}
+            showOverlay={false}
           />
         </div>
       )}
@@ -194,7 +194,7 @@ const SignIn: React.FC = () => {
                 className="w-full bg-[#FFC43D] text-[#1A1A40] font-bold py-3 px-6 rounded-xl shadow-lg hover:bg-[#FFD84C] transition transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
               >
                 {emailLoading ? (
-                  <LoadingGear text="Signing In..." color="#1A1A40" overlay={false} />
+                  <LoadingGear text="Signing In..." color="#1A1A40" showOverlay={false} />
                 ) : (
                   <span>Sign In</span>
                 )}
@@ -214,7 +214,7 @@ const SignIn: React.FC = () => {
               className="flex items-center justify-center w-full py-3 bg-white text-gray-800 font-semibold rounded-xl shadow-lg hover:bg-gray-100 transition transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed space-x-2"
             >
               {googleLoading ? (
-                <LoadingGear text="Redirecting..." color="#333" overlay={false} />
+                <LoadingGear text="Redirecting..." color="#333" showOverlay={false} />
               ) : (
                 <>
                   <img

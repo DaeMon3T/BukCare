@@ -6,6 +6,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './context/AuthContext';
 import { AdminRoute, DoctorRoute, PatientRoute } from './routes/ProtectedRoutes';
+import ErrorBoundary from './components/ErrorBoundary';
 
 // Auth Components
 import GoogleCallbackHandler from './components/auth/GoogleCallbackHandler';
@@ -28,11 +29,13 @@ import Privacy from './pages/public/Privacy';
 // Admin Pages
 import AdminDashboard from './pages/admin/Dashboard';
 import AdminProfile from './pages/admin/Profile';
+import AdminUsers from './pages/admin/Users';
 
 // Doctor Pages
 import DoctorDashboard from './pages/doctor/Dashboard';
 import DoctorAppointments from './pages/doctor/Appointments';
 import DoctorProfile from './pages/doctor/Profile';
+import DoctorSetAvailability from './pages/doctor/SetAvailability';
 
 // Patient Pages
 import PatientHome from './pages/patient/Home';
@@ -45,11 +48,12 @@ import FindDoctor from './pages/patient/FindDoctor';
 // --------------------
 const App: FC = () => {
   return (
-    <AuthProvider>
-      <Router>
-        <Toaster position="top-center" reverseOrder={false} />
+    <ErrorBoundary>
+      <AuthProvider>
+        <Router>
+          <Toaster position="top-center" reverseOrder={false} />
 
-        <div className="App">
+          <div className="App">
           <Routes>
             {/* Public Routes */}
             <Route path="/" element={<Landing />} />
@@ -75,6 +79,10 @@ const App: FC = () => {
               element={<AdminRoute><AdminDashboard /></AdminRoute>}
             />
             <Route
+              path="/admin/users"
+              element={<AdminRoute><AdminUsers /></AdminRoute>}
+            />
+            <Route
               path="/admin/profile"
               element={<AdminRoute><AdminProfile /></AdminRoute>}
             />
@@ -87,6 +95,14 @@ const App: FC = () => {
             <Route
               path="/doctor/appointments"
               element={<DoctorRoute><DoctorAppointments /></DoctorRoute>}
+            />
+            <Route
+              path="/doctor/patients"
+              element={<DoctorRoute><DoctorDashboard /></DoctorRoute>}
+            />
+            <Route
+              path="/doctor/set-availability"
+              element={<DoctorRoute><DoctorSetAvailability /></DoctorRoute>}
             />
             <Route
               path="/doctor/profile"
@@ -114,9 +130,10 @@ const App: FC = () => {
             {/* Catch All */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
-        </div>
-      </Router>
-    </AuthProvider>
+          </div>
+        </Router>
+      </AuthProvider>
+    </ErrorBoundary>
   );
 };
 

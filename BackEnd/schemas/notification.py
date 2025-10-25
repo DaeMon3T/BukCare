@@ -2,8 +2,6 @@
 from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional
 from datetime import datetime
-from schemas.users import User
-from schemas.appointment import Appointment
 
 class NotificationBase(BaseModel):
     target_user_id: int

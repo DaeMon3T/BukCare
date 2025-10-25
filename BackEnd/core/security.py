@@ -25,25 +25,52 @@ REFRESH_TOKEN_EXPIRE_SECONDS = REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60
 # Password functions
 # ----------------------
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
+    """Verify a password against its hash with proper error handling."""
+    if not plain_password or not hashed_password:
+        return False
+    try:
+        return pwd_context.verify(plain_password, hashed_password)
+    except Exception:
+        return False
 
 def get_password_hash(password: str) -> str:
+    """Hash a password with proper validation."""
+    if not password:
+        raise ValueError("Password cannot be empty")
+    if len(password) < settings.PASSWORD_MIN_LENGTH:
+        raise ValueError(f"Password must be at least {settings.PASSWORD_MIN_LENGTH} characters long")
     return pwd_context.hash(password)
 
 # ----------------------
 # JWT token creation
 # ----------------------
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
+    """Create an access token with proper validation."""
+    if not data or not isinstance(data, dict):
+        raise ValueError("Token data must be a non-empty dictionary")
+    
     to_encode = data.copy()
     expire = datetime.utcnow() + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
     to_encode.update({"exp": expire, "type": "access"})
-    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    
+    try:
+        return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    except Exception as e:
+        raise ValueError(f"Failed to create access token: {str(e)}")
 
 def create_refresh_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
+    """Create a refresh token with proper validation."""
+    if not data or not isinstance(data, dict):
+        raise ValueError("Token data must be a non-empty dictionary")
+    
     to_encode = data.copy()
     expire = datetime.utcnow() + (expires_delta or timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS))
     to_encode.update({"exp": expire, "type": "refresh"})
-    return jwt.encode(to_encode, REFRESH_SECRET_KEY, algorithm=ALGORITHM)
+    
+    try:
+        return jwt.encode(to_encode, REFRESH_SECRET_KEY, algorithm=ALGORITHM)
+    except Exception as e:
+        raise ValueError(f"Failed to create refresh token: {str(e)}")
 
 # ----------------------
 # JWT decoding

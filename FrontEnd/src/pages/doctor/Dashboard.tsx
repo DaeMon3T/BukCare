@@ -1,6 +1,7 @@
-// src/pages/doctor/DoctorInterface.tsx
+// src/pages/doctor/Dashboard.tsx
 import { useState } from "react";
-import type { FC, JSX } from "react"; // Add type-only import
+import type { FC, JSX } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Clock,
   Users,
@@ -25,13 +26,6 @@ interface Appointment {
   status: "confirmed" | "pending" | "cancelled" | string;
 }
 
-// 🗓️ Availability type definition
-interface Availability {
-  day: string;
-  start: string;
-  end: string;
-}
-
 // 🧠 User type definition
 interface User {
   name: string;
@@ -42,15 +36,13 @@ interface User {
 interface DoctorInterfaceProps {
   user?: User;
   appointments?: Appointment[];
-  availability?: Availability[];
 }
 
 const DoctorInterface: FC<DoctorInterfaceProps> = ({
   user = { name: "Doctor", email: "doctor@clinic.com" },
   appointments = [],
-  //availability = [],
 }) => {
-  const [showAvailabilityModal, setShowAvailabilityModal] = useState<boolean>(false);
+  const navigate = useNavigate();
   const [showAppointmentDetails, setShowAppointmentDetails] = useState<boolean>(false);
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
   const [activeTab, setActiveTab] = useState<"today" | "upcoming">("today");
@@ -80,26 +72,6 @@ const DoctorInterface: FC<DoctorInterfaceProps> = ({
         return <Clock className="w-4 h-4" />;
     }
   };
-
-//
-
-  // 📅 Availability Modal
-  const AvailabilityModal: FC = () => (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6">
-        <h2 className="text-xl font-semibold mb-4 text-gray-800">Set Availability</h2>
-        <p className="text-sm text-gray-600">Feature under development...</p>
-        <div className="mt-6 text-right">
-          <button
-            onClick={() => setShowAvailabilityModal(false)}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-          >
-            Close
-          </button>
-        </div>
-      </div>
-    </div>
-  );
 
   // 📋 Appointment Details Modal
   const AppointmentDetailsModal: FC = () =>
@@ -150,7 +122,7 @@ const DoctorInterface: FC<DoctorInterfaceProps> = ({
           {/* Quick Actions */}
           <div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
             <div
-              onClick={() => setShowAvailabilityModal(true)}
+              onClick={() => navigate('/doctor/set-availability')}
               className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow cursor-pointer"
             >
               <div className="flex items-center space-x-4">
@@ -332,8 +304,7 @@ const DoctorInterface: FC<DoctorInterfaceProps> = ({
         </div>
       </main>
 
-      {/* Modals */}
-      {showAvailabilityModal && <AvailabilityModal />}
+      {/* Modal */}
       {showAppointmentDetails && <AppointmentDetailsModal />}
     </div>
   );

@@ -28,6 +28,7 @@ interface AuthContextType {
   user: UserData | null;
   login: (tokens: Tokens, userData: UserData) => void;
   logout: () => Promise<void>;
+  refreshToken: () => Promise<boolean>;
   loading: boolean;
   isAuthenticated: boolean;
 }
@@ -48,24 +49,44 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Load user on mount
+  // Load user on mount with token validation
   useEffect(() => {
-    const token = localStorage.getItem("access_token");
-    const userData = localStorage.getItem("user_data");
+    const initializeAuth = async () => {
+      const token = localStorage.getItem("access_token");
+      const userData = localStorage.getItem("user_data");
 
-    if (token && userData) {
-      try {
-        const parsedUser: UserData = JSON.parse(userData);
-        setUser(parsedUser);
-      } catch {
-        localStorage.clear();
+      if (token && userData) {
+        try {
+          const parsedUser: UserData = JSON.parse(userData);
+          
+          // Validate token is not expired
+          const tokenParts = token.split('.');
+          if (tokenParts.length !== 3) {
+            throw new Error('Invalid token format');
+          }
+          const tokenPayload = JSON.parse(atob(tokenParts[1] || ''));
+          const currentTime = Date.now() / 1000;
+          
+          if (tokenPayload.exp && tokenPayload.exp < currentTime) {
+            // Token expired, clear storage
+            localStorage.clear();
+            setUser(null);
+          } else {
+            setUser(parsedUser);
+          }
+        } catch (error) {
+          console.error("Error parsing stored auth data:", error);
+          localStorage.clear();
+          setUser(null);
+        }
+      } else {
         setUser(null);
       }
-    } else {
-      setUser(null);
-    }
 
-    setLoading(false);
+      setLoading(false);
+    };
+
+    initializeAuth();
   }, []);
 
   // ✅ Combine name fields and ensure consistent shape
@@ -89,12 +110,45 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setUser(formattedUser);
   };
 
+  // Token refresh function
+  const refreshToken = async (): Promise<boolean> => {
+    try {
+      const refreshTokenValue = localStorage.getItem("refresh_token");
+      if (!refreshTokenValue) return false;
+
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+      const response = await fetch(`${apiUrl}/auth/refresh`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ refresh_token: refreshTokenValue }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        localStorage.setItem("access_token", data.access_token);
+        return true;
+      } else {
+        localStorage.clear();
+        setUser(null);
+        return false;
+      }
+    } catch (error) {
+      console.error("Token refresh failed:", error);
+      localStorage.clear();
+      setUser(null);
+      return false;
+    }
+  };
+
   // Logout
   const logout = async () => {
     try {
       const accessToken = localStorage.getItem("access_token");
       if (accessToken) {
-        await fetch(`${import.meta.env.VITE_API_URL}/auth/logout`, {
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+        await fetch(`${apiUrl}/auth/logout`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -116,6 +170,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       user,
       login,
       logout,
+      refreshToken,
       loading,
       isAuthenticated: !!user,
     }),

@@ -29,13 +29,10 @@ const FindDoctor: React.FC = () => {
         const data: APIDoctor[] = await GetDoctorAPI.getDoctors();
 
         const formattedDoctors: UICardDoctor[] = data.map((doc) => ({
-          doctor_id: doc.id,
-          name: `${doc.first_name} ${doc.last_name}`,
-          specialization:
-            typeof doc.specialization === "string"
-              ? { name: doc.specialization }
-              : { name: (doc.specialization as any)?.name || "" },
-          avatar: doc.profile_picture || "/default-avatar.png",
+          doctor_id: doc.doctor_id,
+          name: doc.name,
+          specialization: { name: doc.specialization },
+          avatar: "/default-avatar.png",
           address: doc.address || "Not provided",
           email: doc.email || "No email available",
         }));
