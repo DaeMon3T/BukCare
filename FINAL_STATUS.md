@@ -176,3 +176,4 @@ Or press `Ctrl+C` if using the working startup script.
 **The application is ready for use and can handle real-world healthcare management needs!** 🏥✨
 
 
+

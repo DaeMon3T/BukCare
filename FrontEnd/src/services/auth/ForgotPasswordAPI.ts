@@ -1,10 +1,4 @@
-// src/services/auth/ForgotPasswordAPI.ts
 import BaseAPI from "../BaseAPI.js";
-
-// Type Definitions
-export interface ForgotPasswordRequest {
-  email: string;
-}
 
 export interface ForgotPasswordResponse {
   message: string;
@@ -17,24 +11,20 @@ export interface ApiError {
   email?: string[];
 }
 
-/**
- * Send forgot password request to API
- * @param email - User's email address
- * @returns API response
- */
+// Step 1 — Request OTP
 export const forgotPassword = async (email: string): Promise<ForgotPasswordResponse> => {
-  try {
-    const response = await BaseAPI.post<ForgotPasswordResponse>(
-      "/auth/forgot-password/", 
-      { email } as ForgotPasswordRequest
-    );
-    return response.data;
-  } catch (error: any) {
-    const message =
-      error.response?.data?.detail || 
-      error.response?.data?.message || 
-      error.message || 
-      "Failed to send reset link";
-    throw new Error(message);
-  }
+  const response = await BaseAPI.post("/auth/password-reset/request", { email });
+  return response.data;
+};
+
+// Step 2 — Verify OTP
+export const verifyOtp = async (email: string, otp: string): Promise<ForgotPasswordResponse> => {
+  const response = await BaseAPI.post("/auth/password-reset/verify", { email, otp });
+  return response.data;
+};
+
+// Step 3 — Confirm new password
+export const resetPassword = async (email: string, new_password: string): Promise<ForgotPasswordResponse> => {
+  const response = await BaseAPI.post("/auth/password-reset/confirm", { email, new_password });
+  return response.data;
 };
