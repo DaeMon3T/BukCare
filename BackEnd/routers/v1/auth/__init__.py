@@ -6,6 +6,7 @@ from .logout import router as logout_router
 from .password_reset import router as password_reset_router
 from .complete_profile import router as complete_profile_router
 from .refresh import router as refresh_router
+from .profile import router as profile_router  # <-- added profile
 
 # Create main auth router
 router = APIRouter()
@@ -18,3 +19,4 @@ router.include_router(logout_router)
 router.include_router(password_reset_router)
 router.include_router(complete_profile_router)
 router.include_router(refresh_router)
+router.include_router(profile_router)  # <-- include profile router

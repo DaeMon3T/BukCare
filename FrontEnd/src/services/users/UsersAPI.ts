@@ -7,6 +7,7 @@ export interface User {
   email: string;
   fname: string;
   lname: string;
+  mname?: string;
   name: string;
   role: string;
   is_active: boolean;
@@ -40,11 +41,8 @@ export interface AdminStats {
 
 // ---------- Admin APIs ----------
 
-// ✅ Get all users (with optional filters)
-export const getAllUsers = async (params?: {
-  role?: string;
-  is_active?: boolean;
-}): Promise<User[]> => {
+// Get all users (with optional filters)
+export const getAllUsers = async (params?: { role?: string; is_active?: boolean }): Promise<User[]> => {
   try {
     const res = await BaseAPI.get<User[]>("/users", { params });
     return res.data;
@@ -54,7 +52,7 @@ export const getAllUsers = async (params?: {
   }
 };
 
-// ✅ Get pending doctor list
+// Get pending doctor list
 export const getPendingDoctors = async (): Promise<DoctorPending[]> => {
   try {
     const res = await BaseAPI.get<DoctorPending[]>("/doctors/pending");
@@ -65,7 +63,7 @@ export const getPendingDoctors = async (): Promise<DoctorPending[]> => {
   }
 };
 
-// ✅ Approve doctor
+// Approve doctor
 export const approveDoctor = async (doctorId: number): Promise<{ message: string }> => {
   try {
     const res = await BaseAPI.put<{ message: string }>(`/doctors/${doctorId}/approve`);
@@ -76,11 +74,8 @@ export const approveDoctor = async (doctorId: number): Promise<{ message: string
   }
 };
 
-// ✅ Reject doctor
-export const rejectDoctor = async (
-  doctorId: number,
-  reason?: string
-): Promise<{ message: string }> => {
+// Reject doctor
+export const rejectDoctor = async (doctorId: number, reason?: string): Promise<{ message: string }> => {
   try {
     const res = await BaseAPI.put<{ message: string }>(
       `/doctors/${doctorId}/reject`,
@@ -93,7 +88,7 @@ export const rejectDoctor = async (
   }
 };
 
-// ✅ Get admin dashboard stats
+// Get admin dashboard stats
 export const getAdminStats = async (): Promise<AdminStats> => {
   try {
     const res = await BaseAPI.get<AdminStats>("/stats");
@@ -104,11 +99,8 @@ export const getAdminStats = async (): Promise<AdminStats> => {
   }
 };
 
-// ✅ Update user active/inactive status
-export const updateUserStatus = async (
-  userId: number,
-  is_active: boolean
-): Promise<{ message: string }> => {
+// Update user active/inactive status
+export const updateUserStatus = async (userId: number, is_active: boolean): Promise<{ message: string }> => {
   try {
     const res = await BaseAPI.put<{ message: string }>(
       `/users/${userId}/status`,
@@ -124,10 +116,10 @@ export const updateUserStatus = async (
 
 // ---------- Patient/Profile APIs ----------
 
-// ✅ Get user profile
-export const getUserProfile = async (userId: number) => {
+// Get current user profile
+export const getUserProfile = async (): Promise<User> => {
   try {
-    const res = await BaseAPI.get(`/users/${userId}/profile`);
+    const res = await BaseAPI.get<User>("/auth/profile");
     return res.data;
   } catch (err) {
     console.error("Error fetching user profile:", err);
@@ -135,20 +127,17 @@ export const getUserProfile = async (userId: number) => {
   }
 };
 
-// ✅ Update user profile
-export const updateUserProfile = async (
-  userId: number,
-  data: {
-    fname?: string;
-    mname?: string;
-    lname?: string;
-    dob?: string;
-    contact_number?: string;
-    email?: string;
-  }
-) => {
+// Update current user profile
+export const updateUserProfile = async (data: {
+  fname?: string;
+  mname?: string;
+  lname?: string;
+  dob?: string;
+  contact_number?: string;
+  email?: string;
+}): Promise<User> => {
   try {
-    const res = await BaseAPI.put(`/users/${userId}/profile`, data);
+    const res = await BaseAPI.put<User>("/auth/profile", data);
     return res.data;
   } catch (err) {
     console.error("Error updating user profile:", err);
@@ -156,13 +145,13 @@ export const updateUserProfile = async (
   }
 };
 
-// ✅ Upload or update profile picture
-export const updateProfilePicture = async (userId: number, file: File): Promise<string> => {
+// Upload or update profile picture
+export const updateProfilePicture = async (file: File): Promise<string> => {
   try {
     const formData = new FormData();
     formData.append("picture", file);
 
-    const res = await BaseAPI.post(`/users/${userId}/profile/picture`, formData, {
+    const res = await BaseAPI.post("/auth/profile/picture", formData, {
       headers: { "Content-Type": "multipart/form-data" },
     });
 

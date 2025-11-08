@@ -1,95 +1,89 @@
-// src/pages/patient/Profile.tsx
 import { useEffect, useState, ChangeEvent } from "react";
 import Navbar from "@/components/Navbar";
 import { useAuth } from "@/context/AuthContext";
-// import { getUserProfile, updateUserProfile, updateProfilePicture } from "@/services/users/UsersAPI";
+import {
+  getUserProfile,
+  updateUserProfile,
+  updateProfilePicture,
+} from "@/services/users/UsersAPI";
 
 interface UserProfile {
   fname: string;
-  mname: string;
+  mname?: string;
   lname: string;
-  sex?: string;
-  dob: string;
-  contact_number: string;
+  sex?: boolean | null; // backend sends boolean
+  dob?: string;
+  contact_number?: string;
   email: string;
-  barangay?: string;
-  city?: string;
-  province?: string;
   picture?: string;
 }
 
 export default function Profile() {
   const { user: authUser } = useAuth();
-  const userId = authUser?.user_id;
 
   const [formData, setFormData] = useState<UserProfile>({
     fname: "",
     mname: "",
     lname: "",
-    sex: "",
+    sex: null,
     dob: "",
     contact_number: "",
     email: "",
-    barangay: "",
-    city: "",
-    province: "",
+    picture: "",
   });
 
-  const [picture, setPicture] = useState<string>("");
+  const [picture, setPicture] = useState<string>("/assets/react.svg");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [saving, setSaving] = useState<boolean>(false);
   const [uploadingPic, setUploadingPic] = useState<boolean>(false);
 
   // --------------------------------------------
-  // ✅ Fetch Profile (API commented out)
+  // Fetch Profile
   // --------------------------------------------
   useEffect(() => {
-    if (!userId) return;
-
     const fetchProfile = async () => {
+      setLoading(true);
       try {
-        // const user: UserProfile = await getUserProfile(userId);
-        setFormData({
-          fname: "",
-          mname: "",
-          lname: "",
-          sex: "",
-          dob: "",
-          contact_number: "",
-          email: authUser?.email || "",
-          barangay: "",
-          city: "",
-          province: "",
-        });
-        setPicture("/assets/react.svg");
+        const user = await getUserProfile();
+        setFormData(user);
+        setPicture(user.picture || "/assets/react.svg");
       } catch (err) {
         console.error("Error fetching profile:", err);
       } finally {
         setLoading(false);
       }
     };
-
     fetchProfile();
-  }, [userId, authUser]);
+  }, []);
 
   // --------------------------------------------
-  // ✅ Handlers
+  // Handlers
   // --------------------------------------------
-  const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleChange = (
+    e: ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+
+    // Convert sex value to boolean when saving
+    if (name === "sex") {
+      setFormData((prev) => ({
+        ...prev,
+        sex: value === "true" ? true : value === "false" ? false : null,
+      }));
+    } else {
+      setFormData((prev) => ({ ...prev, [name]: value }));
+    }
   };
 
   const handleSave = async () => {
-    if (!userId) return;
     setSaving(true);
     try {
-      // await updateUserProfile(userId, formData);
-      alert("Profile updated successfully! (API call commented out)");
+      await updateUserProfile(formData);
+      alert("Profile updated successfully!");
     } catch (err) {
       console.error(err);
-      alert("Failed to update profile. (API call commented out)");
+      alert("Failed to update profile.");
     } finally {
       setSaving(false);
     }
@@ -103,23 +97,23 @@ export default function Profile() {
   };
 
   const handleUploadPicture = async () => {
-    if (!userId || !selectedFile) return;
+    if (!selectedFile) return;
     setUploadingPic(true);
     try {
-      // const updatedPicUrl: string = await updateProfilePicture(userId, selectedFile);
-      // setPicture(updatedPicUrl);
+      const updatedPicUrl: string = await updateProfilePicture(selectedFile);
+      setPicture(updatedPicUrl);
       setSelectedFile(null);
-      alert("Profile picture updated! (API call commented out)");
+      alert("Profile picture updated!");
     } catch (err) {
       console.error(err);
-      alert("Failed to update profile picture. (API call commented out)");
+      alert("Failed to update profile picture.");
     } finally {
       setUploadingPic(false);
     }
   };
 
   // --------------------------------------------
-  // ✅ UI Rendering
+  // UI Rendering
   // --------------------------------------------
   if (loading) {
     return (
@@ -137,23 +131,17 @@ export default function Profile() {
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
           {/* Profile Header */}
           <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-6 text-white shadow-lg mb-8 flex flex-col items-center space-y-4 transition-transform duration-300 hover:scale-[1.01]">
-            <div className="relative">
-              <img
-                src={picture}
-                alt="Profile"
-                className="w-28 h-28 rounded-full object-cover border-4 border-white shadow-md"
-              />
-            </div>
+            <img
+              src={picture}
+              alt="Profile"
+              className="w-28 h-28 rounded-full object-cover border-4 border-white shadow-md"
+            />
 
-            {/* Email below picture */}
             <p className="text-blue-100 text-sm">{formData.email}</p>
-
-            {/* Full Name */}
             <h2 className="text-xl font-bold">
-              {formData.fname} {formData.mname} {formData.lname}
+              {formData.fname} {formData.mname || ""} {formData.lname}
             </h2>
 
-            {/* Change Picture + Upload */}
             <div className="flex flex-wrap justify-center gap-2 mt-2">
               <label className="bg-white text-blue-600 px-4 py-2 rounded-full cursor-pointer hover:bg-gray-100 transition">
                 Change Picture
@@ -181,30 +169,105 @@ export default function Profile() {
           {/* Profile Form */}
           <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-8">
             <form className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              {[
-                { label: "First Name", name: "fname" },
-                { label: "Middle Name", name: "mname" },
-                { label: "Last Name", name: "lname" },
-                { label: "Sex", name: "sex" },
-                { label: "Date of Birth", name: "dob", type: "date" },
-                { label: "Contact Number", name: "contact_number" },
-                { label: "Barangay", name: "barangay" },
-                { label: "City", name: "city" },
-                { label: "Province", name: "province" },
-              ].map(({ label, name, type }) => (
-                <div key={name}>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    {label}
-                  </label>
-                  <input
-                    type={type || "text"}
-                    name={name}
-                    value={(formData as any)[name] || ""}
-                    onChange={handleChange}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
-                  />
-                </div>
-              ))}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  First Name
+                </label>
+                <input
+                  type="text"
+                  name="fname"
+                  value={formData.fname}
+                  onChange={handleChange}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-400"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Middle Name
+                </label>
+                <input
+                  type="text"
+                  name="mname"
+                  value={formData.mname || ""}
+                  onChange={handleChange}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-400"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Last Name
+                </label>
+                <input
+                  type="text"
+                  name="lname"
+                  value={formData.lname}
+                  onChange={handleChange}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-400"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Sex
+                </label>
+                <select
+                  name="sex"
+                  value={
+                    formData.sex === true
+                      ? "true"
+                      : formData.sex === false
+                      ? "false"
+                      : ""
+                  }
+                  onChange={handleChange}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-400"
+                >
+                  
+                  <option value="true">Male</option>
+                  <option value="false">Female</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Date of Birth
+                </label>
+                <input
+                  type="date"
+                  name="dob"
+                  value={formData.dob || ""}
+                  onChange={handleChange}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-400"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Contact Number
+                </label>
+                <input
+                  type="text"
+                  name="contact_number"
+                  value={formData.contact_number || ""}
+                  onChange={handleChange}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-400"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  name="email"
+                  value={formData.email}
+                  disabled
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-gray-100 cursor-not-allowed"
+                />
+              </div>
 
               <div className="sm:col-span-2 flex justify-end mt-6">
                 <button
