@@ -1,96 +1,175 @@
-import axios from "axios";
+// src/services/users/UsersAPI.ts
+import BaseAPI from "../BaseAPI";
 
-const API_URL = "http://localhost:8000/api/v1"; // adjust to your backend
-
-// Type Definitions
-export interface UserProfile {
+// ---------- Types ----------
+export interface User {
   id: number;
   email: string;
-  first_name: string;
-  last_name: string;
-  user_type: string;
-  date_of_birth?: string;
-  phone_number?: string;
-  address?: string;
-  city?: string;
-  state?: string;
-  zip_code?: string;
-  profile_picture?: string;
-  is_profile_complete: boolean;
-  is_verified: boolean;
+  fname: string;
+  lname: string;
+  name: string;
+  role: string;
   is_active: boolean;
+  is_verified: boolean;
+  is_profile_complete: boolean;
   created_at: string;
-  updated_at: string;
+  last_login?: string;
 }
 
-export interface UpdateProfileData {
-  first_name?: string;
-  last_name?: string;
-  date_of_birth?: string;
-  phone_number?: string;
-  address?: string;
-  city?: string;
-  state?: string;
-  zip_code?: string;
+export interface DoctorPending {
+  doctor_id: number;
+  user_id: number;
+  name: string;
+  email: string;
+  license_number: string;
+  years_of_experience: number;
+  specializations: string[];
+  created_at: string;
+  prc_license_front?: string;
+  prc_license_back?: string;
+  prc_license_selfie?: string;
 }
 
-export interface UpdateProfileResponse {
-  user: UserProfile;
-  message: string;
+export interface AdminStats {
+  total_users: number;
+  total_doctors: number;
+  total_patients: number;
+  pending_doctors: number;
+  total_appointments: number;
 }
 
-export interface UpdatePictureResponse {
-  picture: string;
-  message: string;
-}
+// ---------- Admin APIs ----------
 
-// Get user profile
-export const getUserProfile = async (userId: number): Promise<UserProfile> => {
+// ✅ Get all users (with optional filters)
+export const getAllUsers = async (params?: {
+  role?: string;
+  is_active?: boolean;
+}): Promise<User[]> => {
   try {
-    const res = await axios.get<UserProfile>(`${API_URL}/users/${userId}`);
+    const res = await BaseAPI.get<User[]>("/users", { params });
     return res.data;
   } catch (err) {
-    console.error("Error fetching user profile", err);
+    console.error("Error fetching all users:", err);
     throw err;
   }
 };
 
-// Update user profile
+// ✅ Get pending doctor list
+export const getPendingDoctors = async (): Promise<DoctorPending[]> => {
+  try {
+    const res = await BaseAPI.get<DoctorPending[]>("/doctors/pending");
+    return res.data;
+  } catch (err) {
+    console.error("Error fetching pending doctors:", err);
+    throw err;
+  }
+};
+
+// ✅ Approve doctor
+export const approveDoctor = async (doctorId: number): Promise<{ message: string }> => {
+  try {
+    const res = await BaseAPI.put<{ message: string }>(`/doctors/${doctorId}/approve`);
+    return res.data;
+  } catch (err) {
+    console.error("Error approving doctor:", err);
+    throw err;
+  }
+};
+
+// ✅ Reject doctor
+export const rejectDoctor = async (
+  doctorId: number,
+  reason?: string
+): Promise<{ message: string }> => {
+  try {
+    const res = await BaseAPI.put<{ message: string }>(
+      `/doctors/${doctorId}/reject`,
+      reason ? { reason } : {}
+    );
+    return res.data;
+  } catch (err) {
+    console.error("Error rejecting doctor:", err);
+    throw err;
+  }
+};
+
+// ✅ Get admin dashboard stats
+export const getAdminStats = async (): Promise<AdminStats> => {
+  try {
+    const res = await BaseAPI.get<AdminStats>("/stats");
+    return res.data;
+  } catch (err) {
+    console.error("Error fetching admin stats:", err);
+    throw err;
+  }
+};
+
+// ✅ Update user active/inactive status
+export const updateUserStatus = async (
+  userId: number,
+  is_active: boolean
+): Promise<{ message: string }> => {
+  try {
+    const res = await BaseAPI.put<{ message: string }>(
+      `/users/${userId}/status`,
+      {},
+      { params: { is_active } }
+    );
+    return res.data;
+  } catch (err) {
+    console.error("Error updating user status:", err);
+    throw err;
+  }
+};
+
+// ---------- Patient/Profile APIs ----------
+
+// ✅ Get user profile
+export const getUserProfile = async (userId: number) => {
+  try {
+    const res = await BaseAPI.get(`/users/${userId}/profile`);
+    return res.data;
+  } catch (err) {
+    console.error("Error fetching user profile:", err);
+    throw err;
+  }
+};
+
+// ✅ Update user profile
 export const updateUserProfile = async (
-  userId: number, 
-  data: UpdateProfileData
-): Promise<UpdateProfileResponse> => {
+  userId: number,
+  data: {
+    fname?: string;
+    mname?: string;
+    lname?: string;
+    dob?: string;
+    contact_number?: string;
+    email?: string;
+  }
+) => {
   try {
-    const res = await axios.put<UpdateProfileResponse>(`${API_URL}/users/${userId}`, data);
+    const res = await BaseAPI.put(`/users/${userId}/profile`, data);
     return res.data;
   } catch (err) {
-    console.error("Error updating user profile", err);
+    console.error("Error updating user profile:", err);
     throw err;
   }
 };
 
-// Update profile picture
-export const updateProfilePicture = async (
-  userId: number, 
-  file: File
-): Promise<string> => {
+// ✅ Upload or update profile picture
+export const updateProfilePicture = async (userId: number, file: File): Promise<string> => {
   try {
     const formData = new FormData();
     formData.append("picture", file);
 
-    const res = await axios.put<UpdatePictureResponse>(
-      `${API_URL}/users/${userId}/picture`, 
-      formData, 
-      {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      }
-    );
+    const res = await BaseAPI.post(`/users/${userId}/profile/picture`, formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
 
-    return res.data.picture; // return new picture URL
+    // Assuming API returns { picture_url: "https://..." }
+    return res.data.picture_url;
   } catch (err) {
-    console.error("Error updating profile picture", err);
+    console.error("Error uploading profile picture:", err);
     throw err;
   }
 };

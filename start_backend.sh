@@ -4,36 +4,33 @@
 
 echo "🚀 Starting BukCare Backend..."
 
-# Check if we're in the right directory
-if [ ! -f "BackEnd/main.py" ]; then
+# Check if we're in the BukCare root directory
+if [ ! -d "BackEnd" ]; then
     echo "❌ Error: Please run this script from the BukCare root directory"
     exit 1
 fi
 
 # Navigate to backend directory
-cd BackEnd
+cd BackEnd || exit
 
 # Check if virtual environment exists
-if [ ! -d "venv" ]; then
+if [ ! -d ".venv" ]; then
     echo "📦 Creating virtual environment..."
-    python3 -m venv venv
+    python3 -m venv .venv
 fi
 
 # Activate virtual environment
 echo "🔧 Activating virtual environment..."
-source venv/bin/activate
+source .venv/bin/activate
 
-# Install dependencies
-echo "📥 Installing dependencies..."
-pip install -r requirements.txt
 
 # Check if .env file exists
 if [ ! -f ".env" ]; then
     echo "⚠️  Warning: .env file not found. Using default settings."
-    echo "📝 Please copy env.example to .env and configure your settings."
+    echo "📝 Please copy .env.development or .env.production to .env and configure your settings."
 fi
 
-# Create logs directory
+# Create logs directory if it doesn't exist
 mkdir -p logs
 
 # Start the server

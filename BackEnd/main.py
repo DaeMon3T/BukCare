@@ -11,8 +11,15 @@ from middleware.request_logging import request_logging_middleware
 import logging
 import traceback
 
+from mangum import Mangum
+
+
 # ✅ Import the full v1 router (which includes auth + doctors)
 from routers.v1 import router as v1_router
+
+# ✅ Import admin creation utility
+from utils.admin import create_admin_if_not_exists
+
 
 def create_app() -> FastAPI:
     # Setup logging
@@ -45,12 +52,18 @@ def create_app() -> FastAPI:
     )
 
     # ✅ Register versioned API routes
-    app.include_router(v1_router, prefix="/api/v1")
+    app.include_router(v1_router, prefix="/v1")
 
     # Health check endpoint
     @app.get("/health")
     def health_check():
         return {"status": "healthy", "message": "BukCare API is running"}
+    
+    # ✅ Startup event for tasks like creating default admin
+    @app.on_event("startup")
+    def startup_tasks():
+        create_admin_if_not_exists()
+        logger.info("Checked/created default admin account")
 
     # Global exception handlers
     @app.exception_handler(HTTPException)
@@ -93,3 +106,4 @@ def create_app() -> FastAPI:
     return app
 
 app = create_app()
+handler = Mangum(app)

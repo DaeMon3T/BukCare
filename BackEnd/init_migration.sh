@@ -4,9 +4,7 @@
 # init_migrations.sh - Initialize Alembic Migrations for BukCare
 # ============================================================================
 # This script automates the process of setting up database migrations
-# Usage: ./init_migrations.sh
 # ============================================================================
-
 set -e  # Exit on any error
 
 # Colors for output
@@ -22,6 +20,29 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 echo -e "${BLUE}========================================${NC}"
 echo -e "${BLUE}BukCare - Database Migration Setup${NC}"
 echo -e "${BLUE}========================================${NC}"
+echo ""
+
+# Step 0: Detect environment
+ENVIRONMENT="development"
+if [[ "$1" == "production" ]]; then
+    ENVIRONMENT="production"
+fi
+echo -e "${YELLOW}Detected environment: ${ENVIRONMENT}${NC}"
+
+# Load environment variables
+ENV_FILE=".env.development"
+if [[ "$ENVIRONMENT" == "production" ]]; then
+    ENV_FILE=".env.production"
+fi
+
+if [ -f "$ENV_FILE" ]; then
+    echo -e "${YELLOW}Loading environment variables from $ENV_FILE...${NC}"
+    export $(grep -v '^#' "$ENV_FILE" | xargs)
+else
+    echo -e "${RED}Error: $ENV_FILE not found!${NC}"
+    exit 1
+fi
+echo -e "${GREEN}✓ Environment variables loaded${NC}"
 echo ""
 
 # Step 1: Check if virtual environment is activated
@@ -100,8 +121,6 @@ echo ""
 echo -e "${YELLOW}[6/6] Applying migration to database...${NC}"
 alembic upgrade head
 if [ $? -eq 0 ]; then
-
-
     echo -e "${GREEN}✓ Migration applied successfully${NC}"
 else
     echo -e "${RED}✗ Failed to apply migration${NC}"
@@ -116,5 +135,5 @@ echo -e "${GREEN}========================================${NC}"
 echo ""
 echo -e "${BLUE}Next steps:${NC}"
 echo -e "  1. Create an admin user: ${YELLOW}python create_admin.py${NC}"
-echo -e "  2. Start the server: ${YELLOW}fastapi dev main.py${NC}"
+echo -e "  2. Start the server: ${YELLOW}uvicorn main:app --reload${NC}"
 echo ""

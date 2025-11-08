@@ -44,7 +44,7 @@ interface DashboardStats {
 }
 
 const Users: React.FC = () => {
-  // Mock data for demonstration
+  // Reduced mock data to 2 users
   const [users, setUsers] = useState<User[]>([
     {
       id: 1,
@@ -57,7 +57,7 @@ const Users: React.FC = () => {
       is_verified: true,
       is_profile_complete: true,
       created_at: "2024-01-15T10:30:00Z",
-      picture: "/default-avatar.png"
+      picture: "/default-avatar.png",
     },
     {
       id: 2,
@@ -70,58 +70,18 @@ const Users: React.FC = () => {
       is_verified: true,
       is_profile_complete: true,
       created_at: "2024-02-20T14:20:00Z",
-      picture: "/default-avatar.png"
-    },
-    {
-      id: 3,
-      fname: "Michael",
-      mname: "Lee",
-      lname: "Johnson",
-      email: "michael.johnson@example.com",
-      contact_number: "+63 934 567 8901",
-      role: "pending",
-      is_active: false,
-      is_verified: false,
-      is_profile_complete: false,
-      created_at: "2024-03-10T09:15:00Z",
-      picture: "/default-avatar.png"
-    },
-    {
-      id: 4,
-      fname: "Sarah",
-      lname: "Williams",
-      email: "sarah.williams@example.com",
-      contact_number: "+63 945 678 9012",
-      role: "patient",
-      is_active: true,
-      is_verified: true,
-      is_profile_complete: true,
-      created_at: "2024-01-25T16:45:00Z",
-      picture: "/default-avatar.png"
-    },
-    {
-      id: 5,
-      fname: "David",
-      lname: "Brown",
-      email: "david.brown@example.com",
-      contact_number: "+63 956 789 0123",
-      role: "doctor",
-      is_active: true,
-      is_verified: true,
-      is_profile_complete: true,
-      created_at: "2024-02-05T11:30:00Z",
-      picture: "/default-avatar.png"
+      picture: "/default-avatar.png",
     },
   ]);
 
   const [filteredUsers, setFilteredUsers] = useState<User[]>(users);
   const [stats] = useState<DashboardStats>({
-    total_patients: 2,
-    total_doctors: 2,
-    total_staff: 1,
-    pending_approvals: 1,
-    active_sessions: 4,
-    pending_invites: 1,
+    total_patients: 1,
+    total_doctors: 1,
+    total_staff: 0,
+    pending_approvals: 0,
+    active_sessions: 2,
+    pending_invites: 0,
   });
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -130,7 +90,7 @@ const Users: React.FC = () => {
   const loading = false;
   const [activeDropdown, setActiveDropdown] = useState<number | null>(null);
 
-  // Filter and search logic
+  // Filtering logic
   useEffect(() => {
     let filtered = users;
 
@@ -139,7 +99,7 @@ const Users: React.FC = () => {
     }
 
     if (statusFilter !== "all") {
-      filtered = filtered.filter((user) => 
+      filtered = filtered.filter((user) =>
         statusFilter === "active" ? user.is_active : !user.is_active
       );
     }
@@ -157,21 +117,7 @@ const Users: React.FC = () => {
     setFilteredUsers(filtered);
   }, [searchQuery, roleFilter, statusFilter, users]);
 
-  const handleApproveDoctor = (userId: number) => {
-    // UI-only: Update the user status locally
-    setUsers(prevUsers =>
-      prevUsers.map(user =>
-        user.id === userId
-          ? { ...user, role: "doctor", is_active: true, is_verified: true }
-          : user
-      )
-    );
-    setActiveDropdown(null);
-    alert("Doctor approved successfully! (UI Demo - No API call)");
-  };
-
   const handleAction = (action: string, userId: number) => {
-    console.log(`${action} user:`, userId);
     alert(`Action: ${action} for user ID: ${userId} (UI Demo - No API call)`);
     setActiveDropdown(null);
   };
@@ -179,7 +125,7 @@ const Users: React.FC = () => {
   const handleExport = () => {
     const csv = [
       ["ID", "Name", "Email", "Phone", "Role", "Status", "Verified", "Profile Complete", "Join Date"],
-      ...filteredUsers.map(user => [
+      ...filteredUsers.map((user) => [
         user.id,
         `${user.fname} ${user.lname}`,
         user.email,
@@ -189,14 +135,16 @@ const Users: React.FC = () => {
         user.is_verified ? "Yes" : "No",
         user.is_profile_complete ? "Yes" : "No",
         new Date(user.created_at).toLocaleDateString(),
-      ])
-    ].map(row => row.join(",")).join("\n");
+      ]),
+    ]
+      .map((row) => row.join(","))
+      .join("\n");
 
     const blob = new Blob([csv], { type: "text/csv" });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `users_export_${new Date().toISOString().split('T')[0]}.csv`;
+    a.download = `users_export_${new Date().toISOString().split("T")[0]}.csv`;
     a.click();
   };
 
@@ -226,21 +174,11 @@ const Users: React.FC = () => {
           <p className="text-gray-600">Manage patients and doctors in the system</p>
         </div>
 
-        {/* Demo Notice */}
-        <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-          <p className="font-semibold text-blue-800 mb-2">💡 UI Demo Mode</p>
-          <p className="text-sm text-blue-700">
-            This is a UI-only demonstration with mock data. API integration can be added later.
-          </p>
-        </div>
+       
 
-        {/* Stats Cards */}
+        {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-white rounded-xl p-6 shadow-sm border border-gray-100"
-          >
+          <motion.div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-600 text-sm mb-1">Total Users</p>
@@ -252,12 +190,7 @@ const Users: React.FC = () => {
             </div>
           </motion.div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="bg-white rounded-xl p-6 shadow-sm border border-gray-100"
-          >
+          <motion.div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-600 text-sm mb-1">Patients</p>
@@ -269,12 +202,7 @@ const Users: React.FC = () => {
             </div>
           </motion.div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="bg-white rounded-xl p-6 shadow-sm border border-gray-100"
-          >
+          <motion.div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-600 text-sm mb-1">Doctors</p>
@@ -286,12 +214,7 @@ const Users: React.FC = () => {
             </div>
           </motion.div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="bg-white rounded-xl p-6 shadow-sm border border-gray-100"
-          >
+          <motion.div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-600 text-sm mb-1">Pending Approvals</p>
@@ -304,7 +227,7 @@ const Users: React.FC = () => {
           </motion.div>
         </div>
 
-        {/* Filters and Search */}
+        {/* Filters */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
           <div className="flex flex-col lg:flex-row gap-4">
             <div className="flex-1 relative">
@@ -328,7 +251,6 @@ const Users: React.FC = () => {
                 <option value="all">All Roles</option>
                 <option value="patient">Patients</option>
                 <option value="doctor">Doctors</option>
-                <option value="pending">Pending</option>
               </select>
             </div>
 
@@ -369,27 +291,13 @@ const Users: React.FC = () => {
               <table className="w-full">
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                      User
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                      Contact
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                      Role
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                      Verification
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                      Join Date
-                    </th>
-                    <th className="px-6 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                      Actions
-                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">User</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Contact</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Role</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Verification</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Join Date</th>
+                    <th className="px-6 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
@@ -425,7 +333,9 @@ const Users: React.FC = () => {
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${getRoleBadgeColor(user.role)}`}>
+                        <span
+                          className={`px-3 py-1 rounded-full text-xs font-medium ${getRoleBadgeColor(user.role)}`}
+                        >
                           {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
                         </span>
                       </td>
@@ -497,15 +407,6 @@ const Users: React.FC = () => {
                                 <Edit className="w-4 h-4" />
                                 Edit User
                               </button>
-                              {user.role === "pending" && (
-                                <button
-                                  onClick={() => handleApproveDoctor(user.id)}
-                                  className="w-full px-4 py-2 text-left text-sm text-green-600 hover:bg-green-50 flex items-center gap-2"
-                                >
-                                  <CheckCircle className="w-4 h-4" />
-                                  Approve Doctor
-                                </button>
-                              )}
                               <button
                                 onClick={() => handleAction("delete", user.id)}
                                 className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
