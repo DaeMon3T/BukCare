@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 import secrets
 from core.database import get_db
 from models.users import User
-from core.email import send_email
+from core.services.email import send_email
 from passlib.context import CryptContext
 
 # Initialize router with prefix and tag

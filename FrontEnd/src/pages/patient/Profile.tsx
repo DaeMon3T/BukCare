@@ -1,4 +1,4 @@
-import { useEffect, useState, ChangeEvent } from "react";
+import { useEffect, useState, type ChangeEvent } from "react";
 import Navbar from "@/components/Navbar";
 import { useAuth } from "@/context/AuthContext";
 import {
@@ -19,7 +19,7 @@ interface UserProfile {
 }
 
 export default function Profile() {
-  const { user: authUser } = useAuth();
+  const { setUser } = useAuth(); // <-- include setUser
 
   const [formData, setFormData] = useState<UserProfile>({
     fname: "",
@@ -79,7 +79,8 @@ export default function Profile() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      await updateUserProfile(formData);
+      const updatedUser = await updateUserProfile(formData); // returns full user object
+      setUser(updatedUser); // update global auth context
       alert("Profile updated successfully!");
     } catch (err) {
       console.error(err);
@@ -100,8 +101,10 @@ export default function Profile() {
     if (!selectedFile) return;
     setUploadingPic(true);
     try {
-      const updatedPicUrl: string = await updateProfilePicture(selectedFile);
-      setPicture(updatedPicUrl);
+      const updatedUser = await updateProfilePicture(selectedFile); // returns full user object
+      setPicture(updatedUser.picture || "/assets/react.svg"); // update preview
+      setFormData(prev => ({ ...prev, picture: updatedUser.picture || "" })); // update form data
+      setUser(updatedUser); // update global auth context
       setSelectedFile(null);
       alert("Profile picture updated!");
     } catch (err) {
@@ -224,7 +227,6 @@ export default function Profile() {
                   onChange={handleChange}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-400"
                 >
-                  
                   <option value="true">Male</option>
                   <option value="false">Female</option>
                 </select>

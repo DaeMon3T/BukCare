@@ -26,6 +26,7 @@ interface UserData {
 
 interface AuthContextType {
   user: UserData | null;
+  setUser: (user: UserData) => void; // add this
   login: (tokens: Tokens, userData: UserData) => void;
   logout: () => Promise<void>;
   refreshToken: () => Promise<boolean>;
@@ -168,6 +169,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const value = useMemo(
     () => ({
       user,
+      setUser,
       login,
       logout,
       refreshToken,

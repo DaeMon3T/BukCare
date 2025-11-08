@@ -9,7 +9,7 @@ from models.location import Province, City, Barangay
 from core.security import create_access_token, create_refresh_token, get_password_hash
 from core.config import settings
 import cloudinary.uploader
-from core.cloudinary_config import cloudinary
+from core.services.cloudinary_config import cloudinary
 import json
 
 router = APIRouter()

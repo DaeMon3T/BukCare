@@ -35,6 +35,15 @@ class Settings(BaseSettings):
     DATABASE_HOST: str = "localhost"
     DATABASE_PORT: int = 5432
 
+    # ==============================
+    # Admin account
+    # ==============================
+    ADMIN_EMAIL: str
+    ADMIN_PASSWORD: str
+    ADMIN_FIRST_NAME: str = "Admin"
+    ADMIN_LAST_NAME: str = "User"
+
+
     # JWT Configuration
     JWT_SECRET_KEY: str
     JWT_REFRESH_SECRET_KEY: str
