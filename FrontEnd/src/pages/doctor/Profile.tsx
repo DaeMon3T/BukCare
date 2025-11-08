@@ -1,6 +1,6 @@
 import { useEffect, useState, type ChangeEvent } from "react";
 import Navbar from "@/components/Navbar";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth, type UserData } from "@/context/AuthContext";
 import {
   getUserProfile,
   updateUserProfile,
@@ -91,20 +91,31 @@ export default function Profile() {
   };
 
   const handleFileSelect = (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setSelectedFile(file);
-    setPicture(URL.createObjectURL(file)); // preview
-  };
+  const file = e.target.files?.[0];
+  if (!file) return;
 
-  const handleUploadPicture = async () => {
+  const previewURL = URL.createObjectURL(file);
+
+  setSelectedFile(file);
+  setPicture(previewURL); // local preview
+  setUser(prev => ({ ...prev!, picture: previewURL })); // update Navbar immediately
+};
+
+
+    const handleUploadPicture = async () => {
     if (!selectedFile) return;
     setUploadingPic(true);
     try {
       const updatedUser = await updateProfilePicture(selectedFile); // returns full user object
-      setPicture(updatedUser.picture || "/assets/react.svg"); // update preview
-      setFormData(prev => ({ ...prev, picture: updatedUser.picture || "" })); // update form data
-      setUser(updatedUser); // update global auth context
+
+      // Append timestamp to bust cache
+      const newPicture = updatedUser.picture
+        ? `${updatedUser.picture}?t=${Date.now()}`
+        : "/assets/react.svg";
+
+      setPicture(newPicture); // update preview
+      setFormData(prev => ({ ...prev, picture: newPicture })); // update form data
+      setUser(prev => ({ ...prev!, picture: newPicture })); // update global context
       setSelectedFile(null);
       alert("Profile picture updated!");
     } catch (err) {
@@ -114,6 +125,8 @@ export default function Profile() {
       setUploadingPic(false);
     }
   };
+
+
 
   // --------------------------------------------
   // UI Rendering
