@@ -1,6 +1,6 @@
 import { useEffect, useState, type ChangeEvent } from "react";
 import Navbar from "@/components/Navbar";
-import { useAuth, type UserData } from "@/context/AuthContext";
+import { useAuth} from "@/context/AuthContext";
 import {
   getUserProfile,
   updateUserProfile,
