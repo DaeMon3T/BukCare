@@ -8,6 +8,9 @@ BackEnd/*.env
 BackEnd/logs/
 BackEnd/.venv/
 BackEnd/venv/
+BackEnd/.env.development
+BackEnd/.env.production
+
 
 # Alembic compiled files
 BackEnd/alembic/__pycache__/
@@ -19,7 +22,10 @@ BackEnd/alembic/versions/__pycache__/
 FrontEnd/node_modules/
 FrontEnd/dist/
 FrontEnd/build/
-FrontEnd/.env.local
+FrontEnd/.env
+FrontEnd/.env.development
+FrontEnd/.env.production
+
 
 # ==============================
 # IDE / OS files
