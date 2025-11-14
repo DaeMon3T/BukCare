@@ -26,8 +26,8 @@ def create_admin_if_not_exists():
             email=settings.ADMIN_EMAIL,
             password=hash_password(settings.ADMIN_PASSWORD),
             role=UserRole.ADMIN,
-            fname=settings.ADMIN_FNAME or "Admin",
-            lname=settings.ADMIN_LNAME or "User",
+            fname=settings.ADMIN_FIRST_NAME or "Admin",  # ✅ Changed from ADMIN_FNAME
+            lname=settings.ADMIN_LAST_NAME or "User",    # ✅ Changed from ADMIN_LNAME
             is_active=True,
             is_verified=True,
             is_profile_complete=True,

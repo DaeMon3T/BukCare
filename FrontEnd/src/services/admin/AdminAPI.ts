@@ -35,49 +35,7 @@ export interface ApiResponse<T = any> {
   [key: string]: any;
 }
 
-// -----------------------------
-// Invite User
-// -----------------------------
 
-/**
- * Invite a user (doctor or staff)
- * @param userData - User data containing email and role
- */
-export async function inviteUser({ email, role }: InviteUserParams): Promise<ApiResponse> {
-  if (!email?.trim()) throw new Error("Email is required");
-  if (!role) throw new Error("Role is required");
-
-  try {
-    const { data } = await BaseAPI.post<ApiResponse>("/admin/invite", { email, role });
-
-    // Handle email sending warnings
-    if (data.warning || (data.message && data.message.toLowerCase().includes("failed to send email"))) {
-      console.warn("Invitation created but email sending failed:", data.message);
-      return {
-        success: true,
-        warning: data.message || "Invitation created but email notification failed to send",
-        ...data,
-      };
-    }
-
-    return data;
-  } catch (error: any) {
-    const message =
-      error.response?.data?.detail || 
-      error.response?.data?.message || 
-      error.message;
-
-    // Specific error handling
-    if (error.response?.status === 400) {
-      if (message.toLowerCase().includes("already exists"))
-        throw new Error("A user with this email already exists");
-      if (message.toLowerCase().includes("pending invitation"))
-        throw new Error("A pending invitation already exists for this email");
-    }
-
-    throw new Error(message || "Failed to invite user");
-  }
-}
 
 // -----------------------------
 // Dashboard Stats
@@ -124,7 +82,7 @@ export async function searchUsers(query: string): Promise<ApiResponse<User[]>> {
 // -----------------------------
 
 export default {
-  inviteUser,
+  
   getDashboardStats,
   searchUsers,
 };

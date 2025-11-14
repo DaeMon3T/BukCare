@@ -1,6 +1,6 @@
 import { useEffect, useState, type ChangeEvent } from "react";
 import Navbar from "@/components/Navbar";
-import { useAuth} from "@/context/AuthContext";
+import { useAuth } from "@/context/AuthContext";
 import {
   getUserProfile,
   updateUserProfile,
@@ -16,10 +16,15 @@ interface UserProfile {
   contact_number?: string;
   email: string;
   picture?: string;
+  address?: {
+    province?: string;
+    city?: string;
+    barangay?: string;
+  };
 }
 
 export default function Profile() {
-  const { user, setUser } = useAuth(); // <-- include setUser
+  const { user, setUser } = useAuth();
 
   const [formData, setFormData] = useState<UserProfile>({
     fname: "",
@@ -30,6 +35,11 @@ export default function Profile() {
     contact_number: "",
     email: "",
     picture: "",
+    address: {
+      province: "",
+      city: "",
+      barangay: "",
+    },
   });
 
   const [picture, setPicture] = useState<string>("/assets/react.svg");
@@ -65,7 +75,17 @@ export default function Profile() {
   ) => {
     const { name, value } = e.target;
 
-    // Convert sex value to boolean when saving
+    if (["province", "city", "barangay"].includes(name)) {
+      setFormData(prev => ({
+        ...prev,
+        address: {
+          ...prev.address,
+          [name]: value,
+        },
+      }));
+      return;
+    }
+
     if (name === "sex") {
       setFormData((prev) => ({
         ...prev,
@@ -91,18 +111,17 @@ export default function Profile() {
   };
 
   const handleFileSelect = (e: ChangeEvent<HTMLInputElement>) => {
-  const file = e.target.files?.[0];
-  if (!file) return;
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-  const previewURL = URL.createObjectURL(file);
+    const previewURL = URL.createObjectURL(file);
 
-  setSelectedFile(file);
-  setPicture(previewURL); // local preview
-  setUser(prev => ({ ...prev!, picture: previewURL })); // update Navbar immediately
-};
+    setSelectedFile(file);
+    setPicture(previewURL); // local preview
+    setUser(prev => ({ ...prev!, picture: previewURL })); // update Navbar immediately
+  };
 
-
-    const handleUploadPicture = async () => {
+  const handleUploadPicture = async () => {
     if (!selectedFile) return;
     setUploadingPic(true);
     try {
@@ -113,9 +132,9 @@ export default function Profile() {
         ? `${updatedUser.picture}?t=${Date.now()}`
         : "/assets/react.svg";
 
-      setPicture(newPicture); // update preview
-      setFormData(prev => ({ ...prev, picture: newPicture })); // update form data
-      setUser(prev => ({ ...prev!, picture: newPicture })); // update global context
+      setPicture(newPicture);
+      setFormData(prev => ({ ...prev, picture: newPicture }));
+      setUser(prev => ({ ...prev!, picture: newPicture }));
       setSelectedFile(null);
       alert("Profile picture updated!");
     } catch (err) {
@@ -125,8 +144,6 @@ export default function Profile() {
       setUploadingPic(false);
     }
   };
-
-
 
   // --------------------------------------------
   // UI Rendering
@@ -185,6 +202,7 @@ export default function Profile() {
           {/* Profile Form */}
           <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-8">
             <form className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              {/* Name Fields */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   First Name
@@ -281,6 +299,46 @@ export default function Profile() {
                   value={formData.email}
                   disabled
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-gray-100 cursor-not-allowed"
+                />
+              </div>
+
+              {/* Address Fields */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Province
+                </label>
+                <input
+                  type="text"
+                  name="province"
+                  value={formData.address?.province || ""}
+                  onChange={handleChange}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-400"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  City
+                </label>
+                <input
+                  type="text"
+                  name="city"
+                  value={formData.address?.city || ""}
+                  onChange={handleChange}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-400"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Barangay
+                </label>
+                <input
+                  type="text"
+                  name="barangay"
+                  value={formData.address?.barangay || ""}
+                  onChange={handleChange}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-400"
                 />
               </div>
 

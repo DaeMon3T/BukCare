@@ -40,8 +40,8 @@ class Settings(BaseSettings):
     # ==============================
     ADMIN_EMAIL: str
     ADMIN_PASSWORD: str
-    ADMIN_FIRST_NAME: str = "Admin"
-    ADMIN_LAST_NAME: str = "User"
+    ADMIN_FIRST_NAME: str 
+    ADMIN_LAST_NAME: str 
 
 
     # JWT Configuration

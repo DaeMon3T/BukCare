@@ -9,6 +9,20 @@ import cloudinary.uploader
 
 router = APIRouter(tags=["Profile"])
 
+def user_with_address(user: User):
+    """
+    Helper to return a dict compatible with UserProfile schema,
+    including nested address fields.
+    """
+    return {
+        **user.__dict__,
+        "address": {
+            "province": user.province.name if user.province else None,
+            "city": user.city.name if user.city else None,
+            "barangay": user.barangay.name if user.barangay else None,
+        },
+    }
+
 # -------------------------------
 # GET /profile - View Profile
 # -------------------------------
@@ -17,7 +31,7 @@ def read_profile(current_user: User = Depends(get_current_user)):
     """
     Get the profile of the currently logged-in user.
     """
-    return current_user
+    return user_with_address(current_user)
 
 
 # -------------------------------
@@ -49,13 +63,13 @@ def update_profile(
     db.add(current_user)
     db.commit()
     db.refresh(current_user)
-    return current_user
+    return user_with_address(current_user)
 
 
 # -------------------------------
 # PUT /profile/picture - Update Profile Picture
 # -------------------------------
-@router.put("/profile/picture", response_model=UserProfile, tags=["Profile"])
+@router.put("/profile/picture", response_model=UserProfile)
 async def update_profile_picture(
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
@@ -64,9 +78,7 @@ async def update_profile_picture(
     """
     Upload a new profile picture to Cloudinary and save the URL to the database.
     """
-
     try:
-        # Upload to Cloudinary
         upload_result = cloudinary.uploader.upload(
             file.file,
             folder=f"profile_pictures/{current_user.id}",
@@ -74,17 +86,16 @@ async def update_profile_picture(
             overwrite=True,
             resource_type="image"
         )
-        # Re-fetch user in the current session
+
         db_user = db.query(User).filter(User.id == current_user.id).first()
         if not db_user:
             raise HTTPException(status_code=404, detail="User not found")
 
         db_user.picture = upload_result["secure_url"]
-
         db.commit()
         db.refresh(db_user)
 
-        return db_user
+        return user_with_address(db_user)
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Cloudinary upload failed: {str(e)}")

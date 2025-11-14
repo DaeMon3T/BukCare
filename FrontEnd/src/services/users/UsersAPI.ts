@@ -2,6 +2,12 @@
 import BaseAPI from "../BaseAPI";
 
 // ---------- Types ----------
+export interface Address {
+  province?: string;
+  city?: string;
+  barangay?: string;
+}
+
 export interface User {
   id: number;
   email: string;
@@ -16,15 +22,25 @@ export interface User {
   picture?: string;
   created_at: string;
   last_login?: string;
+  address?: Address;
 }
 
-// ---------- Patient/Profile APIs ----------
+// ---------- Profile APIs ----------
 
 // Get current user profile
 export const getUserProfile = async (): Promise<User> => {
   try {
     const res = await BaseAPI.get<User>("/auth/profile");
-    return res.data;
+
+    // Ensure address always has all fields to prevent UI missing data
+    const user = res.data;
+    user.address = {
+      province: user.address?.province || "",
+      city: user.address?.city || "",
+      barangay: user.address?.barangay || "",
+    };
+
+    return user;
   } catch (err) {
     console.error("Error fetching user profile:", err);
     throw err;
@@ -39,9 +55,20 @@ export const updateUserProfile = async (data: {
   dob?: string;
   contact_number?: string;
   email?: string;
+  address?: Address;
 }): Promise<User> => {
   try {
-    const res = await BaseAPI.put<User>("/auth/profile", data);
+    // Always send full address structure to backend
+    const payload = {
+      ...data,
+      address: {
+        province: data.address?.province || "",
+        city: data.address?.city || "",
+        barangay: data.address?.barangay || "",
+      },
+    };
+
+    const res = await BaseAPI.put<User>("/auth/profile", payload);
     return res.data;
   } catch (err) {
     console.error("Error updating user profile:", err);
@@ -56,15 +83,13 @@ export const updateProfilePicture = async (
 ): Promise<User> => {
   try {
     const formData = new FormData();
-    formData.append("file", file); // match FastAPI PUT parameter
+    formData.append("file", file);
 
     const res = await BaseAPI.put<User>("/auth/profile/picture", formData, {
       headers: { "Content-Type": "multipart/form-data" },
     });
 
-    // Update AuthContext if callback provided
     if (onUpdate) onUpdate(res.data);
-
     return res.data;
   } catch (err) {
     console.error("Error uploading profile picture:", err);
