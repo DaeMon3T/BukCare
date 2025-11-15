@@ -32,6 +32,7 @@ import AdminProfile from './pages/admin/Profile';
 import AdminUsers from './pages/admin/Users';
 
 // Doctor Pages
+import DoctorLayout from './layouts/DoctorLayout';
 import DoctorDashboard from './pages/doctor/Dashboard';
 import DoctorAppointments from './pages/doctor/Appointments';
 import DoctorProfile from './pages/doctor/Profile';
@@ -42,6 +43,7 @@ import PatientHome from './pages/patient/Home';
 import PatientAppointments from './pages/patient/Appointments';
 import PatientProfile from './pages/patient/Profile';
 import FindDoctor from './pages/patient/FindDoctor';
+import BookAppointment from './pages/patient/BookAppointment';
 
 // --------------------
 // App Component
@@ -54,82 +56,72 @@ const App: FC = () => {
           <Toaster position="top-center" reverseOrder={false} />
 
           <div className="App">
-          <Routes>
-            {/* Public Routes */}
-            <Route path="/" element={<Landing />} />
-            <Route path="/about" element={<About />} />
-            <Route path="/contact" element={<Contact />} />
-            <Route path="/services" element={<Services />} />
-            <Route path="/terms" element={<Terms />} />
-            <Route path="/privacy" element={<Privacy />} />
+            <Routes>
+              {/* -------------------- Public Routes -------------------- */}
+              <Route path="/" element={<Landing />} />
+              <Route path="/about" element={<About />} />
+              <Route path="/contact" element={<Contact />} />
+              <Route path="/services" element={<Services />} />
+              <Route path="/terms" element={<Terms />} />
+              <Route path="/privacy" element={<Privacy />} />
 
-            {/* Auth Routes */}
-            <Route path="/signin" element={<SignIn />} />
-            <Route path="/signup" element={<SignUp />} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
-            <Route path="/complete-profile" element={<CompleteProfile />} />
-            
-            {/* ✅ Google OAuth Callback Handler */}
-            <Route path="/auth/callback" element={<GoogleCallbackHandler />} />
-            <Route path="/auth/success" element={<OAuthSuccess />} />
+              {/* -------------------- Auth Routes -------------------- */}
+              <Route path="/signin" element={<SignIn />} />
+              <Route path="/signup" element={<SignUp />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/complete-profile" element={<CompleteProfile />} />
 
-            {/* Admin Routes */}
-            <Route
-              path="/admin/dashboard"
-              element={<AdminRoute><AdminDashboard /></AdminRoute>}
-            />
-            <Route
-              path="/admin/users"
-              element={<AdminRoute><AdminUsers /></AdminRoute>}
-            />
-            <Route
-              path="/admin/profile"
-              element={<AdminRoute><AdminProfile /></AdminRoute>}
-            />
+              {/* ✅ Google OAuth Callback Handler */}
+              <Route path="/auth/callback" element={<GoogleCallbackHandler />} />
+              <Route path="/auth/success" element={<OAuthSuccess />} />
 
-            {/* Doctor Routes */}
-            <Route
-              path="/doctor/dashboard"
-              element={<DoctorRoute><DoctorDashboard /></DoctorRoute>}
-            />
-            <Route
-              path="/doctor/appointments"
-              element={<DoctorRoute><DoctorAppointments /></DoctorRoute>}
-            />
-            <Route
-              path="/doctor/patients"
-              element={<DoctorRoute><DoctorDashboard /></DoctorRoute>}
-            />
-            <Route
-              path="/doctor/set-availability"
-              element={<DoctorRoute><DoctorSetAvailability /></DoctorRoute>}
-            />
-            <Route
-              path="/doctor/profile"
-              element={<DoctorRoute><DoctorProfile /></DoctorRoute>}
-            />
+              {/* -------------------- Admin Routes -------------------- */}
+              <Route
+                path="/admin/dashboard"
+                element={<AdminRoute><AdminDashboard /></AdminRoute>}
+              />
+              <Route
+                path="/admin/users"
+                element={<AdminRoute><AdminUsers /></AdminRoute>}
+              />
+              <Route
+                path="/admin/profile"
+                element={<AdminRoute><AdminProfile /></AdminRoute>}
+              />
 
-            {/* Patient Routes */}
-            <Route
-              path="/patient/home"
-              element={<PatientRoute><PatientHome /></PatientRoute>}
-            />
-            <Route
-              path="/patient/appointments"
-              element={<PatientRoute><PatientAppointments /></PatientRoute>}
-            />
-            <Route
-              path="/patient/profile"
-              element={<PatientRoute><PatientProfile /></PatientRoute>}
-            />
-            <Route
-              path="/patient/find-doctor"
-              element={<PatientRoute><FindDoctor /></PatientRoute>}
-            />
+              {/* -------------------- Doctor Routes -------------------- */}
+              <Route element={<DoctorRoute><DoctorLayout /></DoctorRoute>}>
+                <Route path="/doctor/dashboard" element={<DoctorDashboard />} />
+                <Route path="/doctor/appointments" element={<DoctorAppointments />} />
+                <Route path="/doctor/set-availability" element={<DoctorSetAvailability />} />
+                <Route path="/doctor/profile" element={<DoctorProfile />} />
+              </Route>
 
-            {/* Catch All */}
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
+              {/* -------------------- Patient Routes -------------------- */}
+              <Route
+                path="/patient/home"
+                element={<PatientRoute><PatientHome /></PatientRoute>}
+              />
+              <Route
+                path="/patient/appointments"
+                element={<PatientRoute><PatientAppointments /></PatientRoute>}
+              />
+              <Route
+                path="/patient/find-doctor"
+                element={<PatientRoute><FindDoctor /></PatientRoute>}
+              />
+              <Route
+                path="/patient/book/:doctor_id"
+                element={<PatientRoute><BookAppointment /></PatientRoute>}
+              />
+              <Route
+                path="/patient/profile"
+                element={<PatientRoute><PatientProfile /></PatientRoute>}
+              />
+
+              {/* -------------------- Catch-All -------------------- */}
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
           </div>
         </Router>
       </AuthProvider>

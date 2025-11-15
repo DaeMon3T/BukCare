@@ -73,6 +73,7 @@ class DoctorResponse(BaseModel):
     consultation_fee: Optional[int] = None
     is_accepting_patients: bool
     is_verified: bool
+    is_doctor_approved: bool        # ✅ Added this line
     specializations: List[Specialization] = []
     created_at: datetime
     updated_at: datetime
@@ -90,6 +91,7 @@ class Doctor(BaseModel):
     specialization: str
     address: str
     is_verified: bool
+    is_doctor_approved: bool        # ✅ Added this line
     specializations: List[Specialization] = []
     created_at: datetime
     updated_at: datetime

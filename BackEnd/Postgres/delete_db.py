@@ -4,8 +4,8 @@ from psycopg2 import sql
 # Database connection credentials
 DB_HOST = "localhost"
 DB_PORT = 5432
-DB_USER = "ken"
-DB_PASSWORD = "kenetwork"
+DB_USER = "posgres"
+DB_PASSWORD = "zedmainako123"
 DB_NAME = "bukcare"
 
 

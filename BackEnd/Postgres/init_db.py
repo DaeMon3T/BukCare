@@ -4,8 +4,8 @@ from psycopg2 import sql
 # Step 1: Set up the connection credentials
 DB_HOST = "localhost"  # The address of the PostgreSQL server
 DB_PORT = 5432         # Default PostgreSQL port
-DB_USER = "ken"  # PostgreSQL username
-DB_PASSWORD = "kenetwork"  # PostgreSQL password
+DB_USER = "postgres"  # PostgreSQL username
+DB_PASSWORD = "zedmainako123"  # PostgreSQL password
 DB_NAME = "bukcare"  # The database name to create
 
 

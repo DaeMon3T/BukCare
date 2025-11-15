@@ -1,415 +1,224 @@
-import React, { useState } from "react";
-import { motion } from "framer-motion";
-import {
-  Clock,
-  Plus,
-  Trash2,
-  Save,
-  X,
-  CheckCircle,
-  AlertCircle,
-} from "lucide-react";
+import { useEffect, useState, useRef } from "react";
+import toast from "react-hot-toast";
+import api from "../../utils/api";
+import { useAuth } from "../../context/AuthContext";
 
-interface TimeSlot {
-  id: string;
+interface Schedule {
+  id: number;
+  doctor_id: number;
+  date: string;
   start_time: string;
   end_time: string;
-}
-
-interface DaySchedule {
-  day: string;
   is_available: boolean;
-  time_slots: TimeSlot[];
+  notes?: string;
 }
 
-const DAYS_OF_WEEK = [
-  "Monday",
-  "Tuesday",
-  "Wednesday",
-  "Thursday",
-  "Friday",
-  "Saturday",
-  "Sunday",
-];
+const DoctorSetAvailability = () => {
+  const { user } = useAuth();
+  const [schedules, setSchedules] = useState<Schedule[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [form, setForm] = useState({
+    date: "",
+    start_time: "",
+    end_time: "",
+    notes: "",
+  });
+  const [submitting, setSubmitting] = useState(false);
 
-const SetAvailability: React.FC = () => {
-  const [schedule, setSchedule] = useState<DaySchedule[]>(
-    DAYS_OF_WEEK.map((day) => ({
-      day,
-      is_available: false,
-      time_slots: [],
-    }))
-  );
+  // ✅ prevent duplicate fetches
+  const isFetching = useRef(false);
 
-  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
-
-  const toggleDayAvailability = (dayIndex: number) => {
-    setSchedule((prev) =>
-      prev.map((item, index) =>
-        index === dayIndex
-          ? {
-              ...item,
-              is_available: !item.is_available,
-              time_slots: !item.is_available ? [] : item.time_slots,
-            }
-          : item
-      )
-    );
-  };
-
-  const addTimeSlot = (dayIndex: number) => {
-    setSchedule((prev) =>
-      prev.map((item, index) =>
-        index === dayIndex
-          ? {
-              ...item,
-              time_slots: [
-                ...item.time_slots,
-                {
-                  id: `slot-${Date.now()}`,
-                  start_time: "09:00",
-                  end_time: "10:00",
-                },
-              ],
-            }
-          : item
-      )
-    );
-  };
-
-  const removeTimeSlot = (dayIndex: number, slotId: string) => {
-    setSchedule((prev) =>
-      prev.map((item, index) =>
-        index === dayIndex
-          ? {
-              ...item,
-              time_slots: item.time_slots.filter((slot) => slot.id !== slotId),
-            }
-          : item
-      )
-    );
-  };
-
-  const updateTimeSlot = (
-    dayIndex: number,
-    slotId: string,
-    field: "start_time" | "end_time",
-    value: string
-  ) => {
-    setSchedule((prev) =>
-      prev.map((item, index) =>
-        index === dayIndex
-          ? {
-              ...item,
-              time_slots: item.time_slots.map((slot) =>
-                slot.id === slotId ? { ...slot, [field]: value } : slot
-              ),
-            }
-          : item
-      )
-    );
-  };
-
-  const handleSaveSchedule = () => {
-    // UI Demo: Show success message
-    console.log("Saving schedule:", schedule);
-    setShowSuccessMessage(true);
-    setTimeout(() => setShowSuccessMessage(false), 3000);
-    
-    // TODO: Add API call here
-    // Example:
-    // await axios.post(`${API_BASE_URL}/doctor/availability`, { schedule });
-  };
-
-  const copyToAllDays = (dayIndex: number) => {
-    const sourceDay = schedule[dayIndex];
-    if (!sourceDay) {
-      console.warn("Source day not found for index:", dayIndex);
-      return;
+  // ✅ fetch doctor schedules
+  const fetchSchedules = async () => {
+    if (!user?.id || isFetching.current) return;
+    isFetching.current = true;
+    try {
+      const res = await api.get("/schedules");
+      setSchedules(res.data);
+    } catch (err) {
+      toast.error("Failed to load schedules");
+    } finally {
+      setLoading(false);
+      isFetching.current = false;
     }
-    if (sourceDay.time_slots.length === 0) {
-      alert("No time slots to copy!");
+  };
+
+  // ✅ only fetch once when user.id is ready
+  useEffect(() => {
+    if (user?.id) fetchSchedules();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
+
+  // ✅ handle add schedule
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!form.date || !form.start_time || !form.end_time) {
+      toast.error("Please fill in all required fields");
       return;
     }
 
-    setSchedule((prev) =>
-      prev.map((item, index) =>
-        index !== dayIndex && item.is_available
-          ? {
-              ...item,
-              time_slots: sourceDay.time_slots.map((slot) => ({
-                ...slot,
-                id: `slot-${Date.now()}-${index}`,
-              })),
-            }
-          : item
-      )
-    );
+    try {
+      setSubmitting(true);
+
+      const payload = {
+        doctor_id: user?.id,
+        date: form.date,
+        start_time: form.start_time,
+        end_time: form.end_time,
+        is_available: true,
+        notes: form.notes || "",
+      };
+
+      const res = await api.post("/schedules/", payload, {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (res.status === 200 || res.status === 201) {
+        toast.success("Schedule added successfully");
+        setForm({ date: "", start_time: "", end_time: "", notes: "" });
+        fetchSchedules();
+      } else {
+        toast.error("Unexpected response from server");
+      }
+    } catch (err: any) {
+      console.error("Schedule creation failed:", err.response?.data || err);
+      if (err.response?.data?.detail) {
+        toast.error(err.response.data.detail);
+      } else {
+        toast.error("Failed to create schedule");
+      }
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  const quickSetBusinessHours = () => {
-    const businessHours = [
-      { start_time: "09:00", end_time: "12:00" },
-      { start_time: "13:00", end_time: "17:00" },
-    ];
 
-    setSchedule((prev) =>
-      prev.map((item, index) =>
-        index < 5 // Monday to Friday
-          ? {
-              ...item,
-              is_available: true,
-              time_slots: businessHours.map((slot, slotIndex) => ({
-                id: `slot-${Date.now()}-${index}-${slotIndex}`,
-                ...slot,
-              })),
-            }
-          : item
-      )
-    );
-  };
-
-  const clearAllSchedule = () => {
-    if (window.confirm("Are you sure you want to clear all availability?")) {
-      setSchedule(
-        DAYS_OF_WEEK.map((day) => ({
-          day,
-          is_available: false,
-          time_slots: [],
-        }))
-      );
+  // ✅ handle delete schedule
+  const handleDelete = async (id: number) => {
+    if (!confirm("Are you sure you want to delete this schedule?")) return;
+    try {
+      await api.delete(`/schedules/${id}`);
+      toast.success("Schedule deleted");
+      setSchedules((prev) => prev.filter((s) => s.id !== id));
+    } catch {
+      toast.error("Failed to delete schedule");
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 p-6">
-      <div className="max-w-6xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">
-            Set Your Availability
-          </h1>
-          <p className="text-gray-600">
-            Manage your weekly schedule and available time slots for appointments
-          </p>
+    <div className="space-y-6">
+      <h2 className="text-xl font-semibold">Set Availability</h2>
+
+      {/* Add new availability form */}
+      <form
+        onSubmit={handleSubmit}
+        className="bg-white shadow-md rounded-md p-4 grid md:grid-cols-4 gap-4"
+      >
+        <div>
+          <label className="block text-sm font-medium mb-1">Date</label>
+          <input
+            type="date"
+            className="w-full border p-2 rounded-md"
+            value={form.date}
+            onChange={(e) => setForm({ ...form, date: e.target.value })}
+            required
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1">Start Time</label>
+          <input
+            type="time"
+            className="w-full border p-2 rounded-md"
+            value={form.start_time}
+            onChange={(e) => setForm({ ...form, start_time: e.target.value })}
+            required
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1">End Time</label>
+          <input
+            type="time"
+            className="w-full border p-2 rounded-md"
+            value={form.end_time}
+            onChange={(e) => setForm({ ...form, end_time: e.target.value })}
+            required
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1">Notes</label>
+          <input
+            type="text"
+            className="w-full border p-2 rounded-md"
+            placeholder="Optional notes"
+            value={form.notes}
+            onChange={(e) => setForm({ ...form, notes: e.target.value })}
+          />
         </div>
 
-        {/* Success Message */}
-        {showSuccessMessage && (
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg flex items-center gap-3"
+        <div className="md:col-span-4 flex justify-end mt-2">
+          <button
+            type="submit"
+            disabled={submitting}
+            className={`px-4 py-2 rounded-md text-white ${
+              submitting ? "bg-gray-400" : "bg-blue-600 hover:bg-blue-700"
+            }`}
           >
-            <CheckCircle className="w-5 h-5 text-green-600" />
-            <p className="text-green-800 font-medium">
-              Availability saved successfully!
-            </p>
-          </motion.div>
-        )}
-
-        {/* Quick Actions */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
-          <h2 className="text-lg font-semibold text-gray-800 mb-4">
-            Quick Actions
-          </h2>
-          <div className="flex flex-wrap gap-3">
-            <button
-              onClick={quickSetBusinessHours}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
-            >
-              <Clock className="w-4 h-4" />
-              Set Business Hours (Mon-Fri, 9AM-5PM)
-            </button>
-            <button
-              onClick={clearAllSchedule}
-              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2"
-            >
-              <X className="w-4 h-4" />
-              Clear All
-            </button>
-          </div>
+            {submitting ? "Saving..." : "Add Schedule"}
+          </button>
         </div>
+      </form>
 
-        {/* Info Banner */}
-        <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg flex items-start gap-3">
-          <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5" />
-          <div>
-            <p className="text-blue-800 font-medium mb-1">
-              💡 UI Demo Mode
-            </p>
-            <p className="text-sm text-blue-700">
-              This is a UI-only demonstration. API integration can be added later.
-              Changes are saved locally for this session.
-            </p>
-          </div>
-        </div>
-
-        {/* Schedule Grid */}
-        <div className="space-y-4">
-          {schedule.map((daySchedule, dayIndex) => (
-            <motion.div
-              key={daySchedule.day}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: dayIndex * 0.05 }}
-              className="bg-white rounded-xl shadow-sm border border-gray-100 p-6"
-            >
-              {/* Day Header */}
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-4">
-                  <label className="flex items-center gap-3 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={daySchedule.is_available}
-                      onChange={() => toggleDayAvailability(dayIndex)}
-                      className="w-5 h-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
-                    />
-                    <span className="text-lg font-semibold text-gray-800">
-                      {daySchedule.day}
-                    </span>
-                  </label>
-                  {!daySchedule.is_available && (
-                    <span className="px-3 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">
-                      Unavailable
-                    </span>
-                  )}
-                  {daySchedule.is_available &&
-                    daySchedule.time_slots.length === 0 && (
-                      <span className="px-3 py-1 bg-yellow-100 text-yellow-700 text-xs rounded-full">
-                        No time slots
-                      </span>
+      {/* Schedules list */}
+      {loading ? (
+        <p>Loading schedules...</p>
+      ) : schedules.length === 0 ? (
+        <p className="text-gray-500">No schedules found.</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="min-w-full bg-white shadow rounded-md">
+            <thead className="bg-gray-100">
+              <tr>
+                <th className="p-3 text-left">Date</th>
+                <th className="p-3 text-left">Start</th>
+                <th className="p-3 text-left">End</th>
+                <th className="p-3 text-left">Available</th>
+                <th className="p-3 text-left">Notes</th>
+                <th className="p-3 text-left">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {schedules.map((sch) => (
+                <tr key={sch.id} className="border-b">
+                  <td className="p-3">{sch.date}</td>
+                  <td className="p-3">{sch.start_time}</td>
+                  <td className="p-3">{sch.end_time}</td>
+                  <td className="p-3">
+                    {sch.is_available ? (
+                      <span className="text-green-600 font-medium">Yes</span>
+                    ) : (
+                      <span className="text-red-600 font-medium">No</span>
                     )}
-                </div>
-
-                {daySchedule.is_available && (
-                  <div className="flex gap-2">
-                    {daySchedule.time_slots.length > 0 && (
-                      <button
-                        onClick={() => copyToAllDays(dayIndex)}
-                        className="px-3 py-1 text-sm text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                      >
-                        Copy to other days
-                      </button>
-                    )}
+                  </td>
+                  <td className="p-3">{sch.notes || "-"}</td>
+                  <td className="p-3">
                     <button
-                      onClick={() => addTimeSlot(dayIndex)}
-                      className="px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 text-sm"
+                      onClick={() => handleDelete(sch.id)}
+                      className="px-3 py-1 bg-red-500 text-white rounded-md hover:bg-red-600"
                     >
-                      <Plus className="w-4 h-4" />
-                      Add Time Slot
+                      Delete
                     </button>
-                  </div>
-                )}
-              </div>
-
-              {/* Time Slots */}
-              {daySchedule.is_available && daySchedule.time_slots.length > 0 && (
-                <div className="space-y-3 pl-9">
-                  {daySchedule.time_slots.map((slot) => (
-                    <div
-                      key={slot.id}
-                      className="flex items-center gap-3 bg-gray-50 p-3 rounded-lg"
-                    >
-                      <Clock className="w-4 h-4 text-gray-400" />
-                      <div className="flex items-center gap-2 flex-1">
-                        <input
-                          type="time"
-                          value={slot.start_time}
-                          onChange={(e) =>
-                            updateTimeSlot(
-                              dayIndex,
-                              slot.id,
-                              "start_time",
-                              e.target.value
-                            )
-                          }
-                          className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        />
-                        <span className="text-gray-500">to</span>
-                        <input
-                          type="time"
-                          value={slot.end_time}
-                          onChange={(e) =>
-                            updateTimeSlot(
-                              dayIndex,
-                              slot.id,
-                              "end_time",
-                              e.target.value
-                            )
-                          }
-                          className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        />
-                      </div>
-                      <button
-                        onClick={() => removeTimeSlot(dayIndex, slot.id)}
-                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </motion.div>
-          ))}
-        </div>
-
-        {/* Save Button */}
-        <div className="mt-8 flex justify-end gap-4">
-          <button
-            onClick={() => window.history.back()}
-            className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleSaveSchedule}
-            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
-          >
-            <Save className="w-5 h-5" />
-            Save Availability
-          </button>
-        </div>
-
-        {/* Summary */}
-        <div className="mt-8 bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">
-            Availability Summary
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {schedule
-              .filter((day) => day.is_available && day.time_slots.length > 0)
-              .map((day) => (
-                <div
-                  key={day.day}
-                  className="p-4 bg-gradient-to-br from-blue-50 to-purple-50 rounded-lg"
-                >
-                  <p className="font-semibold text-gray-800 mb-2">
-                    {day.day}
-                  </p>
-                  <div className="space-y-1">
-                    {day.time_slots.map((slot) => (
-                      <p key={slot.id} className="text-sm text-gray-600">
-                        {slot.start_time} - {slot.end_time}
-                      </p>
-                    ))}
-                  </div>
-                </div>
+                  </td>
+                </tr>
               ))}
-            {schedule.filter(
-              (day) => day.is_available && day.time_slots.length > 0
-            ).length === 0 && (
-              <p className="text-gray-500 col-span-full text-center py-4">
-                No availability set yet. Add time slots to get started.
-              </p>
-            )}
-          </div>
+            </tbody>
+          </table>
         </div>
-      </div>
+      )}
     </div>
   );
 };
 
-export default SetAvailability;
+export default DoctorSetAvailability;

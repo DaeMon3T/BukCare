@@ -1,4 +1,5 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
 
 interface Specialization {
   name?: string;
@@ -16,9 +17,12 @@ export interface Doctor {
 
 interface DoctorCardProps {
   doctor: Doctor;
+  onBook?: (doctor: Doctor) => void; // optional, in case we reuse the card elsewhere
 }
 
 const DoctorCard: React.FC<DoctorCardProps> = ({ doctor }) => {
+  const navigate = useNavigate();
+
   return (
     <div className="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden hover:shadow-lg transition-all hover:-translate-y-1">
       {/* Doctor Header */}
@@ -30,7 +34,7 @@ const DoctorCard: React.FC<DoctorCardProps> = ({ doctor }) => {
         />
         <h3 className="text-xl font-semibold text-gray-800">{doctor.name}</h3>
         <p className="text-sm text-blue-600 font-medium">
-          {doctor.specialization?.name}
+          {doctor.specialization?.name || "General Practice"}
         </p>
       </div>
 
@@ -46,14 +50,10 @@ const DoctorCard: React.FC<DoctorCardProps> = ({ doctor }) => {
           <p className="text-gray-800 font-medium">{doctor.email}</p>
         </div>
 
-        <div>
-          <p className="text-sm text-gray-500">🩺 About</p>
-          <p className="text-gray-700 text-sm line-clamp-3">
-            {doctor.specialization?.descriptions}
-          </p>
-        </div>
-
-        <button className="mt-4 w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-2.5 rounded-xl font-medium hover:opacity-90 transition">
+        <button
+          className="mt-4 w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-2.5 rounded-xl font-medium hover:opacity-90 transition"
+          onClick={() => navigate(`/patient/book/${doctor.doctor_id}`)}
+        >
           Book Appointment
         </button>
       </div>
