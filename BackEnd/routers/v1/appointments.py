@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from typing import List, Optional
 from datetime import datetime
 
@@ -7,6 +7,7 @@ from core.database import get_db
 from models.appointment import Appointment, AppointmentStatus
 from models.users import User
 from routers.v1.dependencies import get_current_user
+from schemas.appointment import AppointmentCreate
 
 router = APIRouter()
 
@@ -19,12 +20,16 @@ def get_appointments(
     db: Session = Depends(get_db)
 ):
     """Get appointments with optional filtering"""
-    query = db.query(Appointment)
+    query = db.query(Appointment).options(
+        joinedload(Appointment.patient),
+        joinedload(Appointment.doctor)
+    )
     
     # Filter based on user role
     if current_user.role.value == "patient":
         query = query.filter(Appointment.patient_id == current_user.id)
     elif current_user.role.value == "doctor":
+        # ✅ FIXED: doctor_id already points to users.id
         query = query.filter(Appointment.doctor_id == current_user.id)
     elif current_user.role.value == "admin":
         # Admins can see all appointments
@@ -49,7 +54,9 @@ def get_appointments(
         {
             "id": appointment.id,
             "patient_id": appointment.patient_id,
+            "patient_name": f"{appointment.patient.fname} {appointment.patient.lname}",
             "doctor_id": appointment.doctor_id,
+            "doctor_name": f"{appointment.doctor.fname} {appointment.doctor.lname}",
             "appointment_date": appointment.appointment_date,
             "reason": appointment.reason,
             "status": appointment.status.value,
@@ -62,9 +69,7 @@ def get_appointments(
 
 @router.post("/", response_model=dict)
 def create_appointment(
-    doctor_id: int,
-    appointment_date: datetime,
-    reason: Optional[str] = None,
+    appointment_data: AppointmentCreate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -75,11 +80,20 @@ def create_appointment(
             detail="Only patients can create appointments"
         )
     
+    # ✅ FIXED: Convert doctor.doctor_id to doctor's user_id
+    from models.doctor import Doctor
+    doctor = db.query(Doctor).filter(Doctor.doctor_id == appointment_data.doctor_id).first()
+    if not doctor:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Doctor not found"
+        )
+    
     appointment = Appointment(
         patient_id=current_user.id,
-        doctor_id=doctor_id,
-        appointment_date=appointment_date,
-        reason=reason,
+        doctor_id=doctor.user_id,  # ✅ Use user_id, not doctor_id
+        appointment_date=appointment_data.appointment_date,
+        reason=appointment_data.reason,
         status=AppointmentStatus.PENDING
     )
     
@@ -123,7 +137,7 @@ def update_appointment_status(
             detail="Appointment not found"
         )
     
-    # Verify doctor can only update their own appointments
+    # ✅ FIXED: doctor_id is already the user's id
     if current_user.role.value == "doctor" and appointment.doctor_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -170,13 +184,23 @@ def cancel_appointment(
         )
     
     # Verify user can only cancel their own appointments
-    if (current_user.role.value == "patient" and appointment.patient_id != current_user.id) or \
-       (current_user.role.value == "doctor" and appointment.doctor_id != current_user.id):
-        if current_user.role.value != "admin":
+    if current_user.role.value == "patient":
+        if appointment.patient_id != current_user.id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You can only cancel your own appointments"
             )
+    elif current_user.role.value == "doctor":
+        if appointment.doctor_id != current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You can only cancel your own appointments"
+            )
+    elif current_user.role.value != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Insufficient permissions"
+        )
     
     appointment.status = AppointmentStatus.CANCELLED
     db.commit()
@@ -189,25 +213,33 @@ def get_upcoming_appointments(
     db: Session = Depends(get_db)
 ):
     """Get upcoming appointments for the current user"""
-    from datetime import datetime
     
     if current_user.role.value == "patient":
-        appointments = db.query(Appointment).filter(
+        appointments = db.query(Appointment).options(
+            joinedload(Appointment.patient),
+            joinedload(Appointment.doctor)
+        ).filter(
             Appointment.patient_id == current_user.id,
             Appointment.appointment_date > datetime.utcnow(),
-            Appointment.status.in_(["confirmed", "pending"])
+            Appointment.status.in_([AppointmentStatus.CONFIRMED, AppointmentStatus.PENDING])
         ).order_by(Appointment.appointment_date).all()
     elif current_user.role.value == "doctor":
-        appointments = db.query(Appointment).filter(
+        appointments = db.query(Appointment).options(
+            joinedload(Appointment.patient),
+            joinedload(Appointment.doctor)
+        ).filter(
             Appointment.doctor_id == current_user.id,
             Appointment.appointment_date > datetime.utcnow(),
-            Appointment.status.in_(["confirmed", "pending"])
+            Appointment.status.in_([AppointmentStatus.CONFIRMED, AppointmentStatus.PENDING])
         ).order_by(Appointment.appointment_date).all()
     else:
         # Admin can see all upcoming appointments
-        appointments = db.query(Appointment).filter(
+        appointments = db.query(Appointment).options(
+            joinedload(Appointment.patient),
+            joinedload(Appointment.doctor)
+        ).filter(
             Appointment.appointment_date > datetime.utcnow(),
-            Appointment.status.in_(["confirmed", "pending"])
+            Appointment.status.in_([AppointmentStatus.CONFIRMED, AppointmentStatus.PENDING])
         ).order_by(Appointment.appointment_date).all()
     
     return [
@@ -229,21 +261,29 @@ def get_appointment_history(
     db: Session = Depends(get_db)
 ):
     """Get appointment history for the current user"""
-    from datetime import datetime
     
     if current_user.role.value == "patient":
-        appointments = db.query(Appointment).filter(
+        appointments = db.query(Appointment).options(
+            joinedload(Appointment.patient),
+            joinedload(Appointment.doctor)
+        ).filter(
             Appointment.patient_id == current_user.id,
             Appointment.appointment_date < datetime.utcnow()
         ).order_by(Appointment.appointment_date.desc()).all()
     elif current_user.role.value == "doctor":
-        appointments = db.query(Appointment).filter(
+        appointments = db.query(Appointment).options(
+            joinedload(Appointment.patient),
+            joinedload(Appointment.doctor)
+        ).filter(
             Appointment.doctor_id == current_user.id,
             Appointment.appointment_date < datetime.utcnow()
         ).order_by(Appointment.appointment_date.desc()).all()
     else:
         # Admin can see all appointment history
-        appointments = db.query(Appointment).filter(
+        appointments = db.query(Appointment).options(
+            joinedload(Appointment.patient),
+            joinedload(Appointment.doctor)
+        ).filter(
             Appointment.appointment_date < datetime.utcnow()
         ).order_by(Appointment.appointment_date.desc()).all()
     

@@ -1,9 +1,28 @@
-from core.database import Base  # Ensure all models use the same Base
+from core.database import Base
 
+# Import modules so SQLAlchemy registers the models
+from models import location
+from models import users
+from models import doctor
+from models import appointment
+from models import notification
 
-# Explicitly import models in correct dependency order:
-import models.location       # Defines Province, City, Barangay
-import models.users          # Depends on Province/City/Barangay
-import models.doctor         # Depends on users + location
-import models.appointment    # Depends on users + doctor
-import models.notification   # Depends on appointment
+# Explicitly expose all model classes so models.X works
+from models.location import Province, City, Barangay
+from models.users import User
+from models.doctor import Doctor, DoctorAvailability, Specialization
+from models.appointment import Appointment
+from models.notification import Notification
+
+__all__ = [
+    "Base",
+    "Province",
+    "City",
+    "Barangay",
+    "User",
+    "Doctor",
+    "DoctorAvailability",
+    "Specialization",
+    "Appointment",
+    "Notification",
+]

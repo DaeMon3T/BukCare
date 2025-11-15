@@ -3,7 +3,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 
-
 from routers.v1 import router as v1_router
 
 from core.config import settings
@@ -17,7 +16,6 @@ import traceback
 
 
 def create_app() -> FastAPI:
-    # Setup logging
     setup_logging()
     logger = get_logger(__name__)
 
@@ -27,25 +25,32 @@ def create_app() -> FastAPI:
         version="1.0.0"
     )
 
-    # Middleware
+    # ============================================================
+    # ⭐ FIXED: CORS MUST BE ADDED FIRST BEFORE ANY MIDDLEWARE ⭐
+    # ============================================================
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=[
+            "http://localhost:5173",
+            "http://127.0.0.1:5173",
+            "*",   # Optional but okay for development
+        ],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
+    # ============================================================
+    # Custom Middlewares (Executed AFTER CORS)
+    # ============================================================
     app.middleware("http")(request_logging_middleware)
     app.middleware("http")(security_middleware_handler)
     app.middleware("http")(rate_limit_middleware)
     app.middleware("http")(endpoint_rate_limit_middleware)
 
-    # DB init
+    # DB initialization
     Base.metadata.create_all(bind=engine)
     logger.info("Database tables created successfully")
-
-    # CORS config
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=["*"], 
-        # allow_origins=settings.allowed_origins_list,
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
 
     # API routes
     app.include_router(v1_router, prefix="/api/v1")
@@ -54,7 +59,9 @@ def create_app() -> FastAPI:
     def health_check():
         return {"status": "healthy", "message": "BukCare API is running"}
 
-    # Exception handlers
+    # ================================
+    # Exception Handlers
+    # ================================
     @app.exception_handler(HTTPException)
     async def http_exception_handler(request: Request, exc: HTTPException):
         return JSONResponse(

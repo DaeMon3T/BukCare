@@ -8,13 +8,16 @@ import asyncio
 
 class RateLimiter:
     def __init__(self):
-        # Store request timestamps for each IP
+        # Store request timestamps for each IP+endpoint combination
         self.requests: Dict[str, deque] = defaultdict(lambda: deque())
         # Cleanup old entries periodically
         self.last_cleanup = time.time()
     
-    def is_allowed(self, ip: str, max_requests: int = 100, window_seconds: int = 3600) -> bool:
-        """Check if IP is within rate limit"""
+    def is_allowed(self, key: str, max_requests: int = 100, window_seconds: int = 3600) -> Tuple[bool, int]:
+        """
+        Check if key is within rate limit
+        Returns: (is_allowed, remaining_requests)
+        """
         current_time = time.time()
         
         # Clean up old entries every 5 minutes
@@ -22,90 +25,114 @@ class RateLimiter:
             self._cleanup_old_entries(current_time, window_seconds)
             self.last_cleanup = current_time
         
-        # Get requests for this IP
-        ip_requests = self.requests[ip]
+        # Get requests for this key
+        key_requests = self.requests[key]
         
         # Remove requests outside the window
         cutoff_time = current_time - window_seconds
-        while ip_requests and ip_requests[0] < cutoff_time:
-            ip_requests.popleft()
+        while key_requests and key_requests[0] < cutoff_time:
+            key_requests.popleft()
         
         # Check if under limit
-        if len(ip_requests) >= max_requests:
-            return False
+        if len(key_requests) >= max_requests:
+            return False, 0
         
         # Add current request
-        ip_requests.append(current_time)
-        return True
+        key_requests.append(current_time)
+        remaining = max_requests - len(key_requests)
+        return True, remaining
     
     def _cleanup_old_entries(self, current_time: float, window_seconds: int):
         """Remove old entries to prevent memory leaks"""
         cutoff_time = current_time - window_seconds
-        for ip in list(self.requests.keys()):
-            ip_requests = self.requests[ip]
-            while ip_requests and ip_requests[0] < cutoff_time:
-                ip_requests.popleft()
+        for key in list(self.requests.keys()):
+            key_requests = self.requests[key]
+            while key_requests and key_requests[0] < cutoff_time:
+                key_requests.popleft()
             
             # Remove empty entries
-            if not ip_requests:
-                del self.requests[ip]
+            if not key_requests:
+                del self.requests[key]
 
 # Global rate limiter instance
-rate_limiter = RateLimiter()
+global_rate_limiter = RateLimiter()
+endpoint_rate_limiter = RateLimiter()  # Separate instance for endpoints
 
 async def rate_limit_middleware(request: Request, call_next):
-    """Rate limiting middleware"""
-    # Get client IP
+    """Global rate limiting middleware - 100 requests per hour per IP"""
     client_ip = request.client.host
     
-    # Check rate limit (100 requests per hour by default)
-    if not rate_limiter.is_allowed(client_ip, max_requests=100, window_seconds=3600):
+    # Check global rate limit
+    is_allowed, remaining = global_rate_limiter.is_allowed(
+        f"global:{client_ip}", 
+        max_requests=100, 
+        window_seconds=3600
+    )
+    
+    if not is_allowed:
         return JSONResponse(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             content={
                 "error": True,
                 "message": "Rate limit exceeded. Please try again later.",
-                "status_code": 429
+                "status_code": 429,
+                "retry_after": 3600
             }
         )
     
     # Continue with the request
     response = await call_next(request)
+    
+    # Add rate limit headers
+    response.headers["X-RateLimit-Limit"] = "100"
+    response.headers["X-RateLimit-Remaining"] = str(remaining)
+    
     return response
 
 # Specific rate limiters for different endpoints
-class EndpointRateLimiter:
+class EndpointRateLimits:
     def __init__(self):
         self.limits = {
-            "/api/v1/auth/signin": (5, 300),  # 5 requests per 5 minutes
-            "/api/v1/auth/signup": (3, 300),  # 3 requests per 5 minutes
-            "/api/v1/auth/refresh": (10, 60),  # 10 requests per minute
-            "/api/v1/auth/password-reset": (3, 300),  # 3 requests per 5 minutes
+            "/api/v1/auth/signin": (10, 300),  # 10 requests per 5 minutes (increased from 5)
+            "/api/v1/auth/signup": (5, 300),   # 5 requests per 5 minutes (increased from 3)
+            "/api/v1/auth/refresh": (20, 60),  # 20 requests per minute (increased from 10)
+            "/api/v1/auth/password-reset": (5, 300),  # 5 requests per 5 minutes (increased from 3)
         }
     
     def get_limit(self, path: str) -> Tuple[int, int]:
         """Get rate limit for specific endpoint"""
-        return self.limits.get(path, (100, 3600))  # Default: 100 requests per hour
+        return self.limits.get(path, None)  # Return None for non-limited endpoints
 
-endpoint_limiter = EndpointRateLimiter()
+endpoint_limits = EndpointRateLimits()
 
 async def endpoint_rate_limit_middleware(request: Request, call_next):
-    """Endpoint-specific rate limiting"""
+    """Endpoint-specific rate limiting (only for sensitive endpoints)"""
     client_ip = request.client.host
     path = request.url.path
     
-    max_requests, window_seconds = endpoint_limiter.get_limit(path)
+    # Only apply endpoint-specific limits to configured paths
+    limit_config = endpoint_limits.get_limit(path)
     
-    if not rate_limiter.is_allowed(client_ip, max_requests, window_seconds):
-        return JSONResponse(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            content={
-                "error": True,
-                "message": f"Rate limit exceeded for {path}. Please try again later.",
-                "status_code": 429,
-                "retry_after": window_seconds
-            }
+    if limit_config:
+        max_requests, window_seconds = limit_config
+        
+        # Use a separate key for endpoint-specific tracking
+        is_allowed, remaining = endpoint_rate_limiter.is_allowed(
+            f"endpoint:{client_ip}:{path}", 
+            max_requests, 
+            window_seconds
         )
+        
+        if not is_allowed:
+            return JSONResponse(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                content={
+                    "error": True,
+                    "message": f"Rate limit exceeded for {path}. Please try again later.",
+                    "status_code": 429,
+                    "retry_after": window_seconds
+                }
+            )
     
     response = await call_next(request)
     return response

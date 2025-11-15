@@ -1,46 +1,45 @@
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
-import api from "../../services/BaseAPI"
-interface Patient {
-  first_name: string;
-  last_name: string;
-  email: string;
-}
+import api from "@/utils/api";
 
 interface Appointment {
   id: number;
-  patient: Patient;
-  date: string;
-  time: string;
+  patient_id: number;
+  doctor_id: number;
+  appointment_date: string;
+  reason: string | null;
   status: string;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 const DoctorAppointments = () => {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState<"all" | "pending" | "confirmed" | "cancelled">("all");
 
   const fetchAppointments = async () => {
     try {
-      const response = await api.get("/appointments");
+      setLoading(true);
+      const response = await api.get("/appointments/");
       setAppointments(response.data);
-    } catch (err) {
+    } catch (err: any) {
+      console.error("Failed to load appointments:", err);
       toast.error("Failed to load appointments");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
-  const updateStatus = async (id: number, status: "accepted" | "declined") => {
-    const endpoint =
-      status === "accepted"
-        ? `/api/v1/appointments/${id}/accept`
-        : `/api/v1/appointments/${id}/decline`;
-
+  const updateStatus = async (id: number, newStatus: "confirmed" | "cancelled" | "completed") => {
     try {
-      await api.put(endpoint);
-      toast.success(`Appointment ${status}`);
+      await api.put(`/appointments/${id}/status?status=${newStatus}`);
+      toast.success(`Appointment ${newStatus}`);
       fetchAppointments(); // refresh list
-    } catch (err) {
-      toast.error("Action failed");
+    } catch (err: any) {
+      console.error("Action failed:", err);
+      toast.error(err?.response?.data?.detail || "Action failed");
     }
   };
 
@@ -48,94 +47,244 @@ const DoctorAppointments = () => {
     fetchAppointments();
   }, []);
 
-  if (loading) return <p>Loading appointments...</p>;
+  // Filter appointments
+  const filteredAppointments = appointments.filter((appt) => {
+    if (filter === "all") return true;
+    return appt.status === filter;
+  });
+
+  // Format date and time
+  const formatDateTime = (dateTimeString: string) => {
+    const date = new Date(dateTimeString);
+    return {
+      date: date.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      }),
+      time: date.toLocaleTimeString("en-US", {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+    };
+  };
+
+  // Get status badge color
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "pending":
+        return "bg-yellow-100 text-yellow-800 border-yellow-300";
+      case "confirmed":
+        return "bg-green-100 text-green-800 border-green-300";
+      case "completed":
+        return "bg-blue-100 text-blue-800 border-blue-300";
+      case "cancelled":
+        return "bg-red-100 text-red-800 border-red-300";
+      default:
+        return "bg-gray-100 text-gray-800 border-gray-300";
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p className="text-gray-600">Loading appointments...</p>
+      </div>
+    );
+  }
 
   return (
-    <div>
-      <h2 className="text-xl font-semibold mb-4">Appointments</h2>
+    <div className="p-6 max-w-7xl mx-auto">
+      <div className="mb-6">
+        <h2 className="text-2xl font-bold text-gray-800 mb-4">My Appointments</h2>
 
-      {/* ✅ Desktop Table */}
-      <div className="hidden md:block overflow-x-auto">
-        <table className="min-w-full bg-white rounded shadow">
-          <thead className="bg-gray-100">
-            <tr>
-              <th className="p-3 text-left">Patient</th>
-              <th className="p-3 text-left">Date</th>
-              <th className="p-3 text-left">Time</th>
-              <th className="p-3 text-left">Status</th>
-              <th className="p-3 text-left">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {appointments.map((appt) => (
-              <tr key={appt.id} className="border-b">
-                <td className="p-3">
-                  {appt.patient.first_name} {appt.patient.last_name}
-                </td>
-                <td className="p-3">{appt.date}</td>
-                <td className="p-3">{appt.time}</td>
-                <td className="p-3 capitalize">{appt.status}</td>
-                <td className="p-3 space-x-2">
-                  {appt.status === "pending" && (
-                    <>
-                      <button
-                        onClick={() => updateStatus(appt.id, "accepted")}
-                        className="px-3 py-1 rounded bg-green-600 text-white hover:bg-green-700"
-                      >
-                        Approve
-                      </button>
-                      <button
-                        onClick={() => updateStatus(appt.id, "declined")}
-                        className="px-3 py-1 rounded bg-red-600 text-white hover:bg-red-700"
-                      >
-                        Decline
-                      </button>
-                    </>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        {/* Filter Tabs */}
+        <div className="flex gap-2 flex-wrap">
+          {["all", "pending", "confirmed", "cancelled"].map((f) => (
+            <button
+              key={f}
+              onClick={() => setFilter(f as typeof filter)}
+              className={`px-4 py-2 rounded-lg font-medium transition ${
+                filter === f
+                  ? "bg-blue-600 text-white"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+              }`}
+            >
+              {f.charAt(0).toUpperCase() + f.slice(1)}
+              {f !== "all" && (
+                <span className="ml-2 px-2 py-0.5 rounded-full bg-white/20 text-xs">
+                  {appointments.filter((a) => a.status === f).length}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
       </div>
 
-      {/* ✅ Mobile Cards */}
-      <div className="md:hidden space-y-4">
-        {appointments.map((appt) => (
-          <div key={appt.id} className="bg-white p-4 rounded shadow">
-            <p>
-              <span className="font-medium">Patient:</span>{" "}
-              {appt.patient.first_name} {appt.patient.last_name}
-            </p>
-            <p>
-              <span className="font-medium">Date:</span> {appt.date}
-            </p>
-            <p>
-              <span className="font-medium">Time:</span> {appt.time}
-            </p>
-            <p className="capitalize">
-              <span className="font-medium">Status:</span> {appt.status}
-            </p>
-
-            {appt.status === "pending" && (
-              <div className="flex gap-2 mt-3">
-                <button
-                  onClick={() => updateStatus(appt.id, "accepted")}
-                  className="flex-1 px-3 py-1 bg-green-600 text-white rounded"
-                >
-                  Approve
-                </button>
-                <button
-                  onClick={() => updateStatus(appt.id, "declined")}
-                  className="flex-1 px-3 py-1 bg-red-600 text-white rounded"
-                >
-                  Decline
-                </button>
-              </div>
-            )}
+      {filteredAppointments.length === 0 ? (
+        <div className="bg-white rounded-xl shadow p-8 text-center">
+          <p className="text-gray-500">No appointments found</p>
+        </div>
+      ) : (
+        <>
+          {/* ✅ Desktop Table */}
+          <div className="hidden md:block overflow-x-auto bg-white rounded-xl shadow">
+            <table className="min-w-full">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th className="p-4 text-left text-sm font-semibold text-gray-700">
+                    Patient ID
+                  </th>
+                  <th className="p-4 text-left text-sm font-semibold text-gray-700">
+                    Date
+                  </th>
+                  <th className="p-4 text-left text-sm font-semibold text-gray-700">
+                    Time
+                  </th>
+                  <th className="p-4 text-left text-sm font-semibold text-gray-700">
+                    Reason
+                  </th>
+                  <th className="p-4 text-left text-sm font-semibold text-gray-700">
+                    Status
+                  </th>
+                  <th className="p-4 text-left text-sm font-semibold text-gray-700">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {filteredAppointments.map((appt) => {
+                  const { date, time } = formatDateTime(appt.appointment_date);
+                  return (
+                    <tr key={appt.id} className="hover:bg-gray-50 transition">
+                      <td className="p-4 text-sm text-gray-900">
+                        Patient #{appt.patient_id}
+                      </td>
+                      <td className="p-4 text-sm text-gray-900">{date}</td>
+                      <td className="p-4 text-sm text-gray-900">{time}</td>
+                      <td className="p-4 text-sm text-gray-600">
+                        {appt.reason || "No reason provided"}
+                      </td>
+                      <td className="p-4">
+                        <span
+                          className={`inline-block px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(
+                            appt.status
+                          )}`}
+                        >
+                          {appt.status}
+                        </span>
+                      </td>
+                      <td className="p-4 space-x-2">
+                        {appt.status === "pending" && (
+                          <>
+                            <button
+                              onClick={() => updateStatus(appt.id, "confirmed")}
+                              className="px-3 py-1.5 rounded-lg bg-green-600 text-white text-sm font-medium hover:bg-green-700 transition"
+                            >
+                              Confirm
+                            </button>
+                            <button
+                              onClick={() => updateStatus(appt.id, "cancelled")}
+                              className="px-3 py-1.5 rounded-lg bg-red-600 text-white text-sm font-medium hover:bg-red-700 transition"
+                            >
+                              Cancel
+                            </button>
+                          </>
+                        )}
+                        {appt.status === "confirmed" && (
+                          <button
+                            onClick={() => updateStatus(appt.id, "completed")}
+                            className="px-3 py-1.5 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition"
+                          >
+                            Complete
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
-        ))}
-      </div>
+
+          {/* ✅ Mobile Cards */}
+          <div className="md:hidden space-y-4">
+            {filteredAppointments.map((appt) => {
+              const { date, time } = formatDateTime(appt.appointment_date);
+              return (
+                <div
+                  key={appt.id}
+                  className="bg-white p-5 rounded-xl shadow-sm border border-gray-200"
+                >
+                  <div className="flex justify-between items-start mb-3">
+                    <div>
+                      <p className="text-sm font-semibold text-gray-900">
+                        Patient #{appt.patient_id}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">ID: {appt.id}</p>
+                    </div>
+                    <span
+                      className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(
+                        appt.status
+                      )}`}
+                    >
+                      {appt.status}
+                    </span>
+                  </div>
+
+                  <div className="space-y-2 mb-4">
+                    <p className="text-sm">
+                      <span className="font-medium text-gray-700">Date:</span>{" "}
+                      <span className="text-gray-900">{date}</span>
+                    </p>
+                    <p className="text-sm">
+                      <span className="font-medium text-gray-700">Time:</span>{" "}
+                      <span className="text-gray-900">{time}</span>
+                    </p>
+                    <p className="text-sm">
+                      <span className="font-medium text-gray-700">Reason:</span>{" "}
+                      <span className="text-gray-600">
+                        {appt.reason || "No reason provided"}
+                      </span>
+                    </p>
+                    {appt.notes && (
+                      <p className="text-sm">
+                        <span className="font-medium text-gray-700">Notes:</span>{" "}
+                        <span className="text-gray-600">{appt.notes}</span>
+                      </p>
+                    )}
+                  </div>
+
+                  {appt.status === "pending" && (
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => updateStatus(appt.id, "confirmed")}
+                        className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition"
+                      >
+                        Confirm
+                      </button>
+                      <button
+                        onClick={() => updateStatus(appt.id, "cancelled")}
+                        className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  )}
+                  {appt.status === "confirmed" && (
+                    <button
+                      onClick={() => updateStatus(appt.id, "completed")}
+                      className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition"
+                    >
+                      Mark as Completed
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
     </div>
   );
 };
