@@ -44,6 +44,7 @@ def get_all_users(
             "is_profile_complete": user.is_profile_complete,
             "created_at": user.created_at,
             "last_login": user.last_login,
+            "contact_number": user.contact_number,
             "picture": (
                 user.picture 
                 if user.picture and user.picture.startswith("http")
@@ -53,6 +54,18 @@ def get_all_users(
             "province": user.province.name if user.province else None,
             "city": user.city.name if user.city else None,
             "barangay": user.barangay.name if user.barangay else None,
+             # Doctor profile info
+            "doctor_profile": {
+            "prc_license_front": user.doctor_profile.prc_license_front if user.doctor_profile else None,
+            "prc_license_back": user.doctor_profile.prc_license_back if user.doctor_profile else None,
+            "prc_license_selfie": user.doctor_profile.prc_license_selfie if user.doctor_profile else None,
+            "license_number": user.doctor_profile.license_number if user.doctor_profile else None,
+            "years_of_experience": user.doctor_profile.years_of_experience if user.doctor_profile else None,
+            "bio": user.doctor_profile.bio if user.doctor_profile else None,
+            "consultation_fee": user.doctor_profile.consultation_fee if user.doctor_profile else None,
+            
+            } if user.doctor_profile else None
+
 
         }
         for user in users

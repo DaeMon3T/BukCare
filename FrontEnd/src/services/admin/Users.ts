@@ -35,7 +35,7 @@ export interface ApiResponse<T = any> {
  */
 export async function getAllUsers(): Promise<User[]> {
   try {
-    const response = await BaseAPI.get<User[]>("/admin/users"); // ✅ Changed this line
+    const response = await BaseAPI.get<User[]>("/admin/users"); 
     // FastAPI returns array directly based on your endpoint
     return Array.isArray(response.data) ? response.data : [];
   } catch (error: any) {

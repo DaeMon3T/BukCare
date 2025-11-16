@@ -264,6 +264,7 @@ const Users: React.FC = () => {
                   <option value="all">All Roles</option>
                   <option value="patient">Patients</option>
                   <option value="doctor">Doctors</option>
+                  <option value="pending">Pending</option>
                 </select>
               </div>
 
@@ -351,7 +352,6 @@ const Users: React.FC = () => {
                           </span>
                         </td>
 
-                        {/* Swapped Join Date */}
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center gap-2 text-sm text-gray-600">
                             <Calendar className="w-4 h-4" />
@@ -359,17 +359,7 @@ const Users: React.FC = () => {
                           </div>
                         </td>
 
-                        {/* Swapped Status */}
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span
-                            className={`px-3 py-1 rounded-full text-xs font-medium ${
-                              user.is_active ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-700"
-                            }`}
-                          >
-                            {user.is_active ? "Active" : "Inactive"}
-                          </span>
-                        </td>
-
+                        {/* Verification */}
                         <td className="px-6 py-4">
                           <div className="flex flex-col gap-1 text-xs">
                             <div className="flex items-center gap-1">
@@ -381,6 +371,39 @@ const Users: React.FC = () => {
                               <span className="text-gray-600">Profile {user.is_profile_complete ? "Complete" : "Incomplete"}</span>
                             </div>
                           </div>
+                        </td>
+
+                        {/* Status with Toggle */}
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {user.role === "doctor" || user.role === "pending" ? (
+                            <button
+                              onClick={() => {
+                                // UI Demo - Toggle status
+                                setUsers(users.map(u => 
+                                  u.id === user.id 
+                                    ? { ...u, is_active: !u.is_active, role: !u.is_active ? "doctor" : "pending" }
+                                    : u
+                                ));
+                              }}
+                              className={`relative inline-flex items-center h-6 rounded-full w-11 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
+                                user.is_active ? "bg-green-600" : "bg-gray-300"
+                              }`}
+                            >
+                              <span
+                                className={`inline-block w-4 h-4 transform transition-transform bg-white rounded-full ${
+                                  user.is_active ? "translate-x-6" : "translate-x-1"
+                                }`}
+                              />
+                            </button>
+                          ) : (
+                            <span
+                              className={`px-3 py-1 rounded-full text-xs font-medium ${
+                                user.is_active ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-700"
+                              }`}
+                            >
+                              {user.is_active ? "Active" : "Inactive"}
+                            </span>
+                          )}
                         </td>
 
                         <td className="px-6 py-4 whitespace-nowrap text-right">
@@ -402,8 +425,7 @@ const Users: React.FC = () => {
                                 </button>
                                 <button
                                   onClick={() => handleAction("delete", user)}
-                                  className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex
-                                                                items-center gap-2"
+                                  className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
                                 >
                                   <Trash2 className="w-4 h-4" />
                                   Delete User

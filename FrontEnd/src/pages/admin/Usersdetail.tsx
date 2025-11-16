@@ -2,6 +2,17 @@ import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import usersAPI from "@/services/admin/Users";
+import { FileText, Download } from "lucide-react";
+
+interface DoctorProfile {
+  prc_license_front?: string;
+  prc_license_back?: string;
+  prc_license_selfie?: string;
+  license_number?: string;
+  years_of_experience?: number;
+  bio?: string;
+  consultation_fee?: number;
+}
 
 interface User {
   id: number;
@@ -18,18 +29,20 @@ interface User {
   created_at: string;
   last_login?: string;
 
-  // NEW ADDRESS FIELDS
   province?: string | null;
   city?: string | null;
   barangay?: string | null;
+
+  doctor_profile?: DoctorProfile;
 }
 
-export default function Usersdetail() {
+export default function UsersDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
 
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -43,6 +56,7 @@ export default function Usersdetail() {
           setUser({
             ...foundUser,
             picture: foundUser.picture || "/assets/react.svg",
+            doctor_profile: foundUser.doctor_profile || {},
           });
         }
       } catch (err) {
@@ -71,6 +85,8 @@ export default function Usersdetail() {
     );
   }
 
+  const isDoctor = user.role === "doctor" || user.role === "pending";
+
   return (
     <div className="h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 overflow-hidden">
       <Navbar role="admin" />
@@ -87,6 +103,7 @@ export default function Usersdetail() {
 
           <h1 className="text-2xl font-bold mb-6 text-gray-800">User Details</h1>
 
+          {/* USER PROFILE CARD */}
           <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-6 
                           text-white shadow-md mb-6 flex flex-col items-center space-y-3">
 
@@ -116,8 +133,9 @@ export default function Usersdetail() {
             </div>
           </div>
 
-          {/* FORM DETAILS */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+          {/* BASIC INFORMATION */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">Basic Information</h3>
             <form className="grid grid-cols-1 sm:grid-cols-2 gap-6">
 
               <InputField label="First Name" value={user.fname} />
@@ -126,7 +144,6 @@ export default function Usersdetail() {
               <InputField label="Email" value={user.email} />
               <InputField label="Contact Number" value={user.contact_number || "—"} />
 
-              {/* NEW ADDRESS FIELDS */}
               <InputField label="Province" value={user.province || "—"} />
               <InputField label="City" value={user.city || "—"} />
               <InputField label="Barangay" value={user.barangay || "—"} />
@@ -146,12 +163,75 @@ export default function Usersdetail() {
               />
             </form>
           </div>
+
+          {/* DOCTOR DOCUMENTS */}
+          {isDoctor && user.doctor_profile && (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">Doctor Verification Documents</h3>
+              
+              {(user.doctor_profile.license_number || user.doctor_profile.years_of_experience) && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-6">
+                  {user.doctor_profile.license_number && (
+                    <InputField label="License Number" value={user.doctor_profile.license_number} />
+                  )}
+                  {user.doctor_profile.years_of_experience && (
+                    <InputField label="Years of Experience" value={user.doctor_profile.years_of_experience.toString()} />
+                  )}
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <DocumentCard
+                  title="PRC License (Front)"
+                  imageUrl={user.doctor_profile.prc_license_front}
+                  onClick={() => setSelectedImage(user.doctor_profile?.prc_license_front || null)}
+                />
+                <DocumentCard
+                  title="PRC License (Back)"
+                  imageUrl={user.doctor_profile.prc_license_back}
+                  onClick={() => setSelectedImage(user.doctor_profile?.prc_license_back || null)}
+                />
+                <DocumentCard
+                  title="PRC License with Selfie"
+                  imageUrl={user.doctor_profile.prc_license_selfie}
+                  onClick={() => setSelectedImage(user.doctor_profile?.prc_license_selfie || null)}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* IMAGE MODAL */}
+          {selectedImage && (
+            <div 
+              className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4"
+              onClick={() => setSelectedImage(null)}
+            >
+              <div className="relative max-w-4xl max-h-[90vh] bg-white rounded-lg overflow-hidden">
+                <button
+                  onClick={() => setSelectedImage(null)}
+                  className="absolute top-4 right-4 bg-white rounded-full p-2 shadow-lg hover:bg-gray-100 transition z-10"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+                <img
+                  src={selectedImage}
+                  alt="Document"
+                  className="max-w-full max-h-[90vh] object-contain"
+                  onClick={(e) => e.stopPropagation()}
+                />
+              </div>
+            </div>
+          )}
+
         </div>
       </main>
     </div>
   );
 }
 
+// INPUT FIELD COMPONENT
 function InputField({ label, value }: { label: string; value: string }) {
   return (
     <div>
@@ -160,9 +240,55 @@ function InputField({ label, value }: { label: string; value: string }) {
         type="text"
         value={value}
         readOnly
-        className="w-full border border-gray-300 rounded-lg px-3 py-2 
-                   bg-gray-100 text-gray-700"
+        className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-gray-100 text-gray-700"
       />
+    </div>
+  );
+}
+
+// DOCUMENT CARD COMPONENT
+function DocumentCard({ title, imageUrl, onClick }: { title: string; imageUrl?: string; onClick: () => void }) {
+  if (!imageUrl) {
+    return (
+      <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+        <div className="flex items-center gap-2 mb-3">
+          <FileText className="w-5 h-5 text-gray-400" />
+          <h4 className="font-medium text-gray-700">{title}</h4>
+        </div>
+        <div className="aspect-video bg-gray-200 rounded-lg flex items-center justify-center">
+          <p className="text-gray-400 text-sm">No document uploaded</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="border border-gray-200 rounded-lg p-4 bg-white hover:shadow-md transition-shadow">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <FileText className="w-5 h-5 text-blue-600" />
+          <h4 className="font-medium text-gray-700">{title}</h4>
+        </div>
+        <a
+          href={imageUrl}
+          download
+          className="p-1 hover:bg-gray-100 rounded transition"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <Download className="w-4 h-4 text-gray-600" />
+        </a>
+      </div>
+      <div 
+        className="aspect-video bg-gray-100 rounded-lg overflow-hidden cursor-pointer hover:opacity-90 transition"
+        onClick={onClick}
+      >
+        <img
+          src={imageUrl}
+          alt={title}
+          className="w-full h-full object-cover"
+          loading="lazy"
+        />  
+      </div>
     </div>
   );
 }
