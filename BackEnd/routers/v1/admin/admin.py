@@ -49,7 +49,11 @@ def get_all_users(
                 if user.picture and user.picture.startswith("http")
                 else f"{base_url}{user.picture}" if user.picture
                 else f"{base_url}default-avatar.png"
-            )
+            ),
+            "province": user.province.name if user.province else None,
+            "city": user.city.name if user.city else None,
+            "barangay": user.barangay.name if user.barangay else None,
+
         }
         for user in users
     ]

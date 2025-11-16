@@ -44,14 +44,20 @@ export interface ApiResponse<T = any> {
 /**
  * Fetch dashboard stats (patients, doctors, staff, etc.)
  */
-export async function getDashboardStats(): Promise<ApiResponse<DashboardStats>> {
+export async function getDashboardStats(): Promise<DashboardStats> {
   try {
-    const { data } = await BaseAPI.get<ApiResponse<DashboardStats>>("/admin/dashboard-stats");
-    return data;
+    const { data } = await BaseAPI.get("/admin/stats");
+
+    return {
+      total_patients: data.total_patients,
+      total_doctors: data.total_doctors,
+      pending_approvals: data.pending_doctors,  // map API → UI
+    };
   } catch (error: any) {
     throw new Error(error.response?.data?.detail || error.message || "Failed to fetch dashboard stats");
   }
 }
+
 
 // -----------------------------
 // Search Users

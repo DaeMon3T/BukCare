@@ -11,15 +11,9 @@ from middleware.request_logging import request_logging_middleware
 import logging
 import traceback
 
-
-
 #from mangum import Mangum
 
-
-# ✅ Import the full v1 router (which includes auth + doctors)
 from routers.v1 import router as v1_router
-
-# ✅ Import admin creation utility
 from utils.admin import create_admin_if_not_exists
 
 
@@ -64,8 +58,6 @@ def create_app() -> FastAPI:
     # ✅ Startup event for tasks like creating default admin
     @app.on_event("startup")
     def startup_tasks():
-      
-
         # Create default admin account if it doesn't exist
         create_admin_if_not_exists()
         logger.info("Checked/created default admin account")

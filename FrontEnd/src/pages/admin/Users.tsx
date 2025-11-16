@@ -1,4 +1,3 @@
-// src/pages/admin/Users.tsx
 import React, { useState, useEffect } from "react";
 import Navbar from "@/components/Navbar";
 import { motion } from "framer-motion";
@@ -10,7 +9,6 @@ import {
   Mail,
   Phone,
   Calendar,
-  Edit,
   Trash2,
   Eye,
   Download,
@@ -19,6 +17,7 @@ import {
   Clock,
 } from "lucide-react";
 import usersAPI from "@/services/admin/Users";
+import { useNavigate } from "react-router-dom";
 
 interface User {
   id: number;
@@ -64,6 +63,8 @@ const Users: React.FC = () => {
   const [activeDropdown, setActiveDropdown] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
 
+  const navigate = useNavigate();
+
   // Fetch API users
   useEffect(() => {
     const fetchUsers = async () => {
@@ -88,16 +89,11 @@ const Users: React.FC = () => {
         setUsers(formattedUsers);
 
         // Calculate stats
-        const patients = formattedUsers.filter((u) => u.role === "patient").length;
-        const doctors = formattedUsers.filter((u) => u.role === "doctor").length;
-        const staff = formattedUsers.filter((u) => u.role === "admin").length;
-        const pending = formattedUsers.filter((u) => u.role === "pending").length;
-
         setStats({
-          total_patients: patients,
-          total_doctors: doctors,
-          total_staff: staff,
-          pending_approvals: pending,
+          total_patients: formattedUsers.filter((u) => u.role === "patient").length,
+          total_doctors: formattedUsers.filter((u) => u.role === "doctor").length,
+          total_staff: formattedUsers.filter((u) => u.role === "admin").length,
+          pending_approvals: formattedUsers.filter((u) => u.role === "pending").length,
           active_sessions: formattedUsers.filter((u) => u.is_active).length,
           pending_invites: 0,
         });
@@ -115,17 +111,10 @@ const Users: React.FC = () => {
   useEffect(() => {
     let filtered = users;
 
-    if (roleFilter !== "all") {
-      filtered = filtered.filter((user) => user.role === roleFilter);
-    }
-
-    if (statusFilter !== "all") {
-      filtered = filtered.filter((user) =>
-        statusFilter === "active" ? user.is_active : !user.is_active
-      );
-    }
-
-    if (searchQuery) {
+    if (roleFilter !== "all") filtered = filtered.filter((user) => user.role === roleFilter);
+    if (statusFilter !== "all")
+      filtered = filtered.filter((user) => (statusFilter === "active" ? user.is_active : !user.is_active));
+    if (searchQuery)
       filtered = filtered.filter(
         (user) =>
           user.fname.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -133,13 +122,16 @@ const Users: React.FC = () => {
           user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
           (user.contact_number && user.contact_number.includes(searchQuery))
       );
-    }
 
     setFilteredUsers(filtered);
   }, [searchQuery, roleFilter, statusFilter, users]);
 
-  const handleAction = (action: string, userId: number) => {
-    alert(`Action: ${action} for user ID: ${userId} (UI Demo - No API call)`);
+  const handleAction = (action: string, user: User) => {
+    if (action === "view") {
+      navigate(`/admin/users/${user.id}`);
+    } else if (action === "delete") {
+      alert(`Delete user ID: ${user.id} (UI Demo - No API call)`);
+    }
     setActiveDropdown(null);
   };
 
@@ -315,9 +307,9 @@ const Users: React.FC = () => {
                       <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">User</th>
                       <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Contact</th>
                       <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Role</th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Join Date</th>
                       <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
                       <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Verification</th>
-                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Join Date</th>
                       <th className="px-6 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
                     </tr>
                   </thead>
@@ -354,83 +346,64 @@ const Users: React.FC = () => {
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span
-                            className={`px-3 py-1 rounded-full text-xs font-medium ${getRoleBadgeColor(user.role)}`}
-                          >
+                          <span className={`px-3 py-1 rounded-full text-xs font-medium ${getRoleBadgeColor(user.role)}`}>
                             {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
                           </span>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span
-                            className={`px-3 py-1 rounded-full text-xs font-medium ${
-                              user.is_active
-                                ? "bg-emerald-100 text-emerald-700"
-                                : "bg-gray-100 text-gray-700"
-                            }`}
-                          >
-                            {user.is_active ? "Active" : "Inactive"}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="flex flex-col gap-1">
-                            <div className="flex items-center gap-1 text-xs">
-                              {user.is_verified ? (
-                                <CheckCircle className="w-4 h-4 text-green-600" />
-                              ) : (
-                                <XCircle className="w-4 h-4 text-red-600" />
-                              )}
-                              <span className="text-gray-600">
-                                {user.is_verified ? "Verified" : "Not Verified"}
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-1 text-xs">
-                              {user.is_profile_complete ? (
-                                <CheckCircle className="w-4 h-4 text-green-600" />
-                              ) : (
-                                <XCircle className="w-4 h-4 text-red-600" />
-                              )}
-                              <span className="text-gray-600">
-                                Profile {user.is_profile_complete ? "Complete" : "Incomplete"}
-                              </span>
-                            </div>
-                          </div>
-                        </td>
+
+                        {/* Swapped Join Date */}
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center gap-2 text-sm text-gray-600">
                             <Calendar className="w-4 h-4" />
                             {new Date(user.created_at).toLocaleDateString()}
                           </div>
                         </td>
+
+                        {/* Swapped Status */}
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span
+                            className={`px-3 py-1 rounded-full text-xs font-medium ${
+                              user.is_active ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-700"
+                            }`}
+                          >
+                            {user.is_active ? "Active" : "Inactive"}
+                          </span>
+                        </td>
+
+                        <td className="px-6 py-4">
+                          <div className="flex flex-col gap-1 text-xs">
+                            <div className="flex items-center gap-1">
+                              {user.is_verified ? <CheckCircle className="w-4 h-4 text-green-600" /> : <XCircle className="w-4 h-4 text-red-600" />}
+                              <span className="text-gray-600">{user.is_verified ? "Verified" : "Not Verified"}</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              {user.is_profile_complete ? <CheckCircle className="w-4 h-4 text-green-600" /> : <XCircle className="w-4 h-4 text-red-600" />}
+                              <span className="text-gray-600">Profile {user.is_profile_complete ? "Complete" : "Incomplete"}</span>
+                            </div>
+                          </div>
+                        </td>
+
                         <td className="px-6 py-4 whitespace-nowrap text-right">
                           <div className="relative inline-block">
                             <button
-                              onClick={() =>
-                                setActiveDropdown(activeDropdown === user.id ? null : user.id)
-                              }
+                              onClick={() => setActiveDropdown(activeDropdown === user.id ? null : user.id)}
                               className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
                             >
                               <MoreVertical className="w-5 h-5 text-gray-600" />
                             </button>
-
                             {activeDropdown === user.id && (
                               <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-10">
                                 <button
-                                  onClick={() => handleAction("view", user.id)}
+                                  onClick={() => handleAction("view", user)}
                                   className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
                                 >
                                   <Eye className="w-4 h-4" />
                                   View Details
                                 </button>
                                 <button
-                                  onClick={() => handleAction("edit", user.id)}
-                                  className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
-                                >
-                                  <Edit className="w-4 h-4" />
-                                  Edit User
-                                </button>
-                                <button
-                                  onClick={() => handleAction("delete", user.id)}
-                                  className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+                                  onClick={() => handleAction("delete", user)}
+                                  className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex
+                                                                items-center gap-2"
                                 >
                                   <Trash2 className="w-4 h-4" />
                                   Delete User
