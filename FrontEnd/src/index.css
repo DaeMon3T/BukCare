@@ -1,4 +1,5 @@
 @import "tailwindcss";
+/* @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@700&family=Roboto:wght@400&display=swap'); */
 
 @keyframes slideIn {
   from {
@@ -13,4 +14,159 @@
 
 .animate-slideIn {
   animation: slideIn 0.3s ease-out;
+}
+/* --- Add these logo styles to the end of the file --- */
+.logo-container {
+  /* background: white; */
+  border-radius: 1rem;
+  /* box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15); */
+  padding: 10rem 3rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 900px;
+  user-select: none;
+  /* Add this to make it scale down if needed */
+  width: 150%; 
+}
+
+.logo-text {
+  font-family: 'Poppins', sans-serif;
+  font-weight: 700;
+  font-size: 5rem;
+  letter-spacing: -0.02em;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  user-select: none;
+}
+
+.buk {
+  color: #cc9534; /* warm rich gold */
+  /* Replaced 'filter' with 'text-shadow' for a clean border effect */
+  text-shadow:
+    /* Creates the crisp 1px border */
+    -1px -1px 0 #FFFFFF,  
+     1px -1px 0 #FFFFFF,
+    -1px  1px 0 #FFFFFF,
+     1px  1px 0 #FFFFFF,
+    
+    /* Optional: Adds a soft glow. You can remove this line. */
+     0px 0px 5px #FFFFFF;
+  position: relative;
+  z-index: 2;
+  animation: pulseScale 3s ease-in-out infinite;
+  transform-origin: center;
+  
+}
+
+.care {
+  color: #1c2454; /* deep navy */
+  /* Replaced 'filter' with 'text-shadow' for a clean border effect */
+  text-shadow:
+    /* Creates the crisp 1px border */
+    -1px -1px 0 #f4cc56,  
+     1px -1px 0 #f4cc56,
+    -1px  1px 0 #f4cc56,
+     1px  1px 0 #f4cc56,
+    
+    /* Optional: Adds a soft glow. You can remove this line. */
+     0px 0px 5px #f4cc56;
+  position: relative;
+  z-index: 2;
+  animation: pulseScale 3s ease-in-out infinite;
+  animation-delay: 1.5s;
+  transform-origin: center;
+}
+
+/* Abstract heart shape formed by layered shapes for care */
+.heart-graphic {
+  width: 56px;
+  height: 56px;
+  background: linear-gradient(135deg, #f4cc56, #cc9534);
+  clip-path: polygon(50% 95%, 90% 35%, 75% 10%, 50% 35%, 25% 10%, 10% 35%);
+  filter: drop-shadow(0 1.5px 1px #a77a2c);
+  margin-left: -12px;
+  margin-top: -12px;
+  z-index: 1;
+  position: relative;
+  transform: rotate(15deg);
+  border-radius: 12% 30% 40% 25% / 25% 55% 70% 50%;
+  box-shadow:
+    inset 6px 3px 6px #f4cc56,
+    inset -6px -3px 6px #cc9534;
+  animation: heartPulseRotate 4s ease-in-out infinite;
+  transform-origin: center;
+}
+
+.tagline {
+  margin-top: 1.2rem;
+  font-size: 1.15rem;
+  color: #292e58; /* darkest navy */
+  font-weight: 400;
+  text-align: center;
+  max-width: 320px;
+  user-select: none;
+  line-height: 1.4;
+  font-style: italic;
+  letter-spacing: 0.03em;
+  animation: fadeInUp 2s ease forwards;
+  opacity: 0;
+  animation-delay: 0.5s;
+}
+
+@media (max-width: 480px) {
+  .logo-text {
+    font-size: 3.1rem;
+  }
+  .logo-container {
+    padding: 1.5rem 2rem;
+    max-width: 90vw;
+  }
+  .tagline {
+    font-size: 1rem;
+    max-width: 95vw;
+  }
+  .heart-graphic {
+    width: 44px;
+    height: 44px;
+    margin-left: -9px;
+    margin-top: -9px;
+  }
+}
+
+/* Animations */
+@keyframes pulseScale {
+  0%,
+  100% {
+    transform: scale(1);
+    filter: drop-shadow(1px 1px 1.5px #a77a2c);
+  }
+  50% {
+    transform: scale(1.1);
+    filter: drop-shadow(2px 2px 3px #a77a2c);
+  }
+}
+
+@keyframes heartPulseRotate {
+  0%,
+  100% {
+    transform: rotate(15deg) scale(1);
+    filter: drop-shadow(0 1.5px 1px #a77a2c);
+  }
+  50% {
+    transform: rotate(10deg) scale(1.15);
+    filter: drop-shadow(0 3px 2px #a77a2c);
+  }
+}
+
+@keyframes fadeInUp {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }

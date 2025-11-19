@@ -76,7 +76,7 @@ const Navbar: React.FC<NavbarProps> = ({ role }) => {
   const homeLink = navigationItems[0]?.path || `/${userRole}/home`;
 
   return (
-    <header className="bg-white/80 backdrop-blur-md shadow-sm border-b border-gray-100 sticky top-0 z-50">
+    <header className="bg-[#002D62] backdrop-blur-md shadow-sm border-b sticky top-0 z-50">
       <div className="w-full px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Left side */}
@@ -96,7 +96,7 @@ const Navbar: React.FC<NavbarProps> = ({ role }) => {
                 alt="BukCare Logo"
                 className="w-5 h-5 object-cover rounded-sm"
               />
-              <span className="text-xl font-semibold text-gray-800">
+              <span className="text-xl font-semibold text-[#FFC107]">
                 BukCare
               </span>
             </Link>
@@ -112,7 +112,7 @@ const Navbar: React.FC<NavbarProps> = ({ role }) => {
                   <Link
                     key={item.path}
                     to={item.path}
-                    className="flex items-center space-x-2 text-gray-700 hover:text-blue-600 transition-colors"
+                    className="flex items-center space-x-2 text-white hover:text-[#F5CC00] transition-colors pl-5 text-xs"
                   >
                     <Icon className="w-5 h-5" />
                     <span>{item.label}</span>
@@ -125,10 +125,10 @@ const Navbar: React.FC<NavbarProps> = ({ role }) => {
             <div className="relative">
               <button
                 onClick={() => setShowNotifications(!showNotifications)}
-                className="relative p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors duration-200"
+                className="relative p-2 text-white hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors duration-200"
               >
                 <Bell className="w-6 h-6" />
-                <span className="absolute -top-1 -right-1 w-4 h-4 bg-gray-300 text-white text-xs rounded-full flex items-center justify-center">
+                <span className="absolute -top-1 -right-1 w-4 h-4 bg-gray-300 text-[#005F7F] text-xs rounded-full flex items-center justify-center">
                   0
                 </span>
               </button>
@@ -161,12 +161,12 @@ const Navbar: React.FC<NavbarProps> = ({ role }) => {
                   />
                 </div>
                 <div className="hidden md:block text-left">
-                  <p className="text-sm font-medium text-gray-800">
+                  <p className="text-sm font-medium text-[#F5CC00]">
                     {displayName}
                   </p>
-                  <p className="text-xs text-gray-600 capitalize">{userRole}</p>
+                  <p className="text-xs text-white capitalize">{userRole}</p>
                 </div>
-                <ChevronDown className="w-4 h-4 text-gray-600" />
+                <ChevronDown className="w-4 h-4 text-white" />
               </button>
 
               {showProfileDropdown && (
