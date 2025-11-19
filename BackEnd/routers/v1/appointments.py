@@ -1,13 +1,15 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session, joinedload
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, date
 
 from core.database import get_db
 from models.appointment import Appointment, AppointmentStatus
 from models.users import User
+from models.doctor import Doctor
 from routers.v1.dependencies import get_current_user
 from schemas.appointment import AppointmentCreate
+from utils.appointment_helpers import check_appointment_conflict, get_available_slots
 
 router = APIRouter()
 
@@ -73,15 +75,14 @@ def create_appointment(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Create a new appointment (patients only)"""
+    """Create a new appointment (patients only) with conflict prevention"""
     if current_user.role.value != "patient":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only patients can create appointments"
         )
     
-    # ✅ FIXED: Convert doctor.doctor_id to doctor's user_id
-    from models.doctor import Doctor
+    # Get the doctor record
     doctor = db.query(Doctor).filter(Doctor.doctor_id == appointment_data.doctor_id).first()
     if not doctor:
         raise HTTPException(
@@ -89,9 +90,24 @@ def create_appointment(
             detail="Doctor not found"
         )
     
+    # ✅ CHECK FOR CONFLICTS
+    has_conflict = check_appointment_conflict(
+        db=db,
+        doctor_id=doctor.user_id,
+        appointment_date=appointment_data.appointment_date,
+        duration_minutes=60  # Default 1 hour appointment
+    )
+    
+    if has_conflict:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="This time slot is already booked. Please choose another time."
+        )
+    
+    # Create the appointment
     appointment = Appointment(
         patient_id=current_user.id,
-        doctor_id=doctor.user_id,  # ✅ Use user_id, not doctor_id
+        doctor_id=doctor.user_id,
         appointment_date=appointment_data.appointment_date,
         reason=appointment_data.reason,
         status=AppointmentStatus.PENDING
@@ -110,6 +126,74 @@ def create_appointment(
         "status": appointment.status.value,
         "notes": appointment.notes,
         "created_at": appointment.created_at
+    }
+
+
+# ✅ NEW ENDPOINT: Check available slots
+@router.get("/available-slots/{doctor_id}")
+def get_doctor_available_slots(
+    doctor_id: int,
+    date: date = Query(..., description="Date to check availability (YYYY-MM-DD)"),
+    db: Session = Depends(get_db)
+):
+    """Get available time slots for a doctor on a specific date"""
+    
+    # Verify doctor exists
+    doctor = db.query(Doctor).filter(Doctor.doctor_id == doctor_id).first()
+    if not doctor:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Doctor not found"
+        )
+    
+    # Get available slots
+    slots = get_available_slots(
+        db=db,
+        doctor_id=doctor.user_id,
+        date=date,
+        start_hour=8,   # 8 AM
+        end_hour=17,    # 5 PM
+        slot_duration=60  # 1 hour slots
+    )
+    
+    return {
+        "doctor_id": doctor_id,
+        "date": date.isoformat(),
+        "available_slots": [slot.isoformat() for slot in slots],
+        "total_slots": len(slots)
+    }
+
+
+# ✅ NEW ENDPOINT: Check if specific time is available
+@router.get("/check-availability/{doctor_id}")
+def check_time_availability(
+    doctor_id: int,
+    appointment_date: datetime = Query(..., description="Appointment date and time"),
+    db: Session = Depends(get_db)
+):
+    """Check if a specific time slot is available for a doctor"""
+    
+    # Verify doctor exists
+    doctor = db.query(Doctor).filter(Doctor.doctor_id == doctor_id).first()
+    if not doctor:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Doctor not found"
+        )
+    
+    # Check for conflicts
+    has_conflict = check_appointment_conflict(
+        db=db,
+        doctor_id=doctor.user_id,
+        appointment_date=appointment_date,
+        duration_minutes=60
+    )
+    
+    return {
+        "doctor_id": doctor_id,
+        "appointment_date": appointment_date.isoformat(),
+        "is_available": not has_conflict,
+        "message": "Time slot is available" if not has_conflict else "Time slot is already booked"
     }
 
 @router.put("/{appointment_id}/status", response_model=dict)
