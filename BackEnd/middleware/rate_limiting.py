@@ -58,6 +58,14 @@ class RateLimiter:
 global_rate_limiter = RateLimiter()
 endpoint_rate_limiter = RateLimiter()  # Separate instance for endpoints
 
+# Paths exempt from global rate limiting
+GLOBAL_RATE_LIMIT_EXEMPT = {
+    "/health",
+    "/docs",
+    "/openapi.json",
+    "/redoc",
+}
+
 async def rate_limit_middleware(request: Request, call_next):
     """Global rate limiting middleware - 100 requests per hour per IP"""
     client_ip = request.client.host
@@ -104,6 +112,16 @@ class EndpointRateLimits:
         return self.limits.get(path, None)  # Return None for non-limited endpoints
 
 endpoint_limits = EndpointRateLimits()
+
+# Paths exempt from endpoint-specific rate limiting
+ENDPOINT_RATE_LIMIT_EXEMPT = {
+    "/health",
+    "/docs",
+    "/openapi.json",
+    "/redoc",
+    "/v1/auth/google/callback",  # ✅ Google callbacks should not be rate limited
+    "/v1/auth/google/login",
+}
 
 async def endpoint_rate_limit_middleware(request: Request, call_next):
     """Endpoint-specific rate limiting (only for sensitive endpoints)"""

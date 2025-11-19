@@ -58,6 +58,13 @@ def create_app() -> FastAPI:
     @app.get("/health")
     def health_check():
         return {"status": "healthy", "message": "BukCare API is running"}
+    
+    # ✅ Startup event for tasks like creating default admin
+    @app.on_event("startup")
+    def startup_tasks():
+        # Create default admin account if it doesn't exist
+        create_admin_if_not_exists()
+        logger.info("Checked/created default admin account")
 
     # ================================
     # Exception Handlers
@@ -103,3 +110,4 @@ def create_app() -> FastAPI:
 
 
 app = create_app()
+#handler = Mangum(app)

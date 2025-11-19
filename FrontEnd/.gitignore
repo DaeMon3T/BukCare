@@ -27,9 +27,6 @@ alembic/versions/*.pyc
 BackEnd/logs/
 *.log
 
-# Database files (if any)
-*.db
-*.sqlite3
 
 # ==========================
 # Node / FrontEnd

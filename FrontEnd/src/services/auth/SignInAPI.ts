@@ -41,7 +41,7 @@ export interface GoogleSignInPayload {
 ---------------------------------------- */
 export const signIn = async (credentials: Credentials): Promise<AuthResponse> => {
   try {
-    const response = await BaseAPI.post<AuthResponse>("/auth/signin/", credentials);
+    const response = await BaseAPI.post<AuthResponse>("/auth/signin", credentials);
     return response.data;
   } catch (error: any) {
     console.error("Sign in error:", error);

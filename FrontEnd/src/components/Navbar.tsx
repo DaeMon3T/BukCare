@@ -1,4 +1,4 @@
-import React, { useState, useContext, useMemo } from "react";
+import React, { useState, useContext } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -16,48 +16,35 @@ import {
 } from "lucide-react";
 import AuthContext from "../context/AuthContext.js";
 
-interface NavbarProps {
-  role?: "admin" | "doctor" | "patient";
-}
+interface NavbarProps {}
 
-interface User {
-  name?: string;
-  first_name?: string;
-  last_name?: string;
-  email?: string;
-  picture?: string;
-}
-
-interface AuthContextType {
-  user: User | null;
-  logout: () => void;
-}
-
-const Navbar: React.FC<NavbarProps> = ({ role }) => {
-  const userRole = role || "patient";
-  const { user, logout } = useContext(AuthContext) as AuthContextType;
+const Navbar: React.FC<NavbarProps> = () => {
+  const { user, logout } = useContext(AuthContext);
 
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // Compute the display name dynamically
-  const displayName = useMemo(() => {
-    if (!user) return "Guest";
-    if (user.name && user.name.trim() !== "") return user.name;
-    const fullName = `${user.first_name || ""} ${user.last_name || ""}`.trim();
-    return fullName || "Guest";
-  }, [user]);
+  // Wait until user is loaded
+  if (!user) return null; // <-- prevents showing patient by default
 
-  // Role-based navigation configuration
+  const userRole = user.role || "patient";
+
+  const displayName =
+    user.name?.trim() ||
+    `${user.first_name || ""} ${user.last_name || ""}`.trim() ||
+    "Guest";
+
   const getNavigationItems = () => {
     switch (userRole) {
       case "admin":
         return [
+          { label: "Dashboard", path: "/admin/dashboard", icon: Home },
           { label: "Users", path: "/admin/users", icon: Users },
         ];
       case "doctor":
         return [
+          { label: "Dashboard", path: "/doctor/dashboard", icon: Home },
           { label: "Appointments", path: "/doctor/appointments", icon: Calendar },
           { label: "Patients", path: "/doctor/patients", icon: Users },
         ];
@@ -72,16 +59,23 @@ const Navbar: React.FC<NavbarProps> = ({ role }) => {
   };
 
   const navigationItems = getNavigationItems();
+
+  const homeLink =
+    userRole === "admin"
+      ? "/admin/dashboard"
+      : userRole === "doctor"
+      ? "/doctor/dashboard"
+      : "/patient/home";
+
   const profileLink = `/${userRole}/profile`;
-  const homeLink = navigationItems[0]?.path || `/${userRole}/home`;
 
   return (
     <header className="bg-white/80 backdrop-blur-md shadow-sm border-b border-gray-100 sticky top-0 z-50">
       <div className="w-full px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
-          {/* Left side */}
+          {/* Left */}
           <div className="flex items-center space-x-3">
-            {/* Hamburger menu for mobile */}
+            {/* Hamburger */}
             <button
               onClick={() => setSidebarOpen(true)}
               className="lg:hidden p-2 rounded-lg hover:bg-gray-100"
@@ -96,13 +90,11 @@ const Navbar: React.FC<NavbarProps> = ({ role }) => {
                 alt="BukCare Logo"
                 className="w-5 h-5 object-cover rounded-sm"
               />
-              <span className="text-xl font-semibold text-gray-800">
-                BukCare
-              </span>
+              <span className="text-xl font-semibold text-gray-800">BukCare</span>
             </Link>
           </div>
 
-          {/* Right side */}
+          {/* Right */}
           <div className="flex items-center space-x-4">
             {/* Desktop Links */}
             <div className="hidden lg:flex items-center space-x-6">
@@ -132,13 +124,10 @@ const Navbar: React.FC<NavbarProps> = ({ role }) => {
                   0
                 </span>
               </button>
-
               {showNotifications && (
                 <div className="absolute right-0 mt-2 w-72 bg-white rounded-xl shadow-lg border border-gray-100 py-2 z-50">
                   <div className="px-4 py-2 border-b border-gray-100">
-                    <h3 className="font-semibold text-gray-800">
-                      Notifications
-                    </h3>
+                    <h3 className="font-semibold text-gray-800">Notifications</h3>
                   </div>
                   <div className="p-4 text-gray-500 text-sm text-center">
                     No notifications yet
@@ -147,7 +136,7 @@ const Navbar: React.FC<NavbarProps> = ({ role }) => {
               )}
             </div>
 
-            {/* Profile Dropdown */}
+            {/* Profile */}
             <div className="relative">
               <button
                 onClick={() => setShowProfileDropdown(!showProfileDropdown)}
@@ -155,15 +144,13 @@ const Navbar: React.FC<NavbarProps> = ({ role }) => {
               >
                 <div className="w-8 h-8 rounded-full overflow-hidden">
                   <img
-                    src={user?.picture || "/default-avatar.png"}
+                    src={user.picture || "/default-avatar.png"}
                     alt="Profile"
                     className="w-full h-full object-cover"
                   />
                 </div>
                 <div className="hidden md:block text-left">
-                  <p className="text-sm font-medium text-gray-800">
-                    {displayName}
-                  </p>
+                  <p className="text-sm font-medium text-gray-800">{displayName}</p>
                   <p className="text-xs text-gray-600 capitalize">{userRole}</p>
                 </div>
                 <ChevronDown className="w-4 h-4 text-gray-600" />
@@ -173,11 +160,8 @@ const Navbar: React.FC<NavbarProps> = ({ role }) => {
                 <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-gray-100 py-2 z-50">
                   <div className="px-4 py-3 border-b border-gray-100">
                     <p className="font-semibold text-gray-800">{displayName}</p>
-                    <p className="text-sm text-gray-600">
-                      {user?.email || "No email"}
-                    </p>
+                    <p className="text-sm text-gray-600">{user.email || "No email"}</p>
                   </div>
-
                   <div className="py-2">
                     <Link
                       to={profileLink}
@@ -186,14 +170,12 @@ const Navbar: React.FC<NavbarProps> = ({ role }) => {
                       My Profile
                     </Link>
                   </div>
-
                   <div className="border-t border-gray-100 pt-2">
                     <button
                       onClick={logout}
                       className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
                     >
-                      <LogOut className="inline w-4 h-4 mr-2" />
-                      Sign Out
+                      <LogOut className="inline w-4 h-4 mr-2" /> Sign Out
                     </button>
                   </div>
                 </div>
@@ -203,11 +185,10 @@ const Navbar: React.FC<NavbarProps> = ({ role }) => {
         </div>
       </div>
 
-      {/* Mobile Sidebar Drawer */}
+      {/* Mobile Sidebar */}
       <AnimatePresence>
         {sidebarOpen && (
           <>
-            {/* Overlay */}
             <motion.div
               className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40"
               initial={{ opacity: 0 }}
@@ -215,8 +196,6 @@ const Navbar: React.FC<NavbarProps> = ({ role }) => {
               exit={{ opacity: 0 }}
               onClick={() => setSidebarOpen(false)}
             />
-
-            {/* Sidebar */}
             <motion.div
               initial={{ x: -300 }}
               animate={{ x: 0 }}
@@ -231,15 +210,12 @@ const Navbar: React.FC<NavbarProps> = ({ role }) => {
                     alt="BukCare Logo"
                     className="w-5 h-5 object-cover rounded-sm"
                   />
-                  <span className="text-xl font-semibold text-gray-800">
-                    BukCare
-                  </span>
+                  <span className="text-xl font-semibold text-gray-800">BukCare</span>
                 </Link>
                 <button onClick={() => setSidebarOpen(false)}>
                   <X className="w-6 h-6 text-gray-600" />
                 </button>
               </div>
-
               <nav className="space-y-4">
                 {navigationItems.map((item) => {
                   const Icon = item.icon;
@@ -255,16 +231,13 @@ const Navbar: React.FC<NavbarProps> = ({ role }) => {
                     </Link>
                   );
                 })}
-
                 <Link
                   to={profileLink}
                   onClick={() => setSidebarOpen(false)}
                   className="flex items-center space-x-3 text-gray-700 hover:text-blue-600"
                 >
-                  <User className="w-5 h-5" />
-                  <span>Profile</span>
+                  <User className="w-5 h-5" /> <span>Profile</span>
                 </Link>
-
                 <button
                   onClick={() => {
                     logout();
@@ -272,8 +245,7 @@ const Navbar: React.FC<NavbarProps> = ({ role }) => {
                   }}
                   className="flex items-center space-x-3 text-red-600 hover:text-red-700 w-full"
                 >
-                  <LogOut className="w-5 h-5" />
-                  <span>Logout</span>
+                  <LogOut className="w-5 h-5" /> <span>Logout</span>
                 </button>
               </nav>
             </motion.div>

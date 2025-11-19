@@ -129,11 +129,18 @@ class User(Base):
             self.google_id = data.get("google_id")
             updated = True
 
-        for field in ["fname", "lname", "picture"]:
+        # 🛠 Only update name fields, not picture if user already has one
+        for field in ["fname", "lname"]:
             new_value = data.get(field)
             if new_value and getattr(self, field) != new_value:
                 setattr(self, field, new_value)
                 updated = True
+
+        # ✅ Only replace Google picture if user.picture is empty
+        new_picture = data.get("picture")
+        if new_picture and not self.picture:
+            self.picture = new_picture
+            updated = True
 
         # Only update role if provided and valid
         if "role" in data and data["role"] in UserRole._value2member_map_:
@@ -144,3 +151,4 @@ class User(Base):
 
         self.last_login = datetime.utcnow()
         return updated
+

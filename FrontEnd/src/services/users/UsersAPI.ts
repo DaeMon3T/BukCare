@@ -1,96 +1,98 @@
-import axios from "axios";
+// src/services/users/UsersAPI.ts
+import BaseAPI from "../BaseAPI";
 
-const API_URL = "http://localhost:8000/api/v1"; // adjust to your backend
+// ---------- Types ----------
+export interface Address {
+  province?: string;
+  city?: string;
+  barangay?: string;
+}
 
-// Type Definitions
-export interface UserProfile {
+export interface User {
   id: number;
   email: string;
-  first_name: string;
-  last_name: string;
-  user_type: string;
-  date_of_birth?: string;
-  phone_number?: string;
-  address?: string;
-  city?: string;
-  state?: string;
-  zip_code?: string;
-  profile_picture?: string;
-  is_profile_complete: boolean;
-  is_verified: boolean;
+  fname: string;
+  lname: string;
+  mname?: string;
+  name: string;
+  role: string;
   is_active: boolean;
+  is_verified: boolean;
+  is_profile_complete: boolean;
+  picture?: string;
   created_at: string;
-  updated_at: string;
+  last_login?: string;
+  address?: Address;
 }
 
-export interface UpdateProfileData {
-  first_name?: string;
-  last_name?: string;
-  date_of_birth?: string;
-  phone_number?: string;
-  address?: string;
-  city?: string;
-  state?: string;
-  zip_code?: string;
-}
+// ---------- Profile APIs ----------
 
-export interface UpdateProfileResponse {
-  user: UserProfile;
-  message: string;
-}
-
-export interface UpdatePictureResponse {
-  picture: string;
-  message: string;
-}
-
-// Get user profile
-export const getUserProfile = async (userId: number): Promise<UserProfile> => {
+// Get current user profile
+export const getUserProfile = async (): Promise<User> => {
   try {
-    const res = await axios.get<UserProfile>(`${API_URL}/users/${userId}`);
-    return res.data;
+    const res = await BaseAPI.get<User>("/auth/profile");
+
+    // Ensure address always has all fields to prevent UI missing data
+    const user = res.data;
+    user.address = {
+      province: user.address?.province || "",
+      city: user.address?.city || "",
+      barangay: user.address?.barangay || "",
+    };
+
+    return user;
   } catch (err) {
-    console.error("Error fetching user profile", err);
+    console.error("Error fetching user profile:", err);
     throw err;
   }
 };
 
-// Update user profile
-export const updateUserProfile = async (
-  userId: number, 
-  data: UpdateProfileData
-): Promise<UpdateProfileResponse> => {
+// Update current user profile (without picture)
+export const updateUserProfile = async (data: {
+  fname?: string;
+  mname?: string;
+  lname?: string;
+  dob?: string;
+  contact_number?: string;
+  email?: string;
+  address?: Address;
+}): Promise<User> => {
   try {
-    const res = await axios.put<UpdateProfileResponse>(`${API_URL}/users/${userId}`, data);
+    // Always send full address structure to backend
+    const payload = {
+      ...data,
+      address: {
+        province: data.address?.province || "",
+        city: data.address?.city || "",
+        barangay: data.address?.barangay || "",
+      },
+    };
+
+    const res = await BaseAPI.put<User>("/auth/profile", payload);
     return res.data;
   } catch (err) {
-    console.error("Error updating user profile", err);
+    console.error("Error updating user profile:", err);
     throw err;
   }
 };
 
-// Update profile picture
+// Upload or update profile picture
 export const updateProfilePicture = async (
-  userId: number, 
-  file: File
-): Promise<string> => {
+  file: File,
+  onUpdate?: (user: User) => void // optional callback to update AuthContext
+): Promise<User> => {
   try {
     const formData = new FormData();
-    formData.append("picture", file);
+    formData.append("file", file);
 
-    const res = await axios.put<UpdatePictureResponse>(
-      `${API_URL}/users/${userId}/picture`, 
-      formData, 
-      {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      }
-    );
+    const res = await BaseAPI.put<User>("/auth/profile/picture", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
 
-    return res.data.picture; // return new picture URL
+    if (onUpdate) onUpdate(res.data);
+    return res.data;
   } catch (err) {
-    console.error("Error updating profile picture", err);
+    console.error("Error uploading profile picture:", err);
     throw err;
   }
 };

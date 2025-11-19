@@ -1,5 +1,5 @@
 // ============================================================================
-// App.tsx - Full Routes with Google Callback Handler
+// App.tsx - Full Routes with Google Callback Handler and User Details
 // ============================================================================
 import type { FC } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
@@ -30,6 +30,7 @@ import Privacy from './pages/public/Privacy';
 import AdminDashboard from './pages/admin/Dashboard';
 import AdminProfile from './pages/admin/Profile';
 import AdminUsers from './pages/admin/Users';
+import Usersdetail from './pages/admin/Usersdetail'; // Added user details page
 
 // Doctor Pages
 import DoctorLayout from './layouts/DoctorLayout';

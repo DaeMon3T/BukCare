@@ -1,5 +1,6 @@
 // src/pages/patient/Profile.tsx
-import { useEffect, useState, ChangeEvent } from "react";
+import { useEffect, useState } from "react";
+import type { ChangeEvent } from "react";
 import Navbar from "@/components/Navbar";
 import { useAuth } from "@/context/AuthContext";
 import {

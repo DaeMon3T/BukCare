@@ -24,6 +24,14 @@ class UserCreate(UserBase):
     password: str = Field(..., min_length=8)
     role: UserRole = UserRole.PENDING
 
+
+# ✅ Define Address first
+class Address(BaseModel):
+    province: Optional[str]
+    city: Optional[str]
+    barangay: Optional[str]
+
+
 class UserUpdate(BaseModel):
     fname: Optional[str] = None
     lname: Optional[str] = None
@@ -53,11 +61,16 @@ class UserProfile(BaseModel):
     fname: str
     lname: str
     mname: Optional[str] = None
-    name: str
+    name: Optional[str] = None
+    sex: Optional[bool] = None
+    dob: Optional[date] = None
+    contact_number: Optional[str] = None
     role: UserRole
     picture: Optional[str] = None
     is_profile_complete: bool
+    address: Optional[Address]  # New field
 
+    
     @validator('name', always=True)
     def generate_name(cls, v, values):
         fname = values.get('fname', '')

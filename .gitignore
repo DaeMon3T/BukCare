@@ -1,33 +1,52 @@
-# Python / Django / FastAPI
-__pycache__/
-*.py[cod]
-*.pyo
-*.pyd
-*.sqlite3
-*.env
-*.log
+# ==============================
+# Backend / FastAPI
+# ==============================
+BackEnd/__pycache__/
+BackEnd/*.py[cod]
+BackEnd/*.pyo
+BackEnd/*.env
+BackEnd/logs/
+BackEnd/.venv/
+BackEnd/venv/
+BackEnd/.env.development
+BackEnd/.env.production
 
-# Virtual environment
-.venv/
-venv/
-env/
-ENV/
 
-# Alembic / migrations compiled files
-alembic/__pycache__/
-alembic/versions/__pycache__/
+# Alembic compiled files
+BackEnd/alembic/__pycache__/
+BackEnd/alembic/versions/__pycache__/
 
-# Django / FastAPI static/media (if you add them)
-media/
-staticfiles/
+# ==============================
+# Frontend / Node
+# ==============================
+FrontEnd/node_modules/
+FrontEnd/dist/
+FrontEnd/build/
+FrontEnd/.env
+FrontEnd/.env.development
+FrontEnd/.env.production
 
+
+# ==============================
 # IDE / OS files
+# ==============================
 .vscode/
 .idea/
 .DS_Store
 *.swp
 *.swo
 
+start_backend.sh
+start_frontend.sh
+start.sh
+stop.sh
+test_complete_app.py
+test_connection.py
 
+#docker
+docker-compose.yml
 
+# Database
+Postgres/
 
+*.pyc

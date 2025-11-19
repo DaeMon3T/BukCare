@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from typing import List, Optional
@@ -13,6 +13,7 @@ router = APIRouter()
 
 @router.get("/users", response_model=List[dict])
 def get_all_users(
+    request: Request, 
     role: Optional[str] = None,
     is_active: Optional[bool] = None,
     current_user: User = Depends(get_current_admin),
@@ -27,6 +28,8 @@ def get_all_users(
         query = query.filter(User.is_active == is_active)
     
     users = query.order_by(User.created_at.desc()).all()
+
+    base_url = str(request.base_url)
     
     return [
         {
@@ -40,7 +43,30 @@ def get_all_users(
             "is_verified": user.is_verified,
             "is_profile_complete": user.is_profile_complete,
             "created_at": user.created_at,
-            "last_login": user.last_login
+            "last_login": user.last_login,
+            "contact_number": user.contact_number,
+            "picture": (
+                user.picture 
+                if user.picture and user.picture.startswith("http")
+                else f"{base_url}{user.picture}" if user.picture
+                else f"{base_url}default-avatar.png"
+            ),
+            "province": user.province.name if user.province else None,
+            "city": user.city.name if user.city else None,
+            "barangay": user.barangay.name if user.barangay else None,
+             # Doctor profile info
+            "doctor_profile": {
+            "prc_license_front": user.doctor_profile.prc_license_front if user.doctor_profile else None,
+            "prc_license_back": user.doctor_profile.prc_license_back if user.doctor_profile else None,
+            "prc_license_selfie": user.doctor_profile.prc_license_selfie if user.doctor_profile else None,
+            "license_number": user.doctor_profile.license_number if user.doctor_profile else None,
+            "years_of_experience": user.doctor_profile.years_of_experience if user.doctor_profile else None,
+            "bio": user.doctor_profile.bio if user.doctor_profile else None,
+            "consultation_fee": user.doctor_profile.consultation_fee if user.doctor_profile else None,
+            
+            } if user.doctor_profile else None
+
+
         }
         for user in users
     ]

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import type { ChangeEvent, FormEvent } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
+import { Eye, EyeOff } from "lucide-react";
 import LoadingGear from "@/components/common/LoadingGear";
 import toast from "react-hot-toast";
 import Footer from "@/components/Footer";
@@ -17,6 +18,7 @@ const SignIn: React.FC = () => {
   const [error, setError] = useState<string>("");
   const [emailLoading, setEmailLoading] = useState<boolean>(false);
   const [googleLoading, setGoogleLoading] = useState<boolean>(false);
+  const [showPassword, setShowPassword] = useState<boolean>(false);
 
   const { login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
@@ -117,7 +119,6 @@ const SignIn: React.FC = () => {
         </Link>
       </nav>
 
-      {/* 🌀 Page overlay loader (transparent center) */}
       {isLoading && (
         <div className="absolute inset-0 flex items-center justify-center z-40">
           <LoadingGear
@@ -163,20 +164,30 @@ const SignIn: React.FC = () => {
                 />
               </div>
 
+              {/* Password Field with Eye Icon 👁️ */}
               <div>
                 <label htmlFor="password" className="block text-sm font-semibold text-white/90 mb-2">
                   Password
                 </label>
-                <input
-                  id="password"
-                  name="password"
-                  type="password"
-                  required
-                  placeholder="Enter your password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-[#FFC43D] focus:border-transparent transition"
-                />
+                <div className="relative">
+                  <input
+                    id="password"
+                    name="password"
+                    type={showPassword ? "text" : "password"}
+                    required
+                    placeholder="Enter your password"
+                    value={formData.password}
+                    onChange={handleChange}
+                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-[#FFC43D] focus:border-transparent transition pr-12"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute inset-y-0 right-3 flex items-center text-white/70 hover:text-[#FFC43D] transition"
+                  >
+                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                  </button>
+                </div>
               </div>
 
               <div className="flex justify-end">

@@ -119,7 +119,7 @@ const CompleteProfile: React.FC = () => {
   };
 
   const handleAddOtherSpecialization = () => {
-    if (formData.otherSpecialization.trim()) {
+    if (formData.otherSpecialization?.trim()) {
       const newSpec = formData.otherSpecialization.trim();
       setFormData((prev) => ({
         ...prev,
@@ -137,12 +137,12 @@ const CompleteProfile: React.FC = () => {
   };
 
   const getProvinceNameById = (id: string) => {
-    const province = provincesData?.find((p: any) => String(p.id) === String(id));
+    const province = provincesData?.find((p: any) => String(p.province_id) === String(id));
     return province?.name || "";
   };
 
   const getCityNameById = (id: string) => {
-    const city = citiesData?.find((c: any) => String(c.id) === String(id));
+    const city = citiesData?.find((c: any) => String(c.city_id) === String(id));
     return city?.name || "";
   };
 

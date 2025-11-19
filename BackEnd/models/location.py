@@ -7,6 +7,7 @@ from core.database import Base
 # ───────────────────────────────
 class Province(Base):
     __tablename__ = "provinces"
+    __table_args__ = {"extend_existing": True}  # <--- add this
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(100), nullable=False, unique=True)
