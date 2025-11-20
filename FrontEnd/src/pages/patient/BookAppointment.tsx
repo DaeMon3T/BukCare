@@ -218,7 +218,7 @@ const BookAppointment: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
-      <Navbar role="patient" />
+      <Navbar/>
 
       <main className="max-w-3xl mx-auto px-4 py-8">
         {/* Doctor Info */}

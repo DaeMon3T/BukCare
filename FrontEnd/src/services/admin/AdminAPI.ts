@@ -10,20 +10,23 @@ export interface InviteUserParams {
 }
 
 export interface DashboardStats {
-  total_patients?: number;
-  total_doctors?: number;
+  total_patients: number;
+  total_doctors: number;
+  pending_approvals: number; // ✅ Changed from optional to required
   total_staff?: number;
   pending_invitations?: number;
   [key: string]: any;
 }
 
 export interface User {
-  user_id: string;
+  id: number | string; // ✅ Added id field
+  user_id?: string; // Keep for backward compatibility
   email: string;
   fname: string;
   lname: string;
-  user_type: string;
-  is_active: boolean;
+  role: string; // ✅ Changed from user_type to role (matches your backend)
+  user_type?: string; // Keep for backward compatibility
+  is_active?: boolean;
   [key: string]: any;
 }
 
@@ -34,8 +37,6 @@ export interface ApiResponse<T = any> {
   data?: T;
   [key: string]: any;
 }
-
-
 
 // -----------------------------
 // Dashboard Stats
@@ -49,15 +50,15 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     const { data } = await BaseAPI.get("/admin/stats");
 
     return {
-      total_patients: data.total_patients,
-      total_doctors: data.total_doctors,
-      pending_approvals: data.pending_doctors,  // map API → UI
+      total_patients: data.total_patients || 0,
+      total_doctors: data.total_doctors || 0,
+      pending_approvals: data.pending_doctors || 0,  // map API → UI
     };
   } catch (error: any) {
+    console.error("Failed to fetch dashboard stats:", error);
     throw new Error(error.response?.data?.detail || error.message || "Failed to fetch dashboard stats");
   }
 }
-
 
 // -----------------------------
 // Search Users
@@ -69,17 +70,29 @@ export async function getDashboardStats(): Promise<DashboardStats> {
  */
 export async function searchUsers(query: string): Promise<ApiResponse<User[]>> {
   if (!query?.trim()) {
-    throw new Error("Search query is required");
+    return { data: [] }; // ✅ Return empty array instead of throwing error
   }
 
   try {
-    const { data } = await BaseAPI.get<ApiResponse<User[]>>("/admin/search-users", {
+    const response = await BaseAPI.get<ApiResponse<User[]>>("/admin/search-users", {
       params: { query: query.trim() },
     });
-    return data;
+    
+    // ✅ Handle different response formats
+    if (Array.isArray(response.data)) {
+      // If API returns array directly
+      return { data: response.data };
+    } else if (response.data?.data) {
+      // If API returns { data: [...] }
+      return response.data;
+    } else {
+      // Fallback
+      return { data: [] };
+    }
   } catch (error: any) {
     console.error("User search failed:", error);
-    throw new Error(error.response?.data?.detail || error.message || "User search failed");
+    // ✅ Return empty result instead of throwing
+    return { data: [] };
   }
 }
 
@@ -88,7 +101,6 @@ export async function searchUsers(query: string): Promise<ApiResponse<User[]>> {
 // -----------------------------
 
 export default {
-  
   getDashboardStats,
   searchUsers,
 };

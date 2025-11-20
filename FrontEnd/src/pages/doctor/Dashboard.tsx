@@ -318,7 +318,7 @@ const DoctorDashboard: FC = () => {
   return (
     <div className="h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 overflow-hidden">
       {/* Navbar */}
-      <Navbar role="doctor" />
+      <Navbar/>
 
       {/* Main Content */}
       <main className="h-[calc(100vh-4rem)] overflow-y-auto">

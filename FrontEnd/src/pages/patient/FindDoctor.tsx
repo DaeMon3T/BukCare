@@ -43,7 +43,7 @@ const FindDoctor: React.FC = () => {
         const formattedDoctors: UICardDoctor[] = data.map((doc) => ({
           doctor_id: doc.doctor_id,
           name: doc.name,
-          specialization: { name: doc.specialization },
+          specialization: { name: doc.specialization || "General Practice" },  // ✅ Provide default
           avatar: "/default-avatar.png",
           address: doc.address || "Not provided",
           email: doc.email || "No email available",
@@ -101,7 +101,7 @@ const FindDoctor: React.FC = () => {
         notes: "",
       };
 
-      const res = await api.post("/appointments", payload);
+      const res = await api.post("/appointments/", payload);
 
       if (res.status === 200 || res.status === 201) {
         toast.success("✅ Appointment booked successfully!");
@@ -138,7 +138,7 @@ const FindDoctor: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 overflow-hidden">
-      <Navbar role="patient" />
+      <Navbar /> {/* ✅ Fixed: removed role prop */}
 
       <main className="h-[calc(100vh-4rem)] overflow-y-auto px-4 sm:px-6 lg:px-8 py-6">
         {/* 🔍 Search Bar */}
@@ -156,7 +156,12 @@ const FindDoctor: React.FC = () => {
         </div>
 
         {loading ? (
-          <p className="text-center text-gray-500">Loading doctors...</p>
+          <div className="flex items-center justify-center py-20">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+              <p className="text-gray-600 mt-4">Loading doctors...</p>
+            </div>
+          </div>
         ) : (
           <>
             {/* ✅ Approved Doctors */}
@@ -218,7 +223,7 @@ const FindDoctor: React.FC = () => {
                 </div>
               ) : (
                 <p className="text-center text-gray-500">
-                  No doctors found for “{search}”.
+                  No doctors found for "{search}".
                 </p>
               )}
             </section>
