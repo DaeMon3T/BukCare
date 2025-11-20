@@ -62,9 +62,9 @@ def create_app() -> FastAPI:
     # ✅ Startup event for tasks like creating default admin
     @app.on_event("startup")
     def startup_tasks():
-        # Create default admin account if it doesn't exist
-        create_admin_if_not_exists()
-        logger.info("Checked/created default admin account")
+        # ❌ Commented out - implement this if needed
+        # create_admin_if_not_exists()
+        logger.info("Startup tasks completed")
 
     # ================================
     # Exception Handlers
@@ -110,4 +110,3 @@ def create_app() -> FastAPI:
 
 
 app = create_app()
-#handler = Mangum(app)

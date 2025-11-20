@@ -1,4 +1,4 @@
-import React, { useState, useContext } from "react";
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -14,25 +14,25 @@ import {
   Users,
   Calendar,
 } from "lucide-react";
-import AuthContext from "../context/AuthContext.js";
+import { useAuth } from "../context/AuthContext"; // ✅ Use the useAuth hook
 
 interface NavbarProps {}
 
 const Navbar: React.FC<NavbarProps> = () => {
-  const { user, logout } = useContext(AuthContext);
+  const { user, logout } = useAuth(); // ✅ This will never be undefined now
 
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Wait until user is loaded
-  if (!user) return null; // <-- prevents showing patient by default
+  if (!user) return null;
 
   const userRole = user.role || "patient";
 
   const displayName =
     user.name?.trim() ||
-    `${user.first_name || ""} ${user.last_name || ""}`.trim() ||
+    `${user.fname || ""} ${user.lname || ""}`.trim() ||
     "Guest";
 
   const getNavigationItems = () => {

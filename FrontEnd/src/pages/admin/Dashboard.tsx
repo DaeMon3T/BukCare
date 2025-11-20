@@ -1,17 +1,11 @@
-import React, { useState, useEffect, useCallback, useContext } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { AlertTriangle, User } from "lucide-react";
 
 import Navbar from "@/components/Navbar";
 import Notification from "@/components/Notification";
 import adminAPI from "@/services/admin/AdminAPI";
-import AuthContext from "@/context/AuthContext";
-
-// Types for dashboard stats
-interface DashboardStats {
-  total_patients: number;
-  total_doctors: number;
-  pending_approvals: number;
-}
+import { useAuth } from "@/context/AuthContext"; // ✅ Fixed: Use useAuth hook
+import type { DashboardStats, User as UserType } from "@/services/admin/AdminAPI"; // ✅ Import types from AdminAPI
 
 // Type for search results
 interface SearchResult {
@@ -28,7 +22,7 @@ interface NotificationData {
 }
 
 const AdminDashboard: React.FC = () => {
-  const { user } = useContext(AuthContext);
+  const { user } = useAuth(); // ✅ Fixed: Use useAuth hook instead of useContext
 
   // UI State
   const [notification, setNotification] = useState<NotificationData | null>(null);
@@ -42,7 +36,7 @@ const AdminDashboard: React.FC = () => {
   const [stats, setStats] = useState<DashboardStats>({
     total_patients: 0,
     total_doctors: 0,
-    pending_approvals: 0,
+    pending_approvals: 0, // ✅ This will be properly typed now
   });
   const [isLoadingStats, setIsLoadingStats] = useState<boolean>(true);
 
@@ -54,7 +48,7 @@ const AdminDashboard: React.FC = () => {
   const loadDashboardStats = async () => {
     try {
       setIsLoadingStats(true);
-      const data: DashboardStats = await adminAPI.getDashboardStats();
+      const data = await adminAPI.getDashboardStats();
       setStats(data);
     } catch (error) {
       console.error("Failed to load dashboard stats:", error);
@@ -73,7 +67,19 @@ const AdminDashboard: React.FC = () => {
       }
       setIsSearching(true);
       try {
-        const results: SearchResult[] = await adminAPI.searchUsers(query);
+        const response = await adminAPI.searchUsers(query); // ✅ Fixed: Get response object
+        
+        // ✅ Fixed: Extract users array from response
+        const users: UserType[] = response.data || [];
+        
+        // Transform users to SearchResult format
+        const results: SearchResult[] = users.map((user) => ({
+          id: user.id,
+          name: `${user.fname} ${user.lname}`.trim(),
+          email: user.email,
+          role: user.role,
+        }));
+        
         setSearchResults(results);
       } catch (error) {
         console.error("Search failed:", error);
@@ -109,7 +115,7 @@ const AdminDashboard: React.FC = () => {
       )}
 
       {/* Navbar */}
-      <Navbar role="admin" />
+      <Navbar />
 
       {/* Main Content */}
       <main className="h-[calc(100vh-4rem)] overflow-y-auto">
@@ -146,9 +152,15 @@ const AdminDashboard: React.FC = () => {
               >
                 <div className="flex items-center space-x-4">
                   <div
-                    className={`w-12 h-12 bg-${item.color}-100 rounded-lg flex items-center justify-center`}
+                    className={`w-12 h-12 ${
+                      item.color === "blue" ? "bg-blue-100" : "bg-green-100"
+                    } rounded-lg flex items-center justify-center`}
                   >
-                    <User className={`w-6 h-6 text-${item.color}-600`} />
+                    <User
+                      className={`w-6 h-6 ${
+                        item.color === "blue" ? "text-blue-600" : "text-green-600"
+                      }`}
+                    />
                   </div>
                   <div>
                     <h3 className="text-sm font-medium text-gray-600">
