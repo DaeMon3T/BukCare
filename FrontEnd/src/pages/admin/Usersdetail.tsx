@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import usersAPI from "@/services/admin/Users";
-import { FileText, Download } from "lucide-react";
+import { FileText, Download, CheckCircle, AlertCircle } from "lucide-react";
 
 interface DoctorProfile {
   prc_license_front?: string;
@@ -12,6 +12,7 @@ interface DoctorProfile {
   years_of_experience?: number;
   bio?: string;
   consultation_fee?: number;
+  is_doctor_approved?: boolean; // NEW
 }
 
 interface User {
@@ -23,7 +24,6 @@ interface User {
   contact_number?: string;
   role: "admin" | "patient" | "doctor" | "pending";
   is_active: boolean;
-  is_verified: boolean;
   is_profile_complete: boolean;
   picture?: string;
   created_at: string;
@@ -43,6 +43,8 @@ export default function UsersDetail() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [approving, setApproving] = useState(false);
+  const [approvalMessage, setApprovalMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -68,6 +70,38 @@ export default function UsersDetail() {
 
     fetchUser();
   }, [id]);
+
+  const handleApproveDoctor = async () => {
+    if (!user) return;
+
+    setApproving(true);
+    setApprovalMessage(null);
+
+    try {
+      await usersAPI.approveDoctor(user.id);
+
+      setApprovalMessage({
+        type: "success",
+        text: `${user.fname} ${user.lname} has been approved and can now use the system.`,
+      });
+
+      // UPDATE doctor_profile flag
+      setUser({
+        ...user,
+        doctor_profile: {
+          ...user.doctor_profile,
+          is_doctor_approved: true,
+        },
+      });
+    } catch (error: any) {
+      setApprovalMessage({
+        type: "error",
+        text: error.message || "Failed to approve doctor. Please try again.",
+      });
+    } finally {
+      setApproving(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -137,38 +171,25 @@ export default function UsersDetail() {
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
             <h3 className="text-lg font-semibold text-gray-800 mb-4">Basic Information</h3>
             <form className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-
               <InputField label="First Name" value={user.fname} />
               <InputField label="Middle Name" value={user.mname || "—"} />
               <InputField label="Last Name" value={user.lname} />
               <InputField label="Email" value={user.email} />
               <InputField label="Contact Number" value={user.contact_number || "—"} />
-
               <InputField label="Province" value={user.province || "—"} />
               <InputField label="City" value={user.city || "—"} />
               <InputField label="Barangay" value={user.barangay || "—"} />
-
-              <InputField label="Verified" value={user.is_verified ? "Yes" : "No"} />
-              <InputField
-                label="Profile Complete"
-                value={user.is_profile_complete ? "Yes" : "No"}
-              />
-              <InputField
-                label="Join Date"
-                value={new Date(user.created_at).toLocaleDateString()}
-              />
-              <InputField
-                label="Last Login"
-                value={user.last_login ? new Date(user.last_login).toLocaleString() : "—"}
-              />
+              <InputField label="Profile Complete" value={user.is_profile_complete ? "Yes" : "No"} />
+              <InputField label="Join Date" value={new Date(user.created_at).toLocaleDateString()} />
+              <InputField label="Last Login" value={user.last_login ? new Date(user.last_login).toLocaleString() : "—"} />
             </form>
           </div>
 
           {/* DOCTOR DOCUMENTS */}
           {isDoctor && user.doctor_profile && (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
               <h3 className="text-lg font-semibold text-gray-800 mb-4">Doctor Verification Documents</h3>
-              
+
               {(user.doctor_profile.license_number || user.doctor_profile.years_of_experience) && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-6">
                   {user.doctor_profile.license_number && (
@@ -197,6 +218,50 @@ export default function UsersDetail() {
                   onClick={() => setSelectedImage(user.doctor_profile?.prc_license_selfie || null)}
                 />
               </div>
+
+              {/* APPROVAL MESSAGE */}
+              {approvalMessage && (
+                <div className={`mt-6 p-4 rounded-lg flex items-center gap-3 ${
+                  approvalMessage.type === "success"
+                    ? "bg-green-50 border border-green-200"
+                    : "bg-red-50 border border-red-200"
+                }`}>
+                  {approvalMessage.type === "success" ? (
+                    <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
+                  ) : (
+                    <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
+                  )}
+                  <p className={approvalMessage.type === "success" ? "text-green-800" : "text-red-800"}>
+                    {approvalMessage.text}
+                  </p>
+                </div>
+              )}
+
+              {/* APPROVAL BUTTON */}
+              <button
+                onClick={handleApproveDoctor}
+                disabled={approving || user.doctor_profile?.is_doctor_approved}
+                className="mt-6 w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 
+                           disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 px-4 rounded-lg 
+                           transition flex items-center justify-center gap-2"
+              >
+                {approving ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Approving...
+                  </>
+                ) : user.doctor_profile?.is_doctor_approved ? (
+                  <>
+                    <CheckCircle className="w-5 h-5" />
+                    Already Approved
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="w-5 h-5" />
+                    Approve Doctor
+                  </>
+                )}
+              </button>
             </div>
           )}
 

@@ -1,4 +1,3 @@
-// src/services/admin/Users.ts
 import BaseAPI from "../BaseAPI";
 
 // -----------------------------
@@ -36,7 +35,6 @@ export interface ApiResponse<T = any> {
 export async function getAllUsers(): Promise<User[]> {
   try {
     const response = await BaseAPI.get<User[]>("/admin/users"); 
-    // FastAPI returns array directly based on your endpoint
     return Array.isArray(response.data) ? response.data : [];
   } catch (error: any) {
     console.error("Failed to fetch users:", error);
@@ -58,12 +56,25 @@ export async function updateUserStatus(userId: number, isActive: boolean): Promi
   }
 }
 
+/**
+ * Approve a doctor (Admin only)
+ */
+export async function approveDoctor(doctorId: number): Promise<void> {
+  try {
+    await BaseAPI.put(`/admin/doctors/${doctorId}/approve`);
+  } catch (error: any) {
+    console.error("Failed to approve doctor:", error);
+    throw new Error(error.response?.data?.detail || error.message || "Failed to approve doctor");
+  }
+}
+
 // -----------------------------
 // Export
 // -----------------------------
 const usersAPI = {
   getAllUsers,
   updateUserStatus,
+  approveDoctor,
 };
 
 export default usersAPI;

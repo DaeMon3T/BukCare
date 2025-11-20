@@ -54,7 +54,6 @@ class Doctor(Base):
     license_number = Column(String, nullable=True)
     years_of_experience = Column(Integer, nullable=True)
 
-    is_verified = Column(Boolean, default=False)  # admin approval
     specializations_json = Column(Text, nullable=True)
     
     # Additional doctor information

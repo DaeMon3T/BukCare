@@ -46,7 +46,7 @@ const Navbar: React.FC<NavbarProps> = () => {
         return [
           { label: "Dashboard", path: "/doctor/dashboard", icon: Home },
           { label: "Appointments", path: "/doctor/appointments", icon: Calendar },
-          { label: "Patients", path: "/doctor/patients", icon: Users },
+          // Removed Patients link
         ];
       case "patient":
       default:

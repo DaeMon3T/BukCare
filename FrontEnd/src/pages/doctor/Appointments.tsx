@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import api from "@/utils/api";
+import Navbar from "@/components/Navbar"; // ✅ Import Navbar
 
 interface Appointment {
   id: number;
@@ -47,13 +48,11 @@ const DoctorAppointments = () => {
     fetchAppointments();
   }, []);
 
-  // Filter appointments
   const filteredAppointments = appointments.filter((appt) => {
     if (filter === "all") return true;
     return appt.status === filter;
   });
 
-  // Format date and time
   const formatDateTime = (dateTimeString: string) => {
     const date = new Date(dateTimeString);
     return {
@@ -69,7 +68,6 @@ const DoctorAppointments = () => {
     };
   };
 
-  // Get status badge color
   const getStatusColor = (status: string) => {
     switch (status) {
       case "pending":
@@ -94,197 +92,194 @@ const DoctorAppointments = () => {
   }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold text-gray-800 mb-4">My Appointments</h2>
+    <div className="h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 overflow-auto">
+      {/* Navbar */}
+      <Navbar />
 
-        {/* Filter Tabs */}
-        <div className="flex gap-2 flex-wrap">
-          {["all", "pending", "confirmed", "cancelled"].map((f) => (
-            <button
-              key={f}
-              onClick={() => setFilter(f as typeof filter)}
-              className={`px-4 py-2 rounded-lg font-medium transition ${
-                filter === f
-                  ? "bg-blue-600 text-white"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-              }`}
-            >
-              {f.charAt(0).toUpperCase() + f.slice(1)}
-              {f !== "all" && (
-                <span className="ml-2 px-2 py-0.5 rounded-full bg-white/20 text-xs">
-                  {appointments.filter((a) => a.status === f).length}
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
-      </div>
+      <div className="p-6 max-w-7xl mx-auto">
+        <div className="mb-6">
+          <h2 className="text-2xl font-bold text-gray-800 mb-4">My Appointments</h2>
 
-      {filteredAppointments.length === 0 ? (
-        <div className="bg-white rounded-xl shadow p-8 text-center">
-          <p className="text-gray-500">No appointments found</p>
-        </div>
-      ) : (
-        <>
-          {/* ✅ Desktop Table */}
-          <div className="hidden md:block overflow-x-auto bg-white rounded-xl shadow">
-            <table className="min-w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th className="p-4 text-left text-sm font-semibold text-gray-700">
-                    Patient ID
-                  </th>
-                  <th className="p-4 text-left text-sm font-semibold text-gray-700">
-                    Date
-                  </th>
-                  <th className="p-4 text-left text-sm font-semibold text-gray-700">
-                    Time
-                  </th>
-                  <th className="p-4 text-left text-sm font-semibold text-gray-700">
-                    Reason
-                  </th>
-                  <th className="p-4 text-left text-sm font-semibold text-gray-700">
-                    Status
-                  </th>
-                  <th className="p-4 text-left text-sm font-semibold text-gray-700">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {filteredAppointments.map((appt) => {
-                  const { date, time } = formatDateTime(appt.appointment_date);
-                  return (
-                    <tr key={appt.id} className="hover:bg-gray-50 transition">
-                      <td className="p-4 text-sm text-gray-900">
-                        Patient #{appt.patient_id}
-                      </td>
-                      <td className="p-4 text-sm text-gray-900">{date}</td>
-                      <td className="p-4 text-sm text-gray-900">{time}</td>
-                      <td className="p-4 text-sm text-gray-600">
-                        {appt.reason || "No reason provided"}
-                      </td>
-                      <td className="p-4">
-                        <span
-                          className={`inline-block px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(
-                            appt.status
-                          )}`}
-                        >
-                          {appt.status}
-                        </span>
-                      </td>
-                      <td className="p-4 space-x-2">
-                        {appt.status === "pending" && (
-                          <>
-                            <button
-                              onClick={() => updateStatus(appt.id, "confirmed")}
-                              className="px-3 py-1.5 rounded-lg bg-green-600 text-white text-sm font-medium hover:bg-green-700 transition"
-                            >
-                              Confirm
-                            </button>
-                            <button
-                              onClick={() => updateStatus(appt.id, "cancelled")}
-                              className="px-3 py-1.5 rounded-lg bg-red-600 text-white text-sm font-medium hover:bg-red-700 transition"
-                            >
-                              Cancel
-                            </button>
-                          </>
-                        )}
-                        {appt.status === "confirmed" && (
-                          <button
-                            onClick={() => updateStatus(appt.id, "completed")}
-                            className="px-3 py-1.5 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition"
-                          >
-                            Complete
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+          {/* Filter Tabs */}
+          <div className="flex gap-2 flex-wrap">
+            {["all", "pending", "confirmed", "cancelled"].map((f) => (
+              <button
+                key={f}
+                onClick={() => setFilter(f as typeof filter)}
+                className={`px-4 py-2 rounded-lg font-medium transition ${
+                  filter === f
+                    ? "bg-blue-600 text-white"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                }`}
+              >
+                {f.charAt(0).toUpperCase() + f.slice(1)}
+                {f !== "all" && (
+                  <span className="ml-2 px-2 py-0.5 rounded-full bg-white/20 text-xs">
+                    {appointments.filter((a) => a.status === f).length}
+                  </span>
+                )}
+              </button>
+            ))}
           </div>
+        </div>
 
-          {/* ✅ Mobile Cards */}
-          <div className="md:hidden space-y-4">
-            {filteredAppointments.map((appt) => {
-              const { date, time } = formatDateTime(appt.appointment_date);
-              return (
-                <div
-                  key={appt.id}
-                  className="bg-white p-5 rounded-xl shadow-sm border border-gray-200"
-                >
-                  <div className="flex justify-between items-start mb-3">
-                    <div>
-                      <p className="text-sm font-semibold text-gray-900">
-                        Patient #{appt.patient_id}
-                      </p>
-                      <p className="text-xs text-gray-500 mt-1">ID: {appt.id}</p>
-                    </div>
-                    <span
-                      className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(
-                        appt.status
-                      )}`}
-                    >
-                      {appt.status}
-                    </span>
-                  </div>
+        {filteredAppointments.length === 0 ? (
+          <div className="bg-white rounded-xl shadow p-8 text-center">
+            <p className="text-gray-500">No appointments found</p>
+          </div>
+        ) : (
+          <>
+            {/* Desktop Table */}
+            <div className="hidden md:block overflow-x-auto bg-white rounded-xl shadow">
+              <table className="min-w-full">
+                <thead className="bg-gray-50 border-b border-gray-200">
+                  <tr>
+                    <th className="p-4 text-left text-sm font-semibold text-gray-700">
+                      Patient ID
+                    </th>
+                    <th className="p-4 text-left text-sm font-semibold text-gray-700">
+                      Date
+                    </th>
+                    <th className="p-4 text-left text-sm font-semibold text-gray-700">
+                      Time
+                    </th>
+                    <th className="p-4 text-left text-sm font-semibold text-gray-700">
+                      Reason
+                    </th>
+                    <th className="p-4 text-left text-sm font-semibold text-gray-700">
+                      Status
+                    </th>
+                    <th className="p-4 text-left text-sm font-semibold text-gray-700">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {filteredAppointments.map((appt) => {
+                    const { date, time } = formatDateTime(appt.appointment_date);
+                    return (
+                      <tr key={appt.id} className="hover:bg-gray-50 transition">
+                        <td className="p-4 text-sm text-gray-900">Patient #{appt.patient_id}</td>
+                        <td className="p-4 text-sm text-gray-900">{date}</td>
+                        <td className="p-4 text-sm text-gray-900">{time}</td>
+                        <td className="p-4 text-sm text-gray-600">{appt.reason || "No reason provided"}</td>
+                        <td className="p-4">
+                          <span
+                            className={`inline-block px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(
+                              appt.status
+                            )}`}
+                          >
+                            {appt.status}
+                          </span>
+                        </td>
+                        <td className="p-4 space-x-2">
+                          {appt.status === "pending" && (
+                            <>
+                              <button
+                                onClick={() => updateStatus(appt.id, "confirmed")}
+                                className="px-3 py-1.5 rounded-lg bg-green-600 text-white text-sm font-medium hover:bg-green-700 transition"
+                              >
+                                Confirm
+                              </button>
+                              <button
+                                onClick={() => updateStatus(appt.id, "cancelled")}
+                                className="px-3 py-1.5 rounded-lg bg-red-600 text-white text-sm font-medium hover:bg-red-700 transition"
+                              >
+                                Cancel
+                              </button>
+                            </>
+                          )}
+                          {appt.status === "confirmed" && (
+                            <button
+                              onClick={() => updateStatus(appt.id, "completed")}
+                              className="px-3 py-1.5 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition"
+                            >
+                              Complete
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
 
-                  <div className="space-y-2 mb-4">
-                    <p className="text-sm">
-                      <span className="font-medium text-gray-700">Date:</span>{" "}
-                      <span className="text-gray-900">{date}</span>
-                    </p>
-                    <p className="text-sm">
-                      <span className="font-medium text-gray-700">Time:</span>{" "}
-                      <span className="text-gray-900">{time}</span>
-                    </p>
-                    <p className="text-sm">
-                      <span className="font-medium text-gray-700">Reason:</span>{" "}
-                      <span className="text-gray-600">
-                        {appt.reason || "No reason provided"}
+            {/* Mobile Cards */}
+            <div className="md:hidden space-y-4">
+              {filteredAppointments.map((appt) => {
+                const { date, time } = formatDateTime(appt.appointment_date);
+                return (
+                  <div
+                    key={appt.id}
+                    className="bg-white p-5 rounded-xl shadow-sm border border-gray-200"
+                  >
+                    <div className="flex justify-between items-start mb-3">
+                      <div>
+                        <p className="text-sm font-semibold text-gray-900">Patient #{appt.patient_id}</p>
+                        <p className="text-xs text-gray-500 mt-1">ID: {appt.id}</p>
+                      </div>
+                      <span
+                        className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(
+                          appt.status
+                        )}`}
+                      >
+                        {appt.status}
                       </span>
-                    </p>
-                    {appt.notes && (
+                    </div>
+
+                    <div className="space-y-2 mb-4">
                       <p className="text-sm">
-                        <span className="font-medium text-gray-700">Notes:</span>{" "}
-                        <span className="text-gray-600">{appt.notes}</span>
+                        <span className="font-medium text-gray-700">Date:</span>{" "}
+                        <span className="text-gray-900">{date}</span>
                       </p>
+                      <p className="text-sm">
+                        <span className="font-medium text-gray-700">Time:</span>{" "}
+                        <span className="text-gray-900">{time}</span>
+                      </p>
+                      <p className="text-sm">
+                        <span className="font-medium text-gray-700">Reason:</span>{" "}
+                        <span className="text-gray-600">{appt.reason || "No reason provided"}</span>
+                      </p>
+                      {appt.notes && (
+                        <p className="text-sm">
+                          <span className="font-medium text-gray-700">Notes:</span>{" "}
+                          <span className="text-gray-600">{appt.notes}</span>
+                        </p>
+                      )}
+                    </div>
+
+                    {appt.status === "pending" && (
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => updateStatus(appt.id, "confirmed")}
+                          className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition"
+                        >
+                          Confirm
+                        </button>
+                        <button
+                          onClick={() => updateStatus(appt.id, "cancelled")}
+                          className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    )}
+                    {appt.status === "confirmed" && (
+                      <button
+                        onClick={() => updateStatus(appt.id, "completed")}
+                        className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition"
+                      >
+                        Mark as Completed
+                      </button>
                     )}
                   </div>
-
-                  {appt.status === "pending" && (
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => updateStatus(appt.id, "confirmed")}
-                        className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition"
-                      >
-                        Confirm
-                      </button>
-                      <button
-                        onClick={() => updateStatus(appt.id, "cancelled")}
-                        className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  )}
-                  {appt.status === "confirmed" && (
-                    <button
-                      onClick={() => updateStatus(appt.id, "completed")}
-                      className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition"
-                    >
-                      Mark as Completed
-                    </button>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </>
-      )}
+                );
+              })}
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 };

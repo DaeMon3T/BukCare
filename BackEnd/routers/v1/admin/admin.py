@@ -11,6 +11,9 @@ from routers.v1.dependencies import get_current_admin
 
 router = APIRouter()
 
+# -----------------------------
+# GET all users
+# -----------------------------
 @router.get("/users", response_model=List[dict])
 def get_all_users(
     request: Request, 
@@ -19,18 +22,14 @@ def get_all_users(
     current_user: User = Depends(get_current_admin),
     db: Session = Depends(get_db)
 ):
-    """Get all users with optional filtering (admin only)"""
     query = db.query(User)
-    
     if role:
         query = query.filter(User.role == role)
     if is_active is not None:
         query = query.filter(User.is_active == is_active)
-    
     users = query.order_by(User.created_at.desc()).all()
-
     base_url = str(request.base_url)
-    
+
     return [
         {
             "id": user.id,
@@ -40,7 +39,6 @@ def get_all_users(
             "name": f"{user.fname} {user.lname}",
             "role": user.role.value,
             "is_active": user.is_active,
-            "is_verified": user.is_verified,
             "is_profile_complete": user.is_profile_complete,
             "created_at": user.created_at,
             "last_login": user.last_login,
@@ -54,34 +52,32 @@ def get_all_users(
             "province": user.province.name if user.province else None,
             "city": user.city.name if user.city else None,
             "barangay": user.barangay.name if user.barangay else None,
-             # Doctor profile info
             "doctor_profile": {
-            "prc_license_front": user.doctor_profile.prc_license_front if user.doctor_profile else None,
-            "prc_license_back": user.doctor_profile.prc_license_back if user.doctor_profile else None,
-            "prc_license_selfie": user.doctor_profile.prc_license_selfie if user.doctor_profile else None,
-            "license_number": user.doctor_profile.license_number if user.doctor_profile else None,
-            "years_of_experience": user.doctor_profile.years_of_experience if user.doctor_profile else None,
-            "bio": user.doctor_profile.bio if user.doctor_profile else None,
-            "consultation_fee": user.doctor_profile.consultation_fee if user.doctor_profile else None,
-            
+                "doctor_id": user.doctor_profile.doctor_id if user.doctor_profile else None,
+                "prc_license_front": user.doctor_profile.prc_license_front if user.doctor_profile else None,
+                "prc_license_back": user.doctor_profile.prc_license_back if user.doctor_profile else None,
+                "prc_license_selfie": user.doctor_profile.prc_license_selfie if user.doctor_profile else None,
+                "license_number": user.doctor_profile.license_number if user.doctor_profile else None,
+                "years_of_experience": user.doctor_profile.years_of_experience if user.doctor_profile else None,
+                "bio": user.doctor_profile.bio if user.doctor_profile else None,
+                "consultation_fee": user.doctor_profile.consultation_fee if user.doctor_profile else None,
             } if user.doctor_profile else None
-
-
         }
         for user in users
     ]
 
+# -----------------------------
+# GET pending doctors
+# -----------------------------
 @router.get("/doctors/pending", response_model=List[dict])
 def get_pending_doctors(
     current_user: User = Depends(get_current_admin),
     db: Session = Depends(get_db)
 ):
-    """Get doctors pending approval (admin only)"""
     doctors = db.query(Doctor).join(User).filter(
-        User.role == UserRole.DOCTOR,
-        Doctor.is_verified == False
+        User.role == UserRole.PENDING,
+        User.is_doctor_approved == False
     ).all()
-    
     return [
         {
             "doctor_id": doctor.doctor_id,
@@ -99,36 +95,43 @@ def get_pending_doctors(
         for doctor in doctors
     ]
 
-@router.put("/doctors/{doctor_id}/approve")
+# -----------------------------
+# Approve doctor
+# -----------------------------
+@router.put("/doctors/{user_id}/approve")
 def approve_doctor(
-    doctor_id: int,
+    user_id: int,
     current_user: User = Depends(get_current_admin),
     db: Session = Depends(get_db)
 ):
-    """Approve a doctor (admin only)"""
-    doctor = db.query(Doctor).filter(Doctor.doctor_id == doctor_id).first()
-    
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(404, "User not found")
+
+    # Try to get Doctor row
+    doctor = db.query(Doctor).filter(Doctor.user_id == user_id).first()
     if not doctor:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Doctor not found"
-        )
-    
-    if doctor.is_verified:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Doctor is already approved"
-        )
-    
-    doctor.is_verified = True
-    doctor.user.is_doctor_approved = True
-    doctor.user.approval_date = db.query(func.now()).scalar()
-    doctor.user.approved_by = current_user.id
-    
+        # Automatically create Doctor row
+        doctor = Doctor(user_id=user_id)
+        db.add(doctor)
+        db.commit()
+        db.refresh(doctor)
+
+    if user.is_doctor_approved:
+        raise HTTPException(400, "Doctor is already approved")
+
+    user.is_doctor_approved = True
+    user.approval_date = func.now()
+    user.approved_by = current_user.id
+
     db.commit()
-    
     return {"message": "Doctor approved successfully"}
 
+
+
+# -----------------------------
+# Reject doctor
+# -----------------------------
 @router.put("/doctors/{doctor_id}/reject")
 def reject_doctor(
     doctor_id: int,
@@ -136,44 +139,17 @@ def reject_doctor(
     current_user: User = Depends(get_current_admin),
     db: Session = Depends(get_db)
 ):
-    """Reject a doctor application (admin only)"""
     doctor = db.query(Doctor).filter(Doctor.doctor_id == doctor_id).first()
-    
     if not doctor:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Doctor not found"
-        )
-    
-    # You might want to add a rejection reason field to the Doctor model
-    # For now, we'll just delete the doctor profile
+        raise HTTPException(status_code=404, detail="Doctor not found")
+
     db.delete(doctor)
     db.commit()
-    
     return {"message": "Doctor application rejected"}
 
-@router.get("/stats", response_model=dict)
-def get_admin_stats(
-    current_user: User = Depends(get_current_admin),
-    db: Session = Depends(get_db)
-):
-    """Get admin dashboard statistics"""
-    from sqlalchemy import func
-    
-    total_users = db.query(User).count()
-    total_doctors = db.query(User).filter(User.role == UserRole.DOCTOR).count()
-    total_patients = db.query(User).filter(User.role == UserRole.PATIENT).count()
-    pending_doctors = db.query(Doctor).filter(Doctor.is_verified == False).count()
-    total_appointments = db.query(Appointment).count()
-    
-    return {
-        "total_users": total_users,
-        "total_doctors": total_doctors,
-        "total_patients": total_patients,
-        "pending_doctors": pending_doctors,
-        "total_appointments": total_appointments
-    }
-
+# -----------------------------
+# Update user status
+# -----------------------------
 @router.put("/users/{user_id}/status")
 def update_user_status(
     user_id: int,
@@ -181,16 +157,10 @@ def update_user_status(
     current_user: User = Depends(get_current_admin),
     db: Session = Depends(get_db)
 ):
-    """Update user active status (admin only)"""
     user = db.query(User).filter(User.id == user_id).first()
-    
     if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
-        )
-    
+        raise HTTPException(status_code=404, detail="User not found")
+
     user.is_active = is_active
     db.commit()
-    
     return {"message": f"User {'activated' if is_active else 'deactivated'} successfully"}

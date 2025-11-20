@@ -86,6 +86,11 @@ const App: FC = () => {
                 element={<AdminRoute><AdminUsers /></AdminRoute>}
               />
               <Route
+                path="/admin/users/:id"
+                element={<AdminRoute><Usersdetail /></AdminRoute>}
+              />
+
+              <Route
                 path="/admin/profile"
                 element={<AdminRoute><AdminProfile /></AdminRoute>}
               />
