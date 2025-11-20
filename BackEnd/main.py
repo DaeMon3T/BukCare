@@ -53,7 +53,7 @@ def create_app() -> FastAPI:
     logger.info("Database tables created successfully")
 
     # API routes
-    app.include_router(v1_router, prefix="/api/v1")
+    app.include_router(v1_router, prefix="/v1")
 
     @app.get("/health")
     def health_check():
