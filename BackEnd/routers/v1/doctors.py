@@ -61,6 +61,7 @@ def get_doctors(
                     doc.specializations[0].name if doc.specializations else "General Practice"
                 ),
                 address=address,
+                avatar=doc.user.picture,
                 is_verified=doc.user.is_verified,
                 is_doctor_approved=doc.user.is_doctor_approved,
                 created_at=doc.created_at,
@@ -130,6 +131,7 @@ def get_doctor_by_id(doctor_id: int, db: Session = Depends(get_db)):
         years_of_experience=doctor.years_of_experience,
         is_verified=user.is_verified,
         is_doctor_approved=user.is_doctor_approved,
+        avatar=user.picture or "/default-avatar.png",
         created_at=doctor.created_at,
         updated_at=doctor.updated_at,
         availabilities=availabilities,

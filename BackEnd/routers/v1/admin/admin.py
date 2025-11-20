@@ -2,14 +2,17 @@ from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from typing import List, Optional
-
+import logging
 from core.database import get_db
 from models.users import User, UserRole
 from models.doctor import Doctor
 from models.appointment import Appointment
 from routers.v1.dependencies import get_current_admin
 
+from core.services.email import send_email
+
 router = APIRouter()
+logger = logging.getLogger("bukcare")
 
 # -----------------------------
 # GET all users
@@ -39,6 +42,7 @@ def get_all_users(
             "name": f"{user.fname} {user.lname}",
             "role": user.role.value,
             "is_active": user.is_active,
+            "is_verified": user.is_verified,
             "is_profile_complete": user.is_profile_complete,
             "created_at": user.created_at,
             "last_login": user.last_login,
@@ -104,29 +108,47 @@ def approve_doctor(
     current_user: User = Depends(get_current_admin),
     db: Session = Depends(get_db)
 ):
+    # Fetch the user
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
-        raise HTTPException(404, "User not found")
+        raise HTTPException(status_code=404, detail="User not found")
 
-    # Try to get Doctor row
+    # Fetch or create Doctor record
     doctor = db.query(Doctor).filter(Doctor.user_id == user_id).first()
     if not doctor:
-        # Automatically create Doctor row
         doctor = Doctor(user_id=user_id)
         db.add(doctor)
         db.commit()
         db.refresh(doctor)
 
+    # If already approved, log and return message
     if user.is_doctor_approved:
-        raise HTTPException(400, "Doctor is already approved")
+        logger.warning(f"Admin {current_user.id} attempted to approve already approved doctor {user.id}")
+        return {"message": "Doctor is already approved"}
 
+    # Approve the doctor
     user.is_doctor_approved = True
     user.approval_date = func.now()
     user.approved_by = current_user.id
-
     db.commit()
-    return {"message": "Doctor approved successfully"}
 
+    # Send approval email
+    try:
+        subject = "Your Doctor Account Has Been Approved ✅"
+        body = f"""
+        Hi {user.fname},
+
+        Congratulations! Your doctor account has been approved.
+        You can now log in and start using your account.
+
+        Regards,
+        BukCare Team
+        """
+        send_email(to=user.email, subject=subject, body=body)
+    except Exception as e:
+        logger.error(f"Failed to send doctor approval email to {user.email}: {e}")
+
+    return {"message": "Doctor approved successfully, email notification sent"}
 
 
 # -----------------------------

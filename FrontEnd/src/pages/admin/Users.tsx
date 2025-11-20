@@ -75,9 +75,12 @@ const Users: React.FC = () => {
         const formattedUsers: User[] = apiUsers.map((u: any) => ({
           id: u.id,
           fname: u.fname,
+          mname: u.mname,
           lname: u.lname,
           email: u.email,
+          contact_number: u.contact_number,
           role: u.role as User["role"],
+          sex: u.sex,
           is_active: u.is_active,
           is_verified: u.is_verified,
           is_profile_complete: u.is_profile_complete,
@@ -309,8 +312,8 @@ const Users: React.FC = () => {
                       <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Contact</th>
                       <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Role</th>
                       <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Join Date</th>
-                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
                       <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Verification</th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
                       <th className="px-6 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
                     </tr>
                   </thead>
@@ -359,21 +362,33 @@ const Users: React.FC = () => {
                           </div>
                         </td>
 
-                        {/* Verification */}
+                        {/* VERIFICATION - NOW COMES BEFORE STATUS */}
                         <td className="px-6 py-4">
                           <div className="flex flex-col gap-1 text-xs">
                             <div className="flex items-center gap-1">
-                              {user.is_verified ? <CheckCircle className="w-4 h-4 text-green-600" /> : <XCircle className="w-4 h-4 text-red-600" />}
-                              <span className="text-gray-600">{user.is_verified ? "Verified" : "Not Verified"}</span>
+                              {user.is_verified ? (
+                                <CheckCircle className="w-4 h-4 text-green-600" />
+                              ) : (
+                                <XCircle className="w-4 h-4 text-red-600" />
+                              )}
+                              <span className="text-gray-600">
+                                {user.is_verified ? "Verified" : "Not Verified"}
+                              </span>
                             </div>
                             <div className="flex items-center gap-1">
-                              {user.is_profile_complete ? <CheckCircle className="w-4 h-4 text-green-600" /> : <XCircle className="w-4 h-4 text-red-600" />}
-                              <span className="text-gray-600">Profile {user.is_profile_complete ? "Complete" : "Incomplete"}</span>
+                              {user.is_profile_complete ? (
+                                <CheckCircle className="w-4 h-4 text-green-600" />
+                              ) : (
+                                <XCircle className="w-4 h-4 text-red-600" />
+                              )}
+                              <span className="text-gray-600">
+                                Profile {user.is_profile_complete ? "Complete" : "Incomplete"}
+                              </span>
                             </div>
                           </div>
                         </td>
 
-                        {/* Status with Toggle */}
+                        {/* STATUS - NOW COMES AFTER VERIFICATION */}
                         <td className="px-6 py-4 whitespace-nowrap">
                           {user.role === "doctor" || user.role === "pending" ? (
                             <button

@@ -1,4 +1,3 @@
-// src/services/patient/GetDoctorAPI.ts
 import BaseAPI from "../BaseAPI";
 
 // ------------------------------
@@ -24,6 +23,7 @@ export interface Doctor {
   license_number?: string;
   years_of_experience?: number;
   address?: string;
+  avatar?: string;            // ← added
 
   is_verified: boolean;
   is_doctor_approved: boolean;
@@ -31,7 +31,6 @@ export interface Doctor {
   created_at: string;
   updated_at: string;
 
-  // 🔥 IMPORTANT: Add this
   availabilities: DoctorAvailability[];
 }
 

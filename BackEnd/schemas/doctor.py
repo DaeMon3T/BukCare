@@ -91,6 +91,7 @@ class DoctorResponse(BaseModel):
     is_verified: bool
     is_doctor_approved: bool
     availabilities: List[DoctorAvailability] = []  # ← ADD THIS
+    avatar: Optional[str] = None  
     created_at: datetime
     updated_at: datetime
 
@@ -105,6 +106,7 @@ class Doctor(BaseModel):
     email: str
     specialization: str
     address: str
+    avatar: Optional[str] = None 
     is_verified: bool
     is_doctor_approved: bool
     is_accepting_patients: Optional[bool] = None

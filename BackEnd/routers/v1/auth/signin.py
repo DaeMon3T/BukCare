@@ -53,12 +53,6 @@ def build_response(user: User, access_token: str, refresh_token: str, action: st
 # Unified Google Auth Logic
 # -----------------------------------------
 def handle_google_auth(idinfo: dict, db: Session, redirect_flow: bool = False):
-    """
-    Handles both Google Sign In and Sign Up.
-    - New user → created, profile incomplete
-    - Existing user → logs in and role preserved
-    """
-
     google_data = {
         "google_id": idinfo.get("sub"),
         "email": idinfo.get("email"),
@@ -69,13 +63,13 @@ def handle_google_auth(idinfo: dict, db: Session, redirect_flow: bool = False):
     }
 
     if not google_data["email"]:
-        raise HTTPException(status_code=400, detail="No email returned by Google")
+        raise HTTPException(status_code=400, detail="Google did not return an email.")
 
     user = db.query(User).filter(User.email == google_data["email"]).first()
     action = "signin"
 
     if not user:
-        # 🆕 New Google user — must complete profile
+        # New Google user
         user = User.from_oauth({
             **google_data,
             "role": None,
@@ -86,20 +80,32 @@ def handle_google_auth(idinfo: dict, db: Session, redirect_flow: bool = False):
         db.refresh(user)
         action = "signup"
     else:
-        # Existing user — update info
+        # Existing user update
         user.update_from_oauth(google_data)
         user.last_login = datetime.utcnow()
-
-        # ✅ Ensure user role consistency
         if not user.role:
-            user.is_profile_complete = False  # must complete profile before routing
+            user.is_profile_complete = False
         elif user.role == UserRole.ADMIN:
-            user.is_profile_complete = True  # admin always complete
+            user.is_profile_complete = True
 
         db.commit()
         db.refresh(user)
 
-    # 🔐 Generate tokens
+    # -----------------------------
+    # 🔐 UNIVERSAL LOGIN PROTECTION
+    # -----------------------------
+
+    # ❌ Block inactive accounts
+    if not user.is_active:
+        raise HTTPException(status_code=403, detail="Your account is inactive. Please contact support.")
+
+    # ❌ Block doctors who are not approved yet
+    if user.role == UserRole.DOCTOR and not user.is_doctor_approved:
+        raise HTTPException(status_code=403, detail="Your doctor account is pending approval.")
+
+    # -----------------------------
+    # Token generation
+    # -----------------------------
     access_token = create_access_token({
         "user_id": user.id,
         "email": user.email,
@@ -115,30 +121,25 @@ def handle_google_auth(idinfo: dict, db: Session, redirect_flow: bool = False):
     db.commit()
     db.refresh(user)
 
-    # 🌐 Redirect-based Google login flow
+    # Redirect-based Google OAuth
     if redirect_flow:
-        # ✅ Determine proper redirect based on user state
-        role_value = user.role.value if user.role else ""
-        profile_complete = user.is_profile_complete
-
         redirect_url = (
             f"{settings.FRONTEND_URL}/auth/callback?"
             f"token={access_token}"
             f"&refresh={refresh_token}"
             f"&user_id={user.id}"
-            f"&email={urllib.parse.quote(user.email)}"
-            f"&fname={urllib.parse.quote(user.fname or '')}"
-            f"&lname={urllib.parse.quote(user.lname or '')}"
-            f"&picture={urllib.parse.quote(user.picture or '')}"
-            f"&role={urllib.parse.quote(role_value)}"
-            f"&is_profile_complete={'true' if profile_complete else 'false'}"
+            f"&email={user.email}"
+            f"&fname={user.fname or ''}"
+            f"&lname={user.lname or ''}"
+            f"&picture={user.picture or ''}"
+            f"&role={(user.role.value if user.role else '')}"
+            f"&is_profile_complete={'true' if user.is_profile_complete else 'false'}"
             f"&is_verified={'true' if user.is_verified else 'false'}"
             f"&is_active={'true' if user.is_active else 'false'}"
         )
-
         return RedirectResponse(url=redirect_url)
 
-    # 🧾 API-based Google login (for One-Tap)
+    # API JSON Response (One-Tap)
     return build_response(user, access_token, refresh_token, action)
 
 
@@ -153,25 +154,33 @@ def login(data: LoginRequest, db: Session = Depends(get_db)):
     if not user or not user.password or not verify_password(data.password, user.password):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password")
 
-    # 🛠 Ensure proper role assignment before tokens
-    if not user.role:
-        raise HTTPException(status_code=400, detail="User role not assigned. Please contact admin.")
+    # ❌ Block ALL inactive accounts
+    if not user.is_active:
+        raise HTTPException(status_code=403, detail="Your account is inactive. Please contact support.")
 
-    # 🔐 Token creation
+    # ❌ Block unapproved doctors
+    if user.role == UserRole.DOCTOR and not user.is_doctor_approved:
+        raise HTTPException(status_code=403, detail="Your doctor account is pending approval.")
+
+    # Ensure role exists
+    if not user.role:
+        raise HTTPException(status_code=400, detail="User role not assigned. Contact support.")
+
+    # Tokens
     access_token = create_access_token({
         "user_id": user.id,
         "email": user.email,
-        "role": user.role.value,
+        "role": user.role.value
     })
     refresh_token = create_refresh_token({
         "user_id": user.id,
-        "email": user.email,
+        "email": user.email
     })
 
     user.refresh_token = refresh_token
     user.last_login = datetime.utcnow()
 
-    # ✅ Admin always has complete profile
+    # Admin = auto complete
     if user.role == UserRole.ADMIN:
         user.is_profile_complete = True
 
@@ -179,6 +188,7 @@ def login(data: LoginRequest, db: Session = Depends(get_db)):
     db.refresh(user)
 
     return build_response(user, access_token, refresh_token, "signin")
+
 
 
 

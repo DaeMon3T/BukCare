@@ -107,7 +107,7 @@ async def complete_profile(
             province_id=province_obj.id,
             city_id=city_obj.id,
             barangay_id=barangay_obj.id,
-            is_verified=False,
+            
         )
 
         # Upload PRC files to Cloudinary

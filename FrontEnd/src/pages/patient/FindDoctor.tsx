@@ -6,15 +6,11 @@ import GetDoctorAPI from "@/services/patient/GetDoctorAPI";
 import type { Doctor as APIDoctor } from "@/services/patient/GetDoctorAPI";
 import BookingModal from "@/components/BookingModal";
 import type { Doctor } from "@/components/DoctorCard";
-import api from "@/utils/api";
 
 interface UICardDoctor {
   doctor_id: number;
   name: string;
-  specialization?: {
-    name?: string;
-    descriptions?: string;
-  };
+  specialization?: { name?: string };
   avatar: string;
   address: string;
   email: string;
@@ -25,37 +21,27 @@ const FindDoctor: React.FC = () => {
   const [allDoctors, setAllDoctors] = useState<UICardDoctor[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
-
-  // Booking modal state
   const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [submittingBooking, setSubmittingBooking] = useState(false);
 
-  // Fetch doctors from API
   useEffect(() => {
     const fetchDoctors = async () => {
       try {
         setLoading(true);
         const data: APIDoctor[] = await GetDoctorAPI.getDoctors();
 
-        // Deduplicate doctors
-        const uniqueDoctorsMap = new Map<number, APIDoctor>();
-        data.forEach((doc) => uniqueDoctorsMap.set(doc.doctor_id, doc));
-        const uniqueDoctors = Array.from(uniqueDoctorsMap.values());
-
-        const formattedDoctors: UICardDoctor[] = uniqueDoctors.map((doc) => ({
+        const formattedDoctors: UICardDoctor[] = data.map((doc) => ({
           doctor_id: doc.doctor_id,
           name: doc.name,
           specialization: { name: doc.specialization || "General Practice" },
-          avatar: "/default-avatar.png",
+          avatar: (doc as any).avatar || "/default-avatar.png",
           address: doc.address || "Not provided",
-          email: doc.email || "No email available",
+          email: doc.email || "No email",
           is_doctor_approved: (doc as any).is_doctor_approved ?? false,
         }));
 
         setAllDoctors(formattedDoctors);
       } catch (err) {
-        console.error("❌ Failed to fetch doctors:", err);
         toast.error("Failed to load doctors");
       } finally {
         setLoading(false);
@@ -65,61 +51,7 @@ const FindDoctor: React.FC = () => {
     fetchDoctors();
   }, []);
 
-  const handleBookClick = (doctor: Doctor) => {
-    setSelectedDoctor(doctor);
-    setIsModalOpen(true);
-  };
-
-  const closeModal = () => {
-    setSelectedDoctor(null);
-    setIsModalOpen(false);
-  };
-
-  const handleConfirmBooking = async (details: {
-    date: string;
-    time: string;
-    reason: string;
-  }) => {
-    if (!selectedDoctor) {
-      toast.error("No doctor selected");
-      return;
-    }
-
-    try {
-      setSubmittingBooking(true);
-
-      const appointmentDate = new Date(`${details.date}T${details.time}:00`).toISOString();
-
-      const payload = {
-        doctor_id: selectedDoctor.doctor_id,
-        appointment_date: appointmentDate,
-        reason: details.reason,
-        notes: "",
-      };
-
-      const res = await api.post("/appointments/", payload);
-
-      if (res.status === 200 || res.status === 201) {
-        toast.success("✅ Appointment booked successfully!");
-        closeModal();
-      } else {
-        toast.error("Unexpected response from server");
-      }
-    } catch (err: any) {
-      console.error("❌ Booking failed:", err?.response?.data || err);
-      const msg =
-        err?.response?.data?.detail ||
-        err?.response?.data?.message ||
-        "Failed to create appointment";
-      toast.error(msg);
-    } finally {
-      setSubmittingBooking(false);
-    }
-  };
-
-  // Search Filter
   const filteredDoctors = allDoctors.filter((doc) => {
-    if (!search.trim()) return true;
     const query = search.toLowerCase();
     return (
       doc.name.toLowerCase().includes(query) ||
@@ -132,11 +64,8 @@ const FindDoctor: React.FC = () => {
       <Navbar />
 
       <main className="h-[calc(100vh-4rem)] overflow-y-auto px-4 sm:px-6 lg:px-8 py-6">
-        {/* Search Bar */}
-        <div className="max-w-3xl mx-auto mb-8">
-          <h1 className="text-2xl font-bold text-gray-800 text-center mb-4">
-            Find a Doctor
-          </h1>
+        <div className="max-w-3xl mx-auto mb-8 text-center">
+          <h1 className="text-2xl font-bold text-gray-800 mb-4">Find a Doctor</h1>
           <input
             type="text"
             value={search}
@@ -147,39 +76,17 @@ const FindDoctor: React.FC = () => {
         </div>
 
         {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-              <p className="text-gray-600 mt-4">Loading doctors...</p>
-            </div>
-          </div>
+          <p className="text-center">Loading...</p>
         ) : filteredDoctors.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
             {filteredDoctors.map((doc) => (
-              <DoctorCard
-                key={doc.doctor_id}
-                doctor={doc}
-                onBook={() => handleBookClick(doc as Doctor)}
-              />
+              <DoctorCard key={doc.doctor_id} doctor={doc} />
             ))}
           </div>
         ) : (
-          <p className="text-center text-gray-500">
-            No doctors found for "{search}".
-          </p>
+          <p className="text-center text-gray-500">No doctors found</p>
         )}
       </main>
-
-      {/* Booking Modal */}
-      {selectedDoctor && (
-        <BookingModal
-          doctor={selectedDoctor}
-          isOpen={isModalOpen}
-          onClose={closeModal}
-          onConfirm={handleConfirmBooking}
-          submitting={submittingBooking}
-        />
-      )}
     </div>
   );
 };
