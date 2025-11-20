@@ -5,6 +5,8 @@ import BaseAPI from "../BaseAPI";
 // -----------------------------
 
 export interface User {
+  doctor_profile: {};
+  picture: string;
   id: number;
   email: string;
   fname: string;
@@ -68,6 +70,20 @@ export async function approveDoctor(doctorId: number): Promise<void> {
   }
 }
 
+/**
+ * Reject a doctor (Admin only)
+ */
+export async function rejectDoctor(doctorId: number, reason?: string): Promise<void> {
+  try {
+    await BaseAPI.put(`/admin/doctors/${doctorId}/reject`, null, {
+      params: reason ? { reason } : undefined,
+    });
+  } catch (error: any) {
+    console.error("Failed to reject doctor:", error);
+    throw new Error(error.response?.data?.detail || error.message || "Failed to reject doctor");
+  }
+}
+
 // -----------------------------
 // Export
 // -----------------------------
@@ -75,6 +91,7 @@ const usersAPI = {
   getAllUsers,
   updateUserStatus,
   approveDoctor,
+  rejectDoctor,
 };
 
 export default usersAPI;

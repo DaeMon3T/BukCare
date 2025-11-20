@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from typing import List, Optional
@@ -6,10 +6,8 @@ import logging
 from core.database import get_db
 from models.users import User, UserRole
 from models.doctor import Doctor
-from models.appointment import Appointment
 from routers.v1.dependencies import get_current_admin
-
-from core.services.email import send_email
+from core.services.email import send_doctor_approval_email, send_doctor_rejection_email
 
 router = APIRouter()
 logger = logging.getLogger("bukcare")
@@ -103,17 +101,11 @@ def get_pending_doctors(
 # Approve doctor
 # -----------------------------
 @router.put("/doctors/{user_id}/approve")
-def approve_doctor(
-    user_id: int,
-    current_user: User = Depends(get_current_admin),
-    db: Session = Depends(get_db)
-):
-    # Fetch the user
+def approve_doctor(user_id: int, current_user: User = Depends(get_current_admin), db: Session = Depends(get_db)):
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # Fetch or create Doctor record
     doctor = db.query(Doctor).filter(Doctor.user_id == user_id).first()
     if not doctor:
         doctor = Doctor(user_id=user_id)
@@ -121,64 +113,46 @@ def approve_doctor(
         db.commit()
         db.refresh(doctor)
 
-    # If already approved, log and return message
     if user.is_doctor_approved:
-        logger.warning(f"Admin {current_user.id} attempted to approve already approved doctor {user.id}")
         return {"message": "Doctor is already approved"}
 
-    # Approve the doctor
     user.is_doctor_approved = True
     user.approval_date = func.now()
     user.approved_by = current_user.id
     db.commit()
 
-    # Send approval email
     try:
-        subject = "Your Doctor Account Has Been Approved ✅"
-        body = f"""
-        Hi {user.fname},
-
-        Congratulations! Your doctor account has been approved.
-        You can now log in and start using your account.
-
-        Regards,
-        BukCare Team
-        """
-        send_email(to=user.email, subject=subject, body=body)
+        send_doctor_approval_email(user)
     except Exception as e:
         logger.error(f"Failed to send doctor approval email to {user.email}: {e}")
 
     return {"message": "Doctor approved successfully, email notification sent"}
 
-
 # -----------------------------
 # Reject doctor
 # -----------------------------
 @router.put("/doctors/{doctor_id}/reject")
-def reject_doctor(
-    doctor_id: int,
-    reason: Optional[str] = None,
-    current_user: User = Depends(get_current_admin),
-    db: Session = Depends(get_db)
-):
+def reject_doctor(doctor_id: int, reason: Optional[str] = None, current_user: User = Depends(get_current_admin), db: Session = Depends(get_db)):
     doctor = db.query(Doctor).filter(Doctor.doctor_id == doctor_id).first()
     if not doctor:
         raise HTTPException(status_code=404, detail="Doctor not found")
 
+    user = doctor.user
     db.delete(doctor)
     db.commit()
-    return {"message": "Doctor application rejected"}
+
+    try:
+        send_doctor_rejection_email(user, reason)
+    except Exception as e:
+        logger.error(f"Failed to send doctor rejection email to {user.email}: {e}")
+
+    return {"message": "Doctor application rejected, email notification sent"}
 
 # -----------------------------
 # Update user status
 # -----------------------------
 @router.put("/users/{user_id}/status")
-def update_user_status(
-    user_id: int,
-    is_active: bool,
-    current_user: User = Depends(get_current_admin),
-    db: Session = Depends(get_db)
-):
+def update_user_status(user_id: int, is_active: bool, current_user: User = Depends(get_current_admin), db: Session = Depends(get_db)):
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")

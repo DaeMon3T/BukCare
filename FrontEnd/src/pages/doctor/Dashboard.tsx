@@ -323,17 +323,6 @@ const DoctorDashboard: FC = () => {
       {/* Main Content */}
       <main className="h-[calc(100vh-4rem)] overflow-y-auto">
         <div className="w-full px-4 sm:px-6 lg:px-8 py-6">
-          {/* Welcome Section */}
-          <div className="mb-6">
-            <div className="bg-gradient-to-r from-green-600 to-blue-600 rounded-2xl p-6 text-white">
-              <h1 className="text-2xl font-bold mb-2">Good morning, Doctor!</h1>
-              <p className="text-green-100">
-                You have {stats.todayAppointments} appointment{stats.todayAppointments !== 1 ? 's' : ''} today.
-                {stats.pendingAppointments > 0 && ` ${stats.pendingAppointments} pending approval.`}
-              </p>
-            </div>
-          </div>
-
           {/* Statistics Cards */}
           <div className="mb-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">

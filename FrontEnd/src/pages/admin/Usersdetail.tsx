@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import  { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import usersAPI from "@/services/admin/Users";
@@ -12,7 +12,7 @@ interface DoctorProfile {
   years_of_experience?: number;
   bio?: string;
   consultation_fee?: number;
-  is_doctor_approved?: boolean; // NEW
+  is_doctor_approved?: boolean;
 }
 
 interface User {
@@ -52,14 +52,15 @@ export default function UsersDetail() {
     const fetchUser = async () => {
       try {
         const apiUsers = await usersAPI.getAllUsers();
-        const foundUser = apiUsers.find((u: any) => u.id === Number(id));
+        const foundUser = apiUsers.find((u: User) => u.id === Number(id));
 
         if (foundUser) {
-          setUser({
+          const userWithDefaults: User = {
             ...foundUser,
             picture: foundUser.picture || "/assets/react.svg",
             doctor_profile: foundUser.doctor_profile || {},
-          });
+          };
+          setUser(userWithDefaults);
         }
       } catch (err) {
         console.error("Error loading user:", err);
@@ -85,7 +86,6 @@ export default function UsersDetail() {
         text: `${user.fname} ${user.lname} has been approved and can now use the system.`,
       });
 
-      // UPDATE doctor_profile flag
       setUser({
         ...user,
         doctor_profile: {
@@ -97,6 +97,39 @@ export default function UsersDetail() {
       setApprovalMessage({
         type: "error",
         text: error.message || "Failed to approve doctor. Please try again.",
+      });
+    } finally {
+      setApproving(false);
+    }
+  };
+
+  const handleRejectDoctor = async () => {
+    if (!user) return;
+
+    const reason = prompt("Please provide a reason for rejection (optional):") || undefined;
+
+    setApproving(true);
+    setApprovalMessage(null);
+
+    try {
+      await usersAPI.rejectDoctor(user.id, reason);
+
+      setApprovalMessage({
+        type: "success",
+        text: `${user.fname} ${user.lname}'s doctor application has been rejected.`,
+      });
+
+      setUser({
+        ...user,
+        doctor_profile: {
+          ...user.doctor_profile,
+          is_doctor_approved: false,
+        },
+      });
+    } catch (error: any) {
+      setApprovalMessage({
+        type: "error",
+        text: error.message || "Failed to reject doctor. Please try again.",
       });
     } finally {
       setApproving(false);
@@ -123,7 +156,7 @@ export default function UsersDetail() {
 
   return (
     <div className="h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 overflow-hidden">
-      <Navbar role="admin" />
+      <Navbar/>
 
       <main className="h-[calc(100vh-4rem)] overflow-y-auto">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -237,31 +270,44 @@ export default function UsersDetail() {
                 </div>
               )}
 
-              {/* APPROVAL BUTTON */}
-              <button
-                onClick={handleApproveDoctor}
-                disabled={approving || user.doctor_profile?.is_doctor_approved}
-                className="mt-6 w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 
-                           disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 px-4 rounded-lg 
-                           transition flex items-center justify-center gap-2"
-              >
-                {approving ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    Approving...
-                  </>
-                ) : user.doctor_profile?.is_doctor_approved ? (
-                  <>
-                    <CheckCircle className="w-5 h-5" />
-                    Already Approved
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle className="w-5 h-5" />
-                    Approve Doctor
-                  </>
-                )}
-              </button>
+              {/* APPROVE & REJECT BUTTONS */}
+              <div className="flex flex-col sm:flex-row gap-4 mt-6">
+                <button
+                  onClick={handleApproveDoctor}
+                  disabled={approving || user.doctor_profile?.is_doctor_approved}
+                  className="flex-1 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 
+                             disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 px-4 rounded-lg 
+                             transition flex items-center justify-center gap-2"
+                >
+                  {approving ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      Approving...
+                    </>
+                  ) : user.doctor_profile?.is_doctor_approved ? (
+                    <>
+                      <CheckCircle className="w-5 h-5" />
+                      Already Approved
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle className="w-5 h-5" />
+                      Approve Doctor
+                    </>
+                  )}
+                </button>
+
+                <button
+                  onClick={handleRejectDoctor}
+                  disabled={approving || user.doctor_profile?.is_doctor_approved}
+                  className="flex-1 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700
+                             disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 px-4 rounded-lg
+                             transition flex items-center justify-center gap-2"
+                >
+                  <AlertCircle className="w-5 h-5" />
+                  Reject Doctor
+                </button>
+              </div>
             </div>
           )}
 
@@ -312,7 +358,7 @@ function InputField({ label, value }: { label: string; value: string }) {
 }
 
 // DOCUMENT CARD COMPONENT
-function DocumentCard({ title, imageUrl, onClick }: { title: string; imageUrl?: string; onClick: () => void }) {
+function DocumentCard({ title, imageUrl, onClick }: { title: string; imageUrl?: string | undefined; onClick: () => void }) {
   if (!imageUrl) {
     return (
       <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">

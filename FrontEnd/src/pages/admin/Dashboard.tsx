@@ -65,17 +65,6 @@ const AdminDashboard: React.FC = () => {
 
       <main className="h-[calc(100vh-4rem)] overflow-y-auto">
         <div className="w-full px-4 sm:px-6 lg:px-8 py-6">
-          <div className="mb-6">
-            <div className="bg-gradient-to-r from-purple-600 to-blue-600 rounded-2xl p-6 text-white">
-              <h1 className="text-2xl font-bold mb-2">
-                Welcome back, {user?.name || "Admin"}!
-              </h1>
-              <p className="text-purple-100">
-                Monitor your platform’s system health in real-time.
-              </p>
-            </div>
-          </div>
-
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
               <div className="flex items-center space-x-4">
