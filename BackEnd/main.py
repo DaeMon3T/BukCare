@@ -2,9 +2,6 @@ from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
-
-from routers.v1 import router as v1_router
-
 from core.config import settings
 from core.database import Base, engine
 from core.logging_config import setup_logging, get_logger
@@ -13,6 +10,7 @@ from middleware.security import security_middleware_handler
 from middleware.request_logging import request_logging_middleware
 import logging
 import traceback
+from routers.v1 import router as v1_router
 
 
 def create_app() -> FastAPI:
@@ -55,10 +53,6 @@ def create_app() -> FastAPI:
     # API routes
     app.include_router(v1_router, prefix="/v1")
 
-    @app.get("/health")
-    def health_check():
-        return {"status": "healthy", "message": "BukCare API is running"}
-    
     # ✅ Startup event for tasks like creating default admin
     @app.on_event("startup")
     def startup_tasks():
