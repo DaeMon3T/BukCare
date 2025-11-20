@@ -23,8 +23,6 @@ interface UICardDoctor {
 
 const FindDoctor: React.FC = () => {
   const [allDoctors, setAllDoctors] = useState<UICardDoctor[]>([]);
-  const [approvedDoctors, setApprovedDoctors] = useState<UICardDoctor[]>([]);
-  const [unapprovedDoctors, setUnapprovedDoctors] = useState<UICardDoctor[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
 
@@ -33,29 +31,29 @@ const FindDoctor: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [submittingBooking, setSubmittingBooking] = useState(false);
 
-  // ✅ Fetch doctors from API
+  // Fetch doctors from API
   useEffect(() => {
     const fetchDoctors = async () => {
       try {
         setLoading(true);
         const data: APIDoctor[] = await GetDoctorAPI.getDoctors();
 
-        const formattedDoctors: UICardDoctor[] = data.map((doc) => ({
+        // Deduplicate doctors
+        const uniqueDoctorsMap = new Map<number, APIDoctor>();
+        data.forEach((doc) => uniqueDoctorsMap.set(doc.doctor_id, doc));
+        const uniqueDoctors = Array.from(uniqueDoctorsMap.values());
+
+        const formattedDoctors: UICardDoctor[] = uniqueDoctors.map((doc) => ({
           doctor_id: doc.doctor_id,
           name: doc.name,
-          specialization: { name: doc.specialization || "General Practice" },  // ✅ Provide default
+          specialization: { name: doc.specialization || "General Practice" },
           avatar: "/default-avatar.png",
           address: doc.address || "Not provided",
           email: doc.email || "No email available",
           is_doctor_approved: (doc as any).is_doctor_approved ?? false,
         }));
 
-        const approved = formattedDoctors.filter((d) => d.is_doctor_approved);
-        const unapproved = formattedDoctors.filter((d) => !d.is_doctor_approved);
-
         setAllDoctors(formattedDoctors);
-        setApprovedDoctors(approved);
-        setUnapprovedDoctors(unapproved);
       } catch (err) {
         console.error("❌ Failed to fetch doctors:", err);
         toast.error("Failed to load doctors");
@@ -67,7 +65,6 @@ const FindDoctor: React.FC = () => {
     fetchDoctors();
   }, []);
 
-  // ✅ Handle Book Appointment
   const handleBookClick = (doctor: Doctor) => {
     setSelectedDoctor(doctor);
     setIsModalOpen(true);
@@ -78,7 +75,6 @@ const FindDoctor: React.FC = () => {
     setIsModalOpen(false);
   };
 
-  // ✅ Confirm Booking → Send to backend
   const handleConfirmBooking = async (details: {
     date: string;
     time: string;
@@ -121,27 +117,22 @@ const FindDoctor: React.FC = () => {
     }
   };
 
-  // ✅ Search Filter
-  const filterBySearch = (list: UICardDoctor[]) => {
-    if (search.trim() === "") return list;
+  // Search Filter
+  const filteredDoctors = allDoctors.filter((doc) => {
+    if (!search.trim()) return true;
     const query = search.toLowerCase();
-    return list.filter(
-      (doc) =>
-        doc.name.toLowerCase().includes(query) ||
-        doc.specialization?.name?.toLowerCase().includes(query)
+    return (
+      doc.name.toLowerCase().includes(query) ||
+      doc.specialization?.name?.toLowerCase().includes(query)
     );
-  };
-
-  const filteredApproved = filterBySearch(approvedDoctors);
-  const filteredUnapproved = filterBySearch(unapprovedDoctors);
-  const filteredAll = filterBySearch(allDoctors);
+  });
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 overflow-hidden">
-      <Navbar /> {/* ✅ Fixed: removed role prop */}
+      <Navbar />
 
       <main className="h-[calc(100vh-4rem)] overflow-y-auto px-4 sm:px-6 lg:px-8 py-6">
-        {/* 🔍 Search Bar */}
+        {/* Search Bar */}
         <div className="max-w-3xl mx-auto mb-8">
           <h1 className="text-2xl font-bold text-gray-800 text-center mb-4">
             Find a Doctor
@@ -162,82 +153,31 @@ const FindDoctor: React.FC = () => {
               <p className="text-gray-600 mt-4">Loading doctors...</p>
             </div>
           </div>
+        ) : filteredDoctors.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+            {filteredDoctors.map((doc) => (
+              <DoctorCard
+                key={doc.doctor_id}
+                doctor={doc}
+                onBook={() => handleBookClick(doc as Doctor)}
+              />
+            ))}
+          </div>
         ) : (
-          <>
-            {/* ✅ Approved Doctors */}
-            <section className="mb-12">
-              <h2 className="text-xl font-semibold mb-4 text-green-600 text-center">
-                ✅ Approved Doctors
-              </h2>
-              {filteredApproved.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-                  {filteredApproved.map((doc) => (
-                    <DoctorCard
-                      key={doc.doctor_id}
-                      doctor={doc}
-                      onBook={() => handleBookClick(doc as Doctor)}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <p className="text-center text-gray-500">No approved doctors found.</p>
-              )}
-            </section>
-
-            {/* ⚠️ Not Approved */}
-            <section className="mb-12">
-              <h2 className="text-xl font-semibold mb-4 text-yellow-600 text-center">
-                ⚠️ Not Yet Approved
-              </h2>
-              {filteredUnapproved.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-                  {filteredUnapproved.map((doc) => (
-                    <DoctorCard
-                      key={doc.doctor_id}
-                      doctor={doc}
-                      onBook={() => handleBookClick(doc as Doctor)}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <p className="text-center text-gray-500">
-                  No pending doctors found.
-                </p>
-              )}
-            </section>
-
-            {/* 🩺 All Doctors */}
-            <section>
-              <h2 className="text-xl font-semibold mb-4 text-blue-600 text-center">
-                🩺 All Doctors
-              </h2>
-              {filteredAll.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-                  {filteredAll.map((doc) => (
-                    <DoctorCard
-                      key={doc.doctor_id}
-                      doctor={doc}
-                      onBook={() => handleBookClick(doc as Doctor)}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <p className="text-center text-gray-500">
-                  No doctors found for "{search}".
-                </p>
-              )}
-            </section>
-          </>
+          <p className="text-center text-gray-500">
+            No doctors found for "{search}".
+          </p>
         )}
       </main>
 
-      {/* 🧾 Booking Modal */}
+      {/* Booking Modal */}
       {selectedDoctor && (
         <BookingModal
           doctor={selectedDoctor}
           isOpen={isModalOpen}
           onClose={closeModal}
           onConfirm={handleConfirmBooking}
+          submitting={submittingBooking}
         />
       )}
     </div>
