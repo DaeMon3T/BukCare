@@ -35,7 +35,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   // Redirect to login if user is not authenticated
   if (!isAuthenticated) {
     // Save the attempted location so we can redirect back after login
-    return <Navigate to="/signin" state={{ from: location }} replace />;
+    return <Navigate to="/" state={{ from: location }} replace />;
   }
 
   // Get user role - check both 'role' and 'user_type' fields

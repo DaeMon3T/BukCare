@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Bell,
@@ -14,12 +14,13 @@ import {
   Users,
   Calendar,
 } from "lucide-react";
-import { useAuth } from "../context/AuthContext"; // ✅ Use the useAuth hook
+import { useAuth } from "../context/AuthContext";
 
 interface NavbarProps {}
 
 const Navbar: React.FC<NavbarProps> = () => {
-  const { user, logout } = useAuth(); // ✅ This will never be undefined now
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
 
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -46,7 +47,6 @@ const Navbar: React.FC<NavbarProps> = () => {
         return [
           { label: "Dashboard", path: "/doctor/dashboard", icon: Home },
           { label: "Appointments", path: "/doctor/appointments", icon: Calendar },
-          // Removed Patients link
         ];
       case "patient":
       default:
@@ -59,7 +59,6 @@ const Navbar: React.FC<NavbarProps> = () => {
   };
 
   const navigationItems = getNavigationItems();
-
   const homeLink =
     userRole === "admin"
       ? "/admin/dashboard"
@@ -68,6 +67,12 @@ const Navbar: React.FC<NavbarProps> = () => {
       : "/patient/home";
 
   const profileLink = `/${userRole}/profile`;
+
+  // Handle logout and redirect
+  const handleLogout = async () => {
+    await logout(); // clears user state and storage
+    navigate("/"); // redirect to login page
+  };
 
   return (
     <header className="bg-white/80 backdrop-blur-md shadow-sm border-b border-gray-100 sticky top-0 z-50">
@@ -172,7 +177,7 @@ const Navbar: React.FC<NavbarProps> = () => {
                   </div>
                   <div className="border-t border-gray-100 pt-2">
                     <button
-                      onClick={logout}
+                      onClick={handleLogout}
                       className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
                     >
                       <LogOut className="inline w-4 h-4 mr-2" /> Sign Out
@@ -240,7 +245,7 @@ const Navbar: React.FC<NavbarProps> = () => {
                 </Link>
                 <button
                   onClick={() => {
-                    logout();
+                    handleLogout();
                     setSidebarOpen(false);
                   }}
                   className="flex items-center space-x-3 text-red-600 hover:text-red-700 w-full"

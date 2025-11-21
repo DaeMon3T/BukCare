@@ -1,10 +1,4 @@
-import React, {
-  createContext,
-  useContext,
-  useState,
-  useEffect,
-  useMemo,
-} from "react";
+import React, { createContext, useContext, useState, useEffect, useMemo } from "react";
 import type { ReactNode } from "react";
 
 interface Tokens {
@@ -13,14 +7,14 @@ interface Tokens {
 }
 
 export interface UserData {
-  id?: number | string | undefined;
-  user_id?: number | string | undefined;
-  name?: string | undefined;
-  fname?: string | undefined;
-  lname?: string | undefined;
+  id?: number | string;
+  user_id?: number | string;
+  name?: string;
+  fname?: string;
+  lname?: string;
   email: string;
-  role?: string | undefined;
-  picture?: string | undefined;
+  role?: string;
+  picture?: string;
   [key: string]: any;
 }
 
@@ -50,7 +44,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Load user on mount with token validation
+  // Initialize auth state
   useEffect(() => {
     const initializeAuth = async () => {
       const token = localStorage.getItem("access_token");
@@ -59,17 +53,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (token && userData) {
         try {
           const parsedUser: UserData = JSON.parse(userData);
-          
-          // Validate token is not expired
-          const tokenParts = token.split('.');
-          if (tokenParts.length !== 3) {
-            throw new Error('Invalid token format');
-          }
-          const tokenPayload = JSON.parse(atob(tokenParts[1] || ''));
+
+          // Check token expiration
+          const tokenParts = token.split(".");
+          if (tokenParts.length !== 3) throw new Error("Invalid token format");
+          const tokenPayload = JSON.parse(atob(tokenParts[1] || ""));
           const currentTime = Date.now() / 1000;
-          
+
           if (tokenPayload.exp && tokenPayload.exp < currentTime) {
-            // Token expired, clear storage
             localStorage.clear();
             setUser(null);
           } else {
@@ -83,14 +74,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       } else {
         setUser(null);
       }
-
       setLoading(false);
     };
 
     initializeAuth();
   }, []);
 
-  // ✅ Combine name fields and ensure consistent shape
+  // Login
   const login = (tokens: Tokens, userData: UserData) => {
     const fullName =
       userData.name ||
@@ -99,7 +89,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     const formattedUser: UserData = {
       ...userData,
-      id: userData.user_id ?? userData.id ?? Date.now(), // always has a valid id
+      id: userData.user_id ?? userData.id ?? Date.now(),
       name: fullName,
       picture: userData.picture || "/default-avatar.png",
     };
@@ -111,18 +101,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setUser(formattedUser);
   };
 
-  // Token refresh function
+  // Refresh token
   const refreshToken = async (): Promise<boolean> => {
     try {
       const refreshTokenValue = localStorage.getItem("refresh_token");
       if (!refreshTokenValue) return false;
 
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+      const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:8000";
       const response = await fetch(`${apiUrl}/auth/refresh`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ refresh_token: refreshTokenValue }),
       });
 
@@ -143,12 +131,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  // Logout
+  // Logout (does NOT navigate here)
   const logout = async () => {
     try {
       const accessToken = localStorage.getItem("access_token");
       if (accessToken) {
-        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+        const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:8000";
         await fetch(`${apiUrl}/auth/logout`, {
           method: "POST",
           headers: {
@@ -162,7 +150,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } finally {
       localStorage.clear();
       setUser(null);
-      window.location.href = "/";
     }
   };
 
@@ -179,9 +166,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     [user, loading]
   );
 
-  return (
-    <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 export default AuthContext;
