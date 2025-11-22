@@ -2,6 +2,7 @@ from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
+from utils.admin import create_admin_if_not_exists
 from core.config import settings
 from core.database import Base, engine
 from core.logging_config import setup_logging, get_logger
@@ -31,7 +32,6 @@ def create_app() -> FastAPI:
         allow_origins=[
             "http://localhost:5173",
             "http://127.0.0.1:5173",
-            "*",   # Optional but okay for development
         ],
         allow_credentials=True,
         allow_methods=["*"],
@@ -57,7 +57,7 @@ def create_app() -> FastAPI:
     @app.on_event("startup")
     def startup_tasks():
         # ❌ Commented out - implement this if needed
-        # create_admin_if_not_exists()
+        create_admin_if_not_exists()
         logger.info("Startup tasks completed")
 
     # ================================

@@ -120,7 +120,7 @@ export function validateDOB(dateOfBirth: string | undefined | null): ValidationR
     age--;
   }
 
-  if (age < 13) {
+  if (age < 20) {
     return { isValid: false, message: 'You must be at least 13 years old' };
   }
 
