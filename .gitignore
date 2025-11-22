@@ -11,6 +11,10 @@ BackEnd/venv/
 BackEnd/.env.development
 BackEnd/.env.production
 
+# # Python caches
+**/__pycache__/
+**/*.py[cod]
+
 
 # Alembic compiled files
 BackEnd/alembic/__pycache__/
