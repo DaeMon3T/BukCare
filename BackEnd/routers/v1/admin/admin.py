@@ -131,22 +131,27 @@ def approve_doctor(user_id: int, current_user: User = Depends(get_current_admin)
 # -----------------------------
 # Reject doctor
 # -----------------------------
-@router.put("/doctors/{doctor_id}/reject")
-def reject_doctor(doctor_id: int, reason: Optional[str] = None, current_user: User = Depends(get_current_admin), db: Session = Depends(get_db)):
-    doctor = db.query(Doctor).filter(Doctor.doctor_id == doctor_id).first()
-    if not doctor:
-        raise HTTPException(status_code=404, detail="Doctor not found")
-
-    user = doctor.user
-    db.delete(doctor)
-    db.commit()
+@router.put("/doctors/{user_id}/reject")
+def reject_doctor(
+    user_id: int,
+    reason: Optional[str] = None,
+    current_user: User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
 
     try:
         send_doctor_rejection_email(user, reason)
     except Exception as e:
         logger.error(f"Failed to send doctor rejection email to {user.email}: {e}")
 
-    return {"message": "Doctor application rejected, email notification sent"}
+    db.delete(user)  # deletes User + Doctor + DoctorAvailability + linked appointments/notifications if cascade set
+    db.commit()
+
+    return {"message": "Doctor application rejected and all data deleted successfully"}
+
 
 # -----------------------------
 # Update user status

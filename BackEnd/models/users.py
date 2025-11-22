@@ -9,7 +9,7 @@ class UserRole(str, enum.Enum):
     ADMIN = "admin"
     DOCTOR = "doctor"
     PATIENT = "patient"
-    PENDING = "pending"  
+    PENDING = "pending"
 
 
 class User(Base):
@@ -29,8 +29,6 @@ class User(Base):
     google_id = Column(String, unique=True, nullable=True)
     picture = Column(String, nullable=True)
     password = Column(String, nullable=True)
-
-    
 
     is_active = Column(Boolean, default=True)
     is_verified = Column(Boolean, default=False)
@@ -60,27 +58,36 @@ class User(Base):
     appointments_as_patient = relationship(
         "Appointment",
         back_populates="patient",
-        foreign_keys="Appointment.patient_id"
+        foreign_keys="Appointment.patient_id",
+        cascade="all, delete-orphan"
     )
     appointments_as_doctor = relationship(
         "Appointment",
         back_populates="doctor",
-        foreign_keys="Appointment.doctor_id"
+        foreign_keys="Appointment.doctor_id",
+        cascade="all, delete-orphan"
     )
 
     # Relationships - Doctor Profile
-    doctor_profile = relationship("Doctor", back_populates="user", uselist=False)
+    doctor_profile = relationship(
+        "Doctor",
+        back_populates="user",
+        uselist=False,
+        cascade="all, delete-orphan"
+    )
 
     # Relationships - Notifications
     notifications_sent = relationship(
         "Notification",
         foreign_keys="Notification.source_user_id",
-        back_populates="source_user"
+        back_populates="source_user",
+        cascade="all, delete-orphan"
     )
     notifications_received = relationship(
         "Notification",
         foreign_keys="Notification.target_user_id",
-        back_populates="target_user"
+        back_populates="target_user",
+        cascade="all, delete-orphan"
     )
 
     # Self-relationship for admin approvals
@@ -100,11 +107,10 @@ class User(Base):
         if role_value in UserRole._value2member_map_:
             role = UserRole(role_value)
         else:
-            role = UserRole.PENDING  # Default role for new OAuth users
-
-        # For doctors registering via OAuth, default to PENDING until approved
-        if role == UserRole.DOCTOR:
             role = UserRole.PENDING
+
+        if role == UserRole.DOCTOR:
+            role = UserRole.PENDING  # Always pending until approved
 
         return cls(
             google_id=data.get("google_id"),
@@ -129,20 +135,17 @@ class User(Base):
             self.google_id = data.get("google_id")
             updated = True
 
-        # 🛠 Only update name fields, not picture if user already has one
         for field in ["fname", "lname"]:
             new_value = data.get(field)
             if new_value and getattr(self, field) != new_value:
                 setattr(self, field, new_value)
                 updated = True
 
-        # ✅ Only replace Google picture if user.picture is empty
         new_picture = data.get("picture")
         if new_picture and not self.picture:
             self.picture = new_picture
             updated = True
 
-        # Only update role if provided and valid
         if "role" in data and data["role"] in UserRole._value2member_map_:
             new_role = UserRole(data["role"])
             if self.role != new_role:
@@ -151,4 +154,3 @@ class User(Base):
 
         self.last_login = datetime.utcnow()
         return updated
-

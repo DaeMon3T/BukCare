@@ -11,7 +11,7 @@ from middleware.request_logging import request_logging_middleware
 import logging
 import traceback
 from routers.v1 import router as v1_router
-
+from utils.admin import create_admin_if_not_exists
 
 def create_app() -> FastAPI:
     setup_logging()
@@ -57,7 +57,7 @@ def create_app() -> FastAPI:
     @app.on_event("startup")
     def startup_tasks():
         # ❌ Commented out - implement this if needed
-        # create_admin_if_not_exists()
+        create_admin_if_not_exists()
         logger.info("Startup tasks completed")
 
     # ================================

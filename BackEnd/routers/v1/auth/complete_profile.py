@@ -103,10 +103,7 @@ async def complete_profile(
             license_number=license_number,
             years_of_experience=int(years_of_experience)
             if years_of_experience
-            else None,
-            province_id=province_obj.id,
-            city_id=city_obj.id,
-            barangay_id=barangay_obj.id,
+            else None
             
         )
 
