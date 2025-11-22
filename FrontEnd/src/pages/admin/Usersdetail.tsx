@@ -1,4 +1,4 @@
-import  { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import usersAPI from "@/services/admin/Users";
@@ -44,6 +44,7 @@ export default function UsersDetail() {
   const [loading, setLoading] = useState(true);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [approving, setApproving] = useState(false);
+  const [rejecting, setRejecting] = useState(false);
   const [approvalMessage, setApprovalMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   useEffect(() => {
@@ -108,7 +109,7 @@ export default function UsersDetail() {
 
     const reason = prompt("Please provide a reason for rejection (optional):") || undefined;
 
-    setApproving(true);
+    setRejecting(true);
     setApprovalMessage(null);
 
     try {
@@ -132,7 +133,7 @@ export default function UsersDetail() {
         text: error.message || "Failed to reject doctor. Please try again.",
       });
     } finally {
-      setApproving(false);
+      setRejecting(false);
     }
   };
 
@@ -299,13 +300,22 @@ export default function UsersDetail() {
 
                 <button
                   onClick={handleRejectDoctor}
-                  disabled={approving || user.doctor_profile?.is_doctor_approved}
+                  disabled={rejecting || user.doctor_profile?.is_doctor_approved}
                   className="flex-1 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700
                              disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 px-4 rounded-lg
                              transition flex items-center justify-center gap-2"
                 >
-                  <AlertCircle className="w-5 h-5" />
-                  Reject Doctor
+                  {rejecting ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      Rejecting...
+                    </>
+                  ) : (
+                    <>
+                      <AlertCircle className="w-5 h-5" />
+                      Reject Doctor
+                    </>
+                  )}
                 </button>
               </div>
             </div>

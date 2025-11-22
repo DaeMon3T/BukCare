@@ -10,6 +10,12 @@ BackEnd/.venv/
 BackEnd/venv/
 BackEnd/.env.development
 BackEnd/.env.production
+BackEnd/clean_cache.sh
+BackEnd/init_migration.sh
+
+# # Python caches
+**/__pycache__/
+**/*.py[cod]
 
 
 # Alembic compiled files
@@ -49,4 +55,7 @@ docker-compose.yml
 # Database
 Postgres/
 
+*.pyc
+
+__pycache__/
 *.pyc

@@ -41,11 +41,6 @@ class Doctor(Base):
     doctor_id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, unique=True)
 
-    # Address hierarchy (linked to location tables)
-    province_id = Column(Integer, ForeignKey("provinces.id", ondelete="SET NULL"), nullable=True)
-    city_id = Column(Integer, ForeignKey("cities.id", ondelete="SET NULL"), nullable=True)
-    barangay_id = Column(Integer, ForeignKey("barangays.id", ondelete="SET NULL"), nullable=True)
-
     # License and documents
     prc_license_front = Column(String, nullable=True)
     prc_license_back = Column(String, nullable=True)
@@ -60,15 +55,11 @@ class Doctor(Base):
     bio = Column(Text, nullable=True)
     consultation_fee = Column(Integer, nullable=True)  # in cents
     is_accepting_patients = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+   
 
     # Relationships (string references prevent circular imports)
     user = relationship("User", back_populates="doctor_profile")
-    province = relationship("Province")
-    city = relationship("City")
-    barangay = relationship("Barangay")
-
+    
     specializations = relationship("Specialization", secondary=doctor_specializations, back_populates="doctors")
     availabilities = relationship("DoctorAvailability", back_populates="doctor", cascade="all, delete-orphan")
 
