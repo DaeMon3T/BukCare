@@ -10,6 +10,8 @@ BackEnd/.venv/
 BackEnd/venv/
 BackEnd/.env.development
 BackEnd/.env.production
+BackEnd/clean_cache.sh
+BackEnd/init_migration.sh
 
 # # Python caches
 **/__pycache__/
