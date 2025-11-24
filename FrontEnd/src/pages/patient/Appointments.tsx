@@ -23,7 +23,7 @@ const PatientAppointments = () => {
   const fetchAppointments = async () => {
     try {
       setLoading(true);
-      const response = await api.get("/appointments/my"); // endpoint for patient’s own appointments
+      const response = await api.get("/appointments/"); // endpoint for patient’s own appointments
       setAppointments(response.data);
     } catch (err: any) {
       console.error("Failed to load appointments:", err);

@@ -62,11 +62,12 @@ const AddressSection: React.FC<AddressSectionProps> = ({
         </select>
       </div>
 
+      {/* ✅ FIXED: Changed to use barangay_id instead of barangay name */}
       <div className="relative z-30">
         <label className="block text-sm font-medium mb-2 text-white/90">Barangay</label>
         <select
-          name="barangay"
-          value={formData.barangay}
+          name="barangay_id"
+          value={formData.barangay_id}
           onChange={onChange}
           disabled={!formData.city_id}
           className="w-full px-4 py-3.5 text-base rounded-xl bg-white/20 text-white appearance-none cursor-pointer disabled:opacity-50 focus:ring-2 focus:ring-[#FFC43D]/70 transition-colors duration-200"
@@ -75,7 +76,7 @@ const AddressSection: React.FC<AddressSectionProps> = ({
             {!formData.city_id ? "Select city first" : "Select barangay"}
           </option>
           {barangaysData.map((b) => (
-            <option key={b.barangay_id} value={b.name} className="bg-[#1A1A40] text-white">
+            <option key={b.barangay_id} value={b.barangay_id} className="bg-[#1A1A40] text-white">
               {b.name}
             </option>
           ))}

@@ -55,19 +55,20 @@ class Doctor(Base):
     bio = Column(Text, nullable=True)
     consultation_fee = Column(Integer, nullable=True)  # in cents
     is_accepting_patients = Column(Boolean, default=True)
+    
+    # ✅ ADDED: Timestamps
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
    
-
     # Relationships (string references prevent circular imports)
     user = relationship("User", back_populates="doctor_profile")
     
     specializations = relationship("Specialization", secondary=doctor_specializations, back_populates="doctors")
     availabilities = relationship("DoctorAvailability", back_populates="doctor", cascade="all, delete-orphan")
 
+    # ✅ FIXED: Removed barangay_id, city_id, province_id that don't exist
     def __repr__(self):
-        return (
-            f"<Doctor(id={self.doctor_id}, user_id={self.user_id}, "
-            f"barangay_id={self.barangay_id}, city_id={self.city_id}, province_id={self.province_id})>"
-        )
+        return f"<Doctor(id={self.doctor_id}, user_id={self.user_id})>"
 
 
 # ───────────────────────────────

@@ -63,7 +63,6 @@ const GoogleCallbackHandler: React.FC = () => {
       // Validate required tokens
       if (!token || !refresh) {
         console.error('❌ Missing Authentication Tokens');
-        console.log('Available URL params:', Array.from(searchParams.keys()));
         toast.error('Authentication failed: Missing tokens');
         
         setTimeout(() => {
@@ -84,16 +83,6 @@ const GoogleCallbackHandler: React.FC = () => {
         const is_verified = getParam('is_verified');
         const is_active = getParam('is_active');
 
-        console.log('👤 User Data from URL:');
-        console.log('  ✓ User ID:', user_id);
-        console.log('  ✓ Email:', email);
-        console.log('  ✓ First Name:', fname);
-        console.log('  ✓ Last Name:', lname);
-        console.log('  ✓ Picture:', picture ? 'Yes' : 'No');
-        console.log('  ✓ Role:', role || 'Not set');
-        console.log('  ✓ Profile Complete:', is_profile_complete);
-        console.log('  ✓ Verified:', is_verified);
-        console.log('  ✓ Active:', is_active);
 
         // Validate required user data
         if (!user_id || !email) {
@@ -125,18 +114,9 @@ const GoogleCallbackHandler: React.FC = () => {
           token_type: 'bearer',
           expires_in: 3600
         };
-
-        console.log('✅ Processed User Object:');
-        console.log('  User ID:', user.user_id);
-        console.log('  Email:', user.email);
-        console.log('  Name:', `${user.fname} ${user.lname}`);
-        console.log('  Role:', user.role || 'None (needs profile completion)');
-        console.log('  Profile Complete:', user.is_profile_complete);
         
         // Login user (stores tokens and user data)
-        console.log('🔐 Logging in user...');
         login(tokens, user);
-        console.log('✅ Login successful - tokens and user data stored');
 
         // Show welcome message
         const displayName = user.fname || 'User';
@@ -149,8 +129,6 @@ const GoogleCallbackHandler: React.FC = () => {
         let redirectPath = '/';
         
         if (!user.is_profile_complete) {
-          console.log('📝 Profile is incomplete');
-          console.log('🔀 Redirecting to: /complete-profile');
           
           toast('Please complete your profile to continue', { 
             icon: '📝',

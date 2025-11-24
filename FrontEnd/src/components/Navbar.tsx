@@ -47,6 +47,7 @@ const Navbar: React.FC<NavbarProps> = () => {
         return [
           { label: "Dashboard", path: "/doctor/dashboard", icon: Home },
           { label: "Appointments", path: "/doctor/appointments", icon: Calendar },
+          { label: "Availavibility", path: "/doctor/set-availability", icon: ClipboardList },
         ];
       case "patient":
       default:

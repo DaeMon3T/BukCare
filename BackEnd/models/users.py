@@ -1,4 +1,5 @@
-from sqlalchemy import Column, String, Integer, Boolean, DateTime, ForeignKey, Enum
+from sqlalchemy import Column, String, Integer, BigInteger, Boolean, DateTime, ForeignKey, Enum
+
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from core.database import Base
@@ -45,9 +46,9 @@ class User(Base):
     reset_token_expires = Column(DateTime, nullable=True)
 
     # Location references
-    province_id = Column(Integer, ForeignKey("provinces.id", ondelete="SET NULL"), nullable=True)
-    city_id = Column(Integer, ForeignKey("cities.id", ondelete="SET NULL"), nullable=True)
-    barangay_id = Column(Integer, ForeignKey("barangays.id", ondelete="SET NULL"), nullable=True)
+    province_id = Column(BigInteger, ForeignKey("provinces.id", ondelete="SET NULL"), nullable=True)
+    city_id = Column(BigInteger, ForeignKey("cities.id", ondelete="SET NULL"), nullable=True)
+    barangay_id = Column(BigInteger, ForeignKey("barangays.id", ondelete="SET NULL"), nullable=True)
 
     # Relationships - Location
     province = relationship("Province")

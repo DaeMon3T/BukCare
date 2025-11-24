@@ -59,3 +59,8 @@ Postgres/
 
 __pycache__/
 *.pyc
+
+# Node / React / Vite
+node_modules/
+.vite/
+dist/

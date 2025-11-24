@@ -11,7 +11,7 @@ router = APIRouter(prefix="/doctors", tags=["Doctors"])
 
 
 # ============================================
-# GET ALL DOCTORS
+# GET ALL DOCTORS - FIXED
 # ============================================
 @router.get("/", response_model=List[DoctorSchema])
 def get_doctors(
@@ -21,11 +21,10 @@ def get_doctors(
     query = (
         db.query(Doctor)
         .options(
-            joinedload(Doctor.user),
+            joinedload(Doctor.user).joinedload(User.province),  # ✅ Load via User
+            joinedload(Doctor.user).joinedload(User.city),      # ✅ Load via User
+            joinedload(Doctor.user).joinedload(User.barangay),  # ✅ Load via User
             joinedload(Doctor.specializations),
-            joinedload(Doctor.province),
-            joinedload(Doctor.city),
-            joinedload(Doctor.barangay),
         )
     )
 
@@ -40,13 +39,14 @@ def get_doctors(
 
     results = []
     for doc in doctors:
+        # ✅ Access location data from user, not doctor
         address = ", ".join(
             filter(
                 None,
                 [
-                    getattr(doc.barangay, "name", None),
-                    getattr(doc.city, "name", None),
-                    getattr(doc.province, "name", None),
+                    getattr(doc.user.barangay, "name", None) if doc.user.barangay else None,
+                    getattr(doc.user.city, "name", None) if doc.user.city else None,
+                    getattr(doc.user.province, "name", None) if doc.user.province else None,
                 ],
             )
         )
@@ -64,8 +64,6 @@ def get_doctors(
                 avatar=doc.user.picture,
                 is_verified=doc.user.is_verified,
                 is_doctor_approved=doc.user.is_doctor_approved,
-                created_at=doc.created_at,
-                updated_at=doc.updated_at,
             )
         )
 
@@ -73,19 +71,18 @@ def get_doctors(
 
 
 # ============================================
-# GET SINGLE DOCTOR BY ID (FIXED)
+# GET SINGLE DOCTOR BY ID - FIXED
 # ============================================
 @router.get("/{doctor_id}", response_model=DoctorResponse)
 def get_doctor_by_id(doctor_id: int, db: Session = Depends(get_db)):
     doctor = (
         db.query(Doctor)
         .options(
-            joinedload(Doctor.user),
+            joinedload(Doctor.user).joinedload(User.province),  # ✅ Load via User
+            joinedload(Doctor.user).joinedload(User.city),      # ✅ Load via User
+            joinedload(Doctor.user).joinedload(User.barangay),  # ✅ Load via User
             joinedload(Doctor.specializations),
             joinedload(Doctor.availabilities),
-            joinedload(Doctor.province),
-            joinedload(Doctor.city),
-            joinedload(Doctor.barangay),
         )
         .filter(Doctor.doctor_id == doctor_id)
         .first()
@@ -96,25 +93,25 @@ def get_doctor_by_id(doctor_id: int, db: Session = Depends(get_db)):
 
     user = doctor.user
 
-    # Build safe address
+    # ✅ Build safe address from user's location data
     address = ", ".join(
         filter(
             None,
             [
-                getattr(doctor.barangay, "name", None),
-                getattr(doctor.city, "name", None),
-                getattr(doctor.province, "name", None),
+                getattr(user.barangay, "name", None) if user.barangay else None,
+                getattr(user.city, "name", None) if user.city else None,
+                getattr(user.province, "name", None) if user.province else None,
             ],
         )
     )
 
-    # Format availabilities - Pydantic will handle the conversion
+    # Format availabilities
     availabilities = [
         {
             "id": a.id,
             "date": a.date.isoformat() if a.date else None,
-            "start_time": a.start_time,  # Pydantic will convert time object
-            "end_time": a.end_time,      # Pydantic will convert time object
+            "start_time": a.start_time,
+            "end_time": a.end_time,
             "is_available": a.is_available,
         }
         for a in doctor.availabilities if a.is_available
@@ -132,7 +129,5 @@ def get_doctor_by_id(doctor_id: int, db: Session = Depends(get_db)):
         is_verified=user.is_verified,
         is_doctor_approved=user.is_doctor_approved,
         avatar=user.picture or "/default-avatar.png",
-        created_at=doctor.created_at,
-        updated_at=doctor.updated_at,
         availabilities=availabilities,
     )
