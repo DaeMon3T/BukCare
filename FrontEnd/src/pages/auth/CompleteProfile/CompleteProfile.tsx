@@ -1,5 +1,5 @@
 // ============================================
-// FILE: CompleteProfile.tsx
+// FILE: CompleteProfile.tsx - FIXED VERSION
 // ============================================
 import React, { useState } from "react";
 import type { ChangeEvent as ReactChangeEvent, FormEvent as ReactFormEvent } from "react";
@@ -13,7 +13,7 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import RoleSelection from "./components/RoleSelection";
 import ProfileForm from "./components/ProfileForm";
 import { useLocationData } from "./hooks/useLocationData";
-import type { FormData, GoogleData } from "./types";
+import type { FormData as ProfileFormData, GoogleData } from "./types";
 
 const CompleteProfile: React.FC = () => {
   const navigate = useNavigate();
@@ -31,9 +31,7 @@ const CompleteProfile: React.FC = () => {
   const queryLname = searchParams.get("lname");
   const queryPictureRaw = searchParams.get("picture");
 
-  // ✅ decode picture in case it was URL-encoded
   const queryPicture = queryPictureRaw ? decodeURIComponent(queryPictureRaw) : "";
-
   const userId = queryUserId || locationState.user_id || user?.user_id;
 
   // --------------------------------------------
@@ -47,18 +45,20 @@ const CompleteProfile: React.FC = () => {
   };
 
   // --------------------------------------------
-  // ✅ State
+  // ✅ State - Added barangay_id field
   // --------------------------------------------
   const [role, setRole] = useState<"doctor" | "patient" | null>(null);
-  const [formData, setFormData] = useState<FormData>({
+  const [formData, setFormData] = useState<ProfileFormData>({
     sex: "",
     dob: "",
     contact_number: "",
     password: "",
     confirmPassword: "",
     barangay: "",
+    barangay_id: "", // ✅ Added for PSGC code
     city_id: "",
     province_id: "",
+    zip_code: "", // ✅ Added to satisfy type requirement
     license_number: "",
     years_of_experience: "",
     prc_license_front: null,
@@ -73,7 +73,7 @@ const CompleteProfile: React.FC = () => {
   // --------------------------------------------
   // ✅ Province/City/Barangay data
   // --------------------------------------------
-  const { provincesData, citiesData, barangaysData, loadingProvinces } = useLocationData(
+  const { provincesData, citiesData, barangaysData, loading: loadingProvinces } = useLocationData(
     formData.province_id,
     formData.city_id
   );
@@ -90,12 +90,26 @@ const CompleteProfile: React.FC = () => {
         [name]: value,
         city_id: "",
         barangay: "",
+        barangay_id: "",
+        zip_code: "",
       });
     } else if (name === "city_id") {
+      // ✅ Also extract and save zip_code when city changes
+      const selectedCity = citiesData?.find((c: any) => String(c.city_id) === String(value));
       setFormData({
         ...formData,
         [name]: value,
         barangay: "",
+        barangay_id: "",
+        zip_code: selectedCity?.zip_code || "",
+      });
+    } else if (name === "barangay_id") {
+      // ✅ When barangay changes, save both ID and name
+      const selectedBarangay = barangaysData?.find((b: any) => String(b.barangay_id) === String(value));
+      setFormData({
+        ...formData,
+        barangay_id: value,
+        barangay: selectedBarangay?.name || "",
       });
     } else {
       setFormData({ ...formData, [name]: value });
@@ -111,7 +125,7 @@ const CompleteProfile: React.FC = () => {
   };
 
   const toggleSpecialization = (specId: string) => {
-    const current = formData.specializations || [];
+    const current = formData.specializations;
     const updated = current.includes(specId)
       ? current.filter((id) => id !== specId)
       : [...current, specId];
@@ -123,7 +137,7 @@ const CompleteProfile: React.FC = () => {
       const newSpec = formData.otherSpecialization.trim();
       setFormData((prev) => ({
         ...prev,
-        specializations: [...(prev.specializations || []), newSpec],
+        specializations: [...prev.specializations, newSpec],
         otherSpecialization: "",
       }));
     }
@@ -132,7 +146,7 @@ const CompleteProfile: React.FC = () => {
   const handleRemoveSpecialization = (idx: number) => {
     setFormData((prev) => ({
       ...prev,
-      specializations: prev.specializations?.filter((_, i) => i !== idx),
+      specializations: prev.specializations.filter((_, i) => i !== idx),
     }));
   };
 
@@ -146,8 +160,13 @@ const CompleteProfile: React.FC = () => {
     return city?.name || "";
   };
 
+  const getBarangayNameById = (id: string) => {
+    const barangay = barangaysData?.find((b: any) => String(b.barangay_id) === String(id));
+    return barangay?.name || "";
+  };
+
   // --------------------------------------------
-  // ✅ Submit Handler
+  // ✅ Submit Handler - FIXED
   // --------------------------------------------
   const handleSubmit = async (e: ReactFormEvent) => {
     e.preventDefault();
@@ -166,27 +185,43 @@ const CompleteProfile: React.FC = () => {
     }
 
     try {
+      // ✅ Use browser's FormData (not your custom type)
       const payload = new FormData();
+      
       payload.append("user_id", String(userId));
       payload.append("role", role || "");
       payload.append("sex", formData.sex);
       payload.append("dob", formData.dob);
       payload.append("contact_number", formData.contact_number);
+      payload.append("password", formData.password);
+
+      // ✅ Send BOTH IDs and Names for location data
+      payload.append("province_id", formData.province_id);
+      payload.append("city_id", formData.city_id);
+      payload.append("barangay_id", formData.barangay_id || formData.barangay); // Fallback to name if ID missing
 
       const provinceName = getProvinceNameById(formData.province_id);
       const cityName = getCityNameById(formData.city_id);
+      const barangayName = formData.barangay || getBarangayNameById(formData.barangay_id);
 
-      payload.append("province", provinceName);
-      payload.append("city", cityName);
-      payload.append("barangay", formData.barangay);
-      payload.append("password", formData.password);
+      payload.append("province_name", provinceName);
+      payload.append("city_name", cityName);
+      payload.append("barangay_name", barangayName);
+
+      // 🔍 Debug logging
+      console.log("🔍 Province ID:", formData.province_id);
+      console.log("🔍 Province Name:", provinceName);
+      console.log("🔍 City ID:", formData.city_id);
+      console.log("🔍 City Name:", cityName);
+      console.log("🔍 Barangay ID:", formData.barangay_id);
+      console.log("🔍 Barangay Name:", barangayName);
 
       if (role === "doctor") {
         if (formData.license_number)
           payload.append("license_number", formData.license_number);
         if (formData.years_of_experience)
           payload.append("years_of_experience", formData.years_of_experience);
-        if (formData.specializations?.length)
+        if (formData.specializations.length)
           payload.append("specializations", JSON.stringify(formData.specializations));
 
         if (formData.prc_license_front)
@@ -200,8 +235,6 @@ const CompleteProfile: React.FC = () => {
       await completeProfile(payload);
 
       toast.success("Profile completed successfully! Please sign in to continue.");
-
-      // ✅ Redirect to sign-in page
       navigate("/signin", { replace: true });
     } catch (err: any) {
       setError(err.message || "Something went wrong.");
@@ -216,7 +249,6 @@ const CompleteProfile: React.FC = () => {
   return (
     <ErrorBoundary>
       <div className="min-h-screen bg-gradient-to-br from-[#1A1A40] via-[#0057B8] to-[#00A8E8] text-white">
-        {/* ✅ AUTH-AWARE NAVBAR */}
         <nav className="flex items-center justify-between px-8 py-4 bg-[#1A1A40]/80 shadow sticky top-0 z-10">
           <Link to="/" className="text-2xl font-bold text-[#FFC43D]">
             BukCare

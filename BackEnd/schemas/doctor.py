@@ -4,7 +4,7 @@ from datetime import datetime, time
 
 
 # ---------------------------
-# Availability Schema (ADD THIS)
+# Availability Schema
 # ---------------------------
 class DoctorAvailability(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -43,9 +43,7 @@ class Specialization(SpecializationBase):
 # ---------------------------
 class DoctorBase(BaseModel):
     user_id: int
-    province_id: Optional[int] = None
-    city_id: Optional[int] = None
-    barangay_id: Optional[int] = None
+    # ✅ REMOVED: province_id, city_id, barangay_id (these are in User model)
     license_number: Optional[str] = None
     years_of_experience: Optional[int] = None
     bio: Optional[str] = None
@@ -61,9 +59,7 @@ class DoctorCreate(DoctorBase):
 
 
 class DoctorUpdate(BaseModel):
-    province_id: Optional[int] = None
-    city_id: Optional[int] = None
-    barangay_id: Optional[int] = None
+    # ✅ REMOVED: province_id, city_id, barangay_id
     license_number: Optional[str] = None
     years_of_experience: Optional[int] = None
     bio: Optional[str] = None
@@ -75,14 +71,13 @@ class DoctorUpdate(BaseModel):
     specializations_json: Optional[str] = None
 
 
-# UPDATED: Added availabilities field
 class DoctorResponse(BaseModel):
     doctor_id: int
     user_id: int
     name: str
     email: str
-    specialization: str  # ADD THIS
-    address: str  # ADD THIS
+    specialization: str
+    address: str
     license_number: Optional[str] = None
     years_of_experience: Optional[int] = None
     bio: Optional[str] = None
@@ -90,10 +85,10 @@ class DoctorResponse(BaseModel):
     is_accepting_patients: Optional[bool] = None
     is_verified: bool
     is_doctor_approved: bool
-    availabilities: List[DoctorAvailability] = []  # ← ADD THIS
-    avatar: Optional[str] = None  
-    created_at: datetime
-    updated_at: datetime
+    availabilities: List[DoctorAvailability] = []
+    avatar: Optional[str] = None
+    created_at: Optional[datetime] = None  # ✅ Make optional
+    updated_at: Optional[datetime] = None  # ✅ Make optional
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -106,9 +101,9 @@ class Doctor(BaseModel):
     email: str
     specialization: str
     address: str
-    avatar: Optional[str] = None 
+    avatar: Optional[str] = None
     is_verified: bool
     is_doctor_approved: bool
     is_accepting_patients: Optional[bool] = None
-    created_at: datetime
-    updated_at: datetime
+    created_at: Optional[datetime] = None  # ✅ Make optional
+    updated_at: Optional[datetime] = None  # ✅ Make optional

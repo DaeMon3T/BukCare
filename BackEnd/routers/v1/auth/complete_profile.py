@@ -21,9 +21,12 @@ async def complete_profile(
     sex: str = Form(...),
     dob: str = Form(...),
     contact_number: str = Form(...),
-    province: str = Form(...),
-    city: str = Form(...),
-    barangay: str = Form(...),
+    province_id: str = Form(...), 
+    city_id: str = Form(...),
+    barangay_id: str = Form(...),
+    province_name: str = Form(...),
+    city_name: str = Form(...),  
+    barangay_name: str = Form(...),
     password: str = Form(...),
     license_number: Optional[str] = Form(None),
     years_of_experience: Optional[str] = Form(None),
@@ -35,7 +38,7 @@ async def complete_profile(
 ):
     """
     Completes a user's profile with address, personal info, and role.
-    Handles province/city/barangay creation if they don't exist.
+    Now uses PSGC codes for location data.
     """
 
     # 🔹 Find user
@@ -43,37 +46,42 @@ async def complete_profile(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # 🔹 Province
-    province_name = province.strip()
-    province_obj = db.query(Province).filter(
-        Province.name.ilike(province_name)
-    ).first()
+    # 🔹 Convert IDs to integers (PSGC codes)
+    province_code = int(province_id)
+    city_code = int(city_id)
+    barangay_code = int(barangay_id)
+
+    # 🔹 Province - Create if doesn't exist with PSGC code
+    province_obj = db.query(Province).filter(Province.id == province_code).first()
     if not province_obj:
-        province_obj = Province(name=province_name)
+        province_obj = Province(
+            id=province_code,
+            name=province_name.strip()
+        )
         db.add(province_obj)
         db.commit()
         db.refresh(province_obj)
 
-    # 🔹 City
-    city_name = city.strip()
-    city_obj = db.query(City).filter(
-        City.name.ilike(city_name),
-        City.province_id == province_obj.id
-    ).first()
+    # 🔹 City - Create if doesn't exist with PSGC code
+    city_obj = db.query(City).filter(City.id == city_code).first()
     if not city_obj:
-        city_obj = City(name=city_name, province_id=province_obj.id)
+        city_obj = City(
+            id=city_code,
+            name=city_name.strip(),
+            province_id=province_code
+        )
         db.add(city_obj)
         db.commit()
         db.refresh(city_obj)
 
-    # 🔹 Barangay
-    barangay_name = barangay.strip()
-    barangay_obj = db.query(Barangay).filter(
-        Barangay.name.ilike(barangay_name),
-        Barangay.city_id == city_obj.id
-    ).first()
+    # 🔹 Barangay - Create if doesn't exist with PSGC code
+    barangay_obj = db.query(Barangay).filter(Barangay.id == barangay_code).first()
     if not barangay_obj:
-        barangay_obj = Barangay(name=barangay_name, city_id=city_obj.id)
+        barangay_obj = Barangay(
+            id=barangay_code,
+            name=barangay_name.strip(),
+            city_id=city_code
+        )
         db.add(barangay_obj)
         db.commit()
         db.refresh(barangay_obj)
@@ -84,9 +92,9 @@ async def complete_profile(
     user.contact_number = contact_number
     user.password = get_password_hash(password)
     user.is_profile_complete = True
-    user.province_id = province_obj.id
-    user.city_id = city_obj.id
-    user.barangay_id = barangay_obj.id
+    user.province_id = province_code
+    user.city_id = city_code
+    user.barangay_id = barangay_code
 
     # 🔹 Assign user role
     if role.lower() == "doctor":
@@ -104,7 +112,6 @@ async def complete_profile(
             years_of_experience=int(years_of_experience)
             if years_of_experience
             else None
-            
         )
 
         # Upload PRC files to Cloudinary

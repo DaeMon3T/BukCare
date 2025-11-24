@@ -1,5 +1,5 @@
 // ============================================
-// types.ts
+// types.ts - FIXED VERSION
 // ============================================
 export interface GoogleData {
   email: string;
@@ -14,17 +14,22 @@ export interface FormData {
   contact_number: string;
   password: string;
   confirmPassword: string;
-  barangay: string;
+  
+  // Location fields
+  barangay: string;          // Barangay name
+  barangay_id: string;       // Barangay PSGC code
   city_id: string;
   province_id: string;
   zip_code: string;
-  license_number?: string;
-  years_of_experience?: string;
-  prc_license_front?: File | null;
-  prc_license_back?: File | null;
-  prc_license_selfie?: File | null;
-  specializations?: string[];
-  otherSpecialization?: string;
+  
+  // Doctor-specific fields
+  license_number: string;
+  years_of_experience: string;
+  prc_license_front: File | null;
+  prc_license_back: File | null;
+  prc_license_selfie: File | null;
+  specializations: string[];
+  otherSpecialization: string;
 }
 
 export interface ProvinceData {

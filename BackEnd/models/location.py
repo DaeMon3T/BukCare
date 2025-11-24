@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Integer, ForeignKey, UniqueConstraint
+from sqlalchemy import Column, String, BigInteger, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import relationship
 from core.database import Base
 
@@ -7,9 +7,10 @@ from core.database import Base
 # ───────────────────────────────
 class Province(Base):
     __tablename__ = "provinces"
-    __table_args__ = {"extend_existing": True}  # <--- add this
+    __table_args__ = {"extend_existing": True}
 
-    id = Column(Integer, primary_key=True, index=True)
+    # Use PSGC code as primary key (e.g., 101300000 for Bukidnon)
+    id = Column(BigInteger, primary_key=True, index=True)
     name = Column(String(100), nullable=False, unique=True)
 
     # Relationships
@@ -32,9 +33,10 @@ class City(Base):
         UniqueConstraint('name', 'province_id', name='uq_city_province'),
     )
 
-    id = Column(Integer, primary_key=True, index=True)
+    # Use PSGC code as primary key (e.g., 101312000 for Malaybalay)
+    id = Column(BigInteger, primary_key=True, index=True)
     name = Column(String(100), nullable=False)
-    province_id = Column(Integer, ForeignKey("provinces.id", ondelete="CASCADE"), nullable=False)
+    province_id = Column(BigInteger, ForeignKey("provinces.id", ondelete="CASCADE"), nullable=False)
 
     # Relationships
     province = relationship("Province", back_populates="cities")
@@ -57,9 +59,10 @@ class Barangay(Base):
         UniqueConstraint('name', 'city_id', name='uq_barangay_city'),
     )
 
-    id = Column(Integer, primary_key=True, index=True)
+    # Use PSGC code as primary key
+    id = Column(BigInteger, primary_key=True, index=True)
     name = Column(String(100), nullable=False)
-    city_id = Column(Integer, ForeignKey("cities.id", ondelete="CASCADE"), nullable=False)
+    city_id = Column(BigInteger, ForeignKey("cities.id", ondelete="CASCADE"), nullable=False)
 
     # Relationships
     city = relationship("City", back_populates="barangays")
