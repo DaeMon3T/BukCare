@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session, joinedload
+from sqlalchemy import or_, and_
 from typing import List, Optional
 from datetime import datetime, date
 
@@ -339,47 +340,116 @@ def get_upcoming_appointments(
         for appointment in appointments
     ]
 
-@router.get("/history")
+@router.get("/history", response_model=dict)
 def get_appointment_history(
+    page: int = Query(1, ge=1, description="Page number"),
+    page_size: int = Query(10, ge=1, le=100, description="Items per page"),
+    status: Optional[str] = Query(None, description="Filter by status (completed, cancelled)"),
+    search: Optional[str] = Query(None, description="Search by patient/doctor name or reason"),
+    start_date: Optional[date] = Query(None, description="Filter from this date"),
+    end_date: Optional[date] = Query(None, description="Filter to this date"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Get appointment history for the current user"""
+    """
+    Get appointment history with pagination and filters.
+    Only shows completed and cancelled appointments.
+    """
     
+    # Base query with eager loading
+    query = db.query(Appointment).options(
+        joinedload(Appointment.patient),
+        joinedload(Appointment.doctor)
+    )
+    
+    # Filter based on user role
     if current_user.role.value == "patient":
-        appointments = db.query(Appointment).options(
-            joinedload(Appointment.patient),
-            joinedload(Appointment.doctor)
-        ).filter(
-            Appointment.patient_id == current_user.id,
-            Appointment.appointment_date < datetime.utcnow()
-        ).order_by(Appointment.appointment_date.desc()).all()
+        query = query.filter(Appointment.patient_id == current_user.id)
     elif current_user.role.value == "doctor":
-        appointments = db.query(Appointment).options(
-            joinedload(Appointment.patient),
-            joinedload(Appointment.doctor)
-        ).filter(
-            Appointment.doctor_id == current_user.id,
-            Appointment.appointment_date < datetime.utcnow()
-        ).order_by(Appointment.appointment_date.desc()).all()
+        query = query.filter(Appointment.doctor_id == current_user.id)
+    elif current_user.role.value == "admin":
+        # Admins can see all appointment history
+        pass
     else:
-        # Admin can see all appointment history
-        appointments = db.query(Appointment).options(
-            joinedload(Appointment.patient),
-            joinedload(Appointment.doctor)
-        ).filter(
-            Appointment.appointment_date < datetime.utcnow()
-        ).order_by(Appointment.appointment_date.desc()).all()
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Insufficient permissions"
+        )
     
-    return [
-        {
-            "id": appointment.id,
-            "patient_name": f"{appointment.patient.fname} {appointment.patient.lname}",
-            "doctor_name": f"{appointment.doctor.fname} {appointment.doctor.lname}",
-            "appointment_date": appointment.appointment_date,
-            "reason": appointment.reason,
-            "status": appointment.status.value,
-            "notes": appointment.notes
+    # Only show completed and cancelled appointments
+    query = query.filter(
+        Appointment.status.in_([AppointmentStatus.COMPLETED, AppointmentStatus.CANCELLED])
+    )
+    
+    # Apply status filter
+    if status:
+        if status not in ["completed", "cancelled"]:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Status must be 'completed' or 'cancelled'"
+            )
+        query = query.filter(Appointment.status == AppointmentStatus(status))
+    
+    # Apply date range filter
+    if start_date:
+        query = query.filter(Appointment.appointment_date >= datetime.combine(start_date, datetime.min.time()))
+    if end_date:
+        query = query.filter(Appointment.appointment_date <= datetime.combine(end_date, datetime.max.time()))
+    
+    # Apply search filter
+    if search:
+        search_term = f"%{search}%"
+        query = query.filter(
+            or_(
+                Appointment.patient.has(
+                    or_(
+                        User.fname.ilike(search_term),
+                        User.lname.ilike(search_term)
+                    )
+                ),
+                Appointment.doctor.has(
+                    or_(
+                        User.fname.ilike(search_term),
+                        User.lname.ilike(search_term)
+                    )
+                ),
+                Appointment.reason.ilike(search_term)
+            )
+        )
+    
+    # Get total count before pagination
+    total_count = query.count()
+    
+    # Apply pagination
+    offset = (page - 1) * page_size
+    appointments = query.order_by(Appointment.appointment_date.desc()).offset(offset).limit(page_size).all()
+    
+    # Calculate pagination metadata
+    total_pages = (total_count + page_size - 1) // page_size
+    
+    return {
+        "appointments": [
+            {
+                "id": appointment.id,
+                "patient_id": appointment.patient_id,
+                "patient_name": f"{appointment.patient.fname} {appointment.patient.lname}",
+                "doctor_id": appointment.doctor_id,
+                "doctor_name": f"{appointment.doctor.fname} {appointment.doctor.lname}",
+                "appointment_date": appointment.appointment_date,
+                "reason": appointment.reason,
+                "status": appointment.status.value,
+                "notes": appointment.notes,
+                "created_at": appointment.created_at,
+                "updated_at": appointment.updated_at
+            }
+            for appointment in appointments
+        ],
+        "pagination": {
+            "page": page,
+            "page_size": page_size,
+            "total_count": total_count,
+            "total_pages": total_pages,
+            "has_next": page < total_pages,
+            "has_prev": page > 1
         }
-        for appointment in appointments
-    ]
+    }
