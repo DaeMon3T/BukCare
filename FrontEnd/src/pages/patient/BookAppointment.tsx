@@ -15,17 +15,11 @@ const BookAppointment: React.FC = () => {
   const [doctor, setDoctor] = useState<Doctor | null>(null);
   const [availabilities, setAvailabilities] = useState<DoctorAvailability[]>([]);
   
-  // Booking mode selection
   const [bookingMode, setBookingMode] = useState<BookingMode>("availability");
-  
-  // For availability mode
   const [selectedAvailabilitySlot, setSelectedAvailabilitySlot] = useState<number | null>(null);
-  
-  // For custom mode
   const [selectedDate, setSelectedDate] = useState<string>("");
   const [availableTimeSlots, setAvailableTimeSlots] = useState<string[]>([]);
   const [selectedCustomSlot, setSelectedCustomSlot] = useState<string | null>(null);
-  
   const [reason, setReason] = useState("");
   const [loading, setLoading] = useState(true);
   const [loadingSlots, setLoadingSlots] = useState(false);
@@ -33,7 +27,6 @@ const BookAppointment: React.FC = () => {
 
   const doctorId = doctor_id ? parseInt(doctor_id, 10) : null;
 
-  // Fetch doctor data
   useEffect(() => {
     if (!doctorId) return;
 
@@ -44,7 +37,6 @@ const BookAppointment: React.FC = () => {
         setDoctor(doctorData);
         setAvailabilities(doctorData.availabilities || []);
         
-        // If doctor has availabilities, default to availability mode
         if (doctorData.availabilities && doctorData.availabilities.length > 0) {
           setBookingMode("availability");
         } else {
@@ -61,7 +53,6 @@ const BookAppointment: React.FC = () => {
     fetchDoctorData();
   }, [doctorId]);
 
-  // Fetch available time slots when date is selected (custom mode)
   useEffect(() => {
     if (bookingMode !== "custom" || !doctorId || !selectedDate) return;
 
@@ -92,7 +83,6 @@ const BookAppointment: React.FC = () => {
     fetchAvailableSlots();
   }, [doctorId, selectedDate, bookingMode]);
 
-  // Format time slot for display
   const formatTimeSlot = (isoString: string) => {
     const date = new Date(isoString);
     return date.toLocaleTimeString("en-US", {
@@ -102,13 +92,11 @@ const BookAppointment: React.FC = () => {
     });
   };
 
-  // Get minimum date (today)
   const getMinDate = () => {
     const today = new Date();
     return today.toISOString().split("T")[0];
   };
 
-  // Get maximum date (3 months from now)
   const getMaxDate = () => {
     const maxDate = new Date();
     maxDate.setMonth(maxDate.getMonth() + 3);
@@ -123,7 +111,6 @@ const BookAppointment: React.FC = () => {
 
     let appointmentDateTime: string;
 
-    // Validate based on booking mode
     if (bookingMode === "availability") {
       if (selectedAvailabilitySlot === null) {
         toast.error("Please select a schedule slot");
@@ -136,10 +123,8 @@ const BookAppointment: React.FC = () => {
         return;
       }
 
-      // Combine date and start_time into a single datetime
       appointmentDateTime = `${slot.date.split('T')[0]}T${slot.start_time}`;
     } else {
-      // Custom mode
       if (!selectedCustomSlot) {
         toast.error("Please select a time slot");
         return;
@@ -156,8 +141,6 @@ const BookAppointment: React.FC = () => {
         reason: reason || null,
       };
 
-      console.log("📤 Sending payload:", payload);
-
       await api.post("/appointments/", payload);
 
       toast.success("Appointment booked successfully! 🎉");
@@ -168,7 +151,6 @@ const BookAppointment: React.FC = () => {
       if (err?.response?.status === 409) {
         toast.error("This time slot is no longer available. Please choose another.");
         
-        // Refresh available slots if in custom mode
         if (bookingMode === "custom" && selectedDate) {
           const response = await AppointmentAvailabilityAPI.getAvailableSlots(
             doctorId,
@@ -197,6 +179,9 @@ const BookAppointment: React.FC = () => {
     }
   };
 
+  // Fallback avatar
+  const avatarSrc = doctor?.avatar && doctor.avatar.trim() !== "" ? doctor.avatar : "/default-avatar.png";
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center">
@@ -220,23 +205,92 @@ const BookAppointment: React.FC = () => {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
       <Navbar/>
 
-      <main className="max-w-3xl mx-auto px-4 py-8">
-        {/* Doctor Info */}
-        <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
-          <h1 className="text-2xl font-semibold text-gray-800 mb-2">
-            Book Appointment with Dr. {doctor.name}
-          </h1>
-          <p className="text-gray-600">
-            Specialization: <span className="font-medium">{doctor.specialization}</span>
-          </p>
+      <main className="max-w-4xl mx-auto px-4 py-8">
+        {/* Enhanced Doctor Profile Card with Image */}
+        <div className="bg-white rounded-2xl shadow-lg overflow-hidden mb-8 border border-gray-100">
+          <div className="bg-gradient-to-r from-blue-600 to-purple-600 px-6 py-4">
+            <h1 className="text-white text-xl font-semibold">Book an Appointment</h1>
+          </div>
+          
+          <div className="p-6">
+            <div className="flex items-start gap-6">
+              {/* Doctor Avatar with Image */}
+              <div className="flex-shrink-0">
+                <img
+                  src={avatarSrc}
+                  alt={doctor.name}
+                  className="w-24 h-24 rounded-full object-cover border-4 border-white shadow-lg"
+                  onError={(e) => {
+                    (e.currentTarget as HTMLImageElement).src = "/default-avatar.png";
+                  }}
+                />
+              </div>
+
+              {/* Doctor Info */}
+              <div className="flex-1">
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                  Dr. {doctor.name}
+                  
+                  {availabilities.length > 0 && (
+                  <div className="mt-3 inline-flex items-center gap-2 bg-green-50 text-green-700 px-3 py-1 rounded-full text-sm font-medium">
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                    Available for appointments
+                  </div>
+                )}
+
+                </h2>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="flex items-center gap-2">
+                    <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                    <span className="text-gray-700">
+                      <span className="font-medium text-gray-900">{doctor.specialization}</span>
+                    </span>
+                  </div>
+                  
+                  {doctor.email && (
+                    <div className="flex items-center gap-2">
+                      <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                      </svg>
+                      <span className="text-gray-700 text-sm">{doctor.email}</span>
+                    </div>
+                  )}
+
+                  <div className="flex items-center gap-2">
+                    <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.213L8.25 11.25M15 11l-3-3m0 0l-3 3m3-3v12" />
+                    </svg>
+                    <span className="text-gray-700">
+                      <span className="font-medium text-gray-900">{doctor.years_of_experience}</span> years of experience
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.243-4.243a8 8 0 1111.314 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    <span className="text-gray-700">
+                      <span className="font-medium text-gray-900">{doctor.specialization}</span>
+                    </span>
+                  </div>
+                </div>
+
+                
+              </div>
+            </div>
+          </div>
         </div>
 
-        {/* Booking Mode Selection */}
-        <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
-          <h2 className="text-lg font-medium text-gray-700 mb-4">
-            Choose Booking Method
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Compact Booking Section */}
+        <div className="bg-white rounded-2xl shadow-sm p-6 mb-6 border border-gray-100">
+          {/* Tab-style Booking Mode Selector */}
+          <div className="flex gap-2 mb-6 p-1 bg-gray-100 rounded-lg">
             <button
               onClick={() => {
                 setBookingMode("availability");
@@ -244,187 +298,134 @@ const BookAppointment: React.FC = () => {
                 setSelectedDate("");
               }}
               disabled={availabilities.length === 0}
-              className={`p-4 rounded-xl border-2 text-left transition-all ${
+              className={`flex-1 py-2.5 px-4 rounded-md font-medium text-sm transition-all ${
                 bookingMode === "availability"
-                  ? "border-blue-500 bg-blue-50 ring-2 ring-blue-200"
+                  ? "bg-white text-blue-600 shadow-sm"
                   : availabilities.length === 0
-                  ? "border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed"
-                  : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+                  ? "text-gray-400 cursor-not-allowed"
+                  : "text-gray-600 hover:text-gray-900"
               }`}
             >
-              <div className="flex items-start">
-                <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center mr-3 mt-0.5 ${
-                  bookingMode === "availability" 
-                    ? "border-blue-500 bg-blue-500" 
-                    : "border-gray-300"
-                }`}>
-                  {bookingMode === "availability" && (
-                    <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                  )}
-                </div>
-                <div>
-                  <h3 className="font-semibold text-gray-800 mb-1">
-                    Doctor's Available Schedules
-                  </h3>
-                  <p className="text-sm text-gray-600">
-                    Choose from doctor's pre-set availability slots
-                  </p>
-                  {availabilities.length === 0 && (
-                    <p className="text-xs text-red-500 mt-1">No schedules available</p>
-                  )}
-                </div>
-              </div>
+              Doctor's Schedule
             </button>
-
             <button
               onClick={() => {
                 setBookingMode("custom");
                 setSelectedAvailabilitySlot(null);
               }}
-              className={`p-4 rounded-xl border-2 text-left transition-all ${
+              className={`flex-1 py-2.5 px-4 rounded-md font-medium text-sm transition-all ${
                 bookingMode === "custom"
-                  ? "border-blue-500 bg-blue-50 ring-2 ring-blue-200"
-                  : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+                  ? "bg-white text-blue-600 shadow-sm"
+                  : "text-gray-600 hover:text-gray-900"
               }`}
             >
-              <div className="flex items-start">
-                <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center mr-3 mt-0.5 ${
-                  bookingMode === "custom" 
-                    ? "border-blue-500 bg-blue-500" 
-                    : "border-gray-300"
-                }`}>
-                  {bookingMode === "custom" && (
-                    <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                  )}
-                </div>
-                <div>
-                  <h3 className="font-semibold text-gray-800 mb-1">
-                    Custom Date & Time
-                  </h3>
-                  <p className="text-sm text-gray-600">
-                    Choose any available date and time slot
-                  </p>
-                </div>
-              </div>
+              Custom Date & Time
             </button>
           </div>
+
+          {/* Availability Mode */}
+          {bookingMode === "availability" && (
+            <div>
+              <h3 className="text-base font-semibold text-gray-900 mb-3">
+                Select an available time slot
+              </h3>
+              {availabilities.length === 0 ? (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-amber-800 text-sm">
+                  No scheduled slots available. Try custom booking instead.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {availabilities.map((slot) => (
+                    <button
+                      key={slot.id}
+                      onClick={() => setSelectedAvailabilitySlot(slot.id)}
+                      className={`p-3 rounded-lg border-2 text-left transition-all ${
+                        selectedAvailabilitySlot === slot.id
+                          ? "border-blue-500 bg-blue-50 ring-2 ring-blue-200"
+                          : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+                      }`}
+                    >
+                      <p className="text-sm font-semibold text-gray-900">
+                        {slot.date ? new Date(slot.date).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric'
+                        }) : "Recurring"}
+                      </p>
+                      <p className="text-sm text-gray-600 mt-1">
+                        {slot.start_time} - {slot.end_time}
+                      </p>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Custom Mode */}
+          {bookingMode === "custom" && (
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-900 mb-2">
+                  Choose a date
+                </label>
+                <input
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  min={getMinDate()}
+                  max={getMaxDate()}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+
+              {selectedDate && (
+                <div>
+                  <label className="block text-sm font-semibold text-gray-900 mb-2">
+                    Available time slots
+                  </label>
+                  {loadingSlots ? (
+                    <div className="text-center py-6">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                      <p className="text-gray-600 text-sm mt-2">Loading slots...</p>
+                    </div>
+                  ) : availableTimeSlots.length === 0 ? (
+                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-amber-800 text-sm">
+                      No slots available for this date. Try another date.
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
+                      {availableTimeSlots.map((slot) => (
+                        <button
+                          key={slot}
+                          onClick={() => setSelectedCustomSlot(slot)}
+                          className={`p-2.5 rounded-lg border-2 text-sm font-medium transition-all ${
+                            selectedCustomSlot === slot
+                              ? "border-blue-500 bg-blue-50 text-blue-700"
+                              : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+                          }`}
+                        >
+                          {formatTimeSlot(slot)}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
-        {/* Availability Mode: Doctor's Schedules */}
-        {bookingMode === "availability" && (
-          <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
-            <h2 className="text-lg font-medium text-gray-700 mb-4">
-              Available Schedules
-            </h2>
-            {availabilities.length === 0 ? (
-              <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
-                <p className="text-yellow-800">No available schedules found for this doctor.</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {availabilities.map((slot) => (
-                  <button
-                    key={slot.id}
-                    onClick={() => setSelectedAvailabilitySlot(slot.id)}
-                    className={`p-4 rounded-xl border-2 ${
-                      selectedAvailabilitySlot === slot.id
-                        ? "border-blue-500 bg-blue-100 ring-2 ring-blue-300"
-                        : "border-gray-200 bg-white hover:bg-gray-50 hover:border-gray-300"
-                    } transition-all duration-200`}
-                  >
-                    <p className="text-sm font-medium text-gray-800">
-                      {slot.date ? new Date(slot.date).toLocaleDateString('en-US', {
-                        weekday: 'short',
-                        year: 'numeric',
-                        month: 'short',
-                        day: 'numeric'
-                      }) : "Recurring Schedule"}
-                    </p>
-                    <p className="text-sm text-gray-600 mt-1">
-                      {slot.start_time} - {slot.end_time}
-                    </p>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Custom Mode: Date & Time Selection */}
-        {bookingMode === "custom" && (
-          <>
-            {/* Date Selection */}
-            <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
-              <h2 className="text-lg font-medium text-gray-700 mb-4">
-                Select Date
-              </h2>
-              <input
-                type="date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                min={getMinDate()}
-                max={getMaxDate()}
-                className="w-full p-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-              <p className="text-sm text-gray-500 mt-2">
-                You can book appointments up to 3 months in advance
-              </p>
-            </div>
-
-            {/* Time Slots */}
-            {selectedDate && (
-              <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
-                <h2 className="text-lg font-medium text-gray-700 mb-4">
-                  Available Time Slots
-                </h2>
-
-                {loadingSlots ? (
-                  <div className="text-center py-8">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-                    <p className="text-gray-600 mt-2">Loading available slots...</p>
-                  </div>
-                ) : availableTimeSlots.length === 0 ? (
-                  <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
-                    <p className="text-yellow-800">
-                      No available slots for this date. Please choose another date.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                    {availableTimeSlots.map((slot) => (
-                      <button
-                        key={slot}
-                        onClick={() => setSelectedCustomSlot(slot)}
-                        className={`p-3 rounded-lg border-2 font-medium transition-all ${
-                          selectedCustomSlot === slot
-                            ? "border-blue-500 bg-blue-100 text-blue-700 ring-2 ring-blue-300"
-                            : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50 hover:border-gray-300"
-                        }`}
-                      >
-                        {formatTimeSlot(slot)}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-          </>
-        )}
-
-        {/* Reason for Visit */}
-        <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
-          <label className="block text-lg font-medium text-gray-700 mb-2">
-            Reason for Visit <span className="text-gray-400 text-sm">(Optional)</span>
+        {/* Reason Section - More Compact */}
+        <div className="bg-white rounded-2xl shadow-sm p-6 mb-6 border border-gray-100">
+          <label className="block text-sm font-semibold text-gray-900 mb-2">
+            Reason for visit <span className="text-gray-400 font-normal">(optional)</span>
           </label>
           <textarea
             value={reason}
             onChange={(e) => setReason(e.target.value)}
-            placeholder="Describe your concern or symptoms..."
-            className="w-full p-3 border border-gray-300 rounded-xl h-24 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            placeholder="Briefly describe your concern..."
+            className="w-full p-3 border border-gray-300 rounded-lg h-20 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
           />
         </div>
 
@@ -432,10 +433,10 @@ const BookAppointment: React.FC = () => {
         <button
           disabled={!isFormValid() || submitting}
           onClick={handleConfirmBooking}
-          className={`w-full py-3 rounded-xl text-white font-medium transition-colors ${
+          className={`w-full py-4 rounded-xl text-white font-semibold text-lg transition-all ${
             submitting || !isFormValid()
-              ? "bg-gray-400 cursor-not-allowed"
-              : "bg-blue-600 hover:bg-blue-700 active:bg-blue-800"
+              ? "bg-gray-300 cursor-not-allowed"
+              : "bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg hover:shadow-xl"
           }`}
         >
           {submitting ? (
