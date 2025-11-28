@@ -38,6 +38,7 @@ import DoctorDashboard from './pages/doctor/Dashboard';
 import DoctorAppointments from './pages/doctor/Appointments';
 import DoctorProfile from './pages/doctor/Profile';
 import DoctorSetAvailability from './pages/doctor/SetAvailability';
+import DoctorAppointmentHistory from './pages/doctor/AppointmentHistory';
 
 // Patient Pages
 import PatientHome from './pages/patient/Home';
@@ -45,6 +46,7 @@ import PatientAppointments from './pages/patient/Appointments';
 import PatientProfile from './pages/patient/Profile';
 import FindDoctor from './pages/patient/FindDoctor';
 import BookAppointment from './pages/patient/BookAppointment';
+import PatientAppointmentHistory from './pages/patient/AppointmentHistory';
 
 // --------------------
 // App Component
@@ -94,6 +96,7 @@ const App: FC = () => {
                 path="/admin/profile"
                 element={<AdminRoute><AdminProfile /></AdminRoute>}
               />
+              
 
               {/* -------------------- Doctor Routes -------------------- */}
               <Route element={<DoctorRoute><DoctorLayout /></DoctorRoute>}>
@@ -101,6 +104,7 @@ const App: FC = () => {
                 <Route path="/doctor/appointments" element={<DoctorAppointments />} />
                 <Route path="/doctor/set-availability" element={<DoctorSetAvailability />} />
                 <Route path="/doctor/profile" element={<DoctorProfile />} />
+                <Route path="/doctor/appointment-history" element={<DoctorAppointmentHistory />} />
               </Route>
 
               {/* -------------------- Patient Routes -------------------- */}
@@ -123,6 +127,10 @@ const App: FC = () => {
               <Route
                 path="/patient/profile"
                 element={<PatientRoute><PatientProfile /></PatientRoute>}
+              />
+              <Route
+                path="/patient/appointment-history"
+                element={<PatientRoute><PatientAppointmentHistory /></PatientRoute>}
               />
 
               {/* -------------------- Catch-All -------------------- */}
