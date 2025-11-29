@@ -251,13 +251,16 @@ def update_appointment_status(
         "updated_at": appointment.updated_at
     }
 
-@router.delete("/{appointment_id}")
-def cancel_appointment(
+@router.delete("/{appointment_id}/permanent")
+def delete_appointment_permanently(
     appointment_id: int,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Cancel an appointment"""
+    """
+    Permanently delete an appointment from the database.
+    Only completed and cancelled appointments can be deleted.
+    """
     appointment = db.query(Appointment).filter(
         Appointment.id == appointment_id
     ).first()
@@ -268,18 +271,25 @@ def cancel_appointment(
             detail="Appointment not found"
         )
     
-    # Verify user can only cancel their own appointments
+    # Only allow deletion of completed or cancelled appointments
+    if appointment.status not in [AppointmentStatus.COMPLETED, AppointmentStatus.CANCELLED]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only completed or cancelled appointments can be deleted"
+        )
+    
+    # Verify user has permission to delete
     if current_user.role.value == "patient":
         if appointment.patient_id != current_user.id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="You can only cancel your own appointments"
+                detail="You can only delete your own appointments"
             )
     elif current_user.role.value == "doctor":
         if appointment.doctor_id != current_user.id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="You can only cancel your own appointments"
+                detail="You can only delete appointments with your patients"
             )
     elif current_user.role.value != "admin":
         raise HTTPException(
@@ -287,10 +297,14 @@ def cancel_appointment(
             detail="Insufficient permissions"
         )
     
-    appointment.status = AppointmentStatus.CANCELLED
+    # Permanently delete the appointment
+    db.delete(appointment)
     db.commit()
     
-    return {"message": "Appointment cancelled successfully"}
+    return {
+        "message": "Appointment permanently deleted",
+        "deleted_id": appointment_id
+    }
 
 @router.get("/upcoming")
 def get_upcoming_appointments(
