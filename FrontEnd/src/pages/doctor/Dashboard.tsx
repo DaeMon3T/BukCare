@@ -43,6 +43,9 @@ import patientpic from "@/assets/patient.png";
 import availability from "@/assets/set_availability.png";
 import history from "@/assets/history.png";
 import bukcarelogo from "@/assets/bukcare_logo.png";
+import clockpic from "@/assets/clock.png";
+import completepic from "@/assets/complete.png";
+import cancelpic from "@/assets/cancel.png";
 
 // 🩺 Appointment type definition
 interface Appointment {
@@ -430,7 +433,6 @@ const DoctorDashboard: FC = () => {
             {/* Subtle shine effect */}
             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 transform -skew-x-12 group-hover:translate-x-full" 
                  style={{width: '50%', transition: 'transform 0.8s ease'}}></div>
-            
             <div className="relative z-10 flex items-center gap-5">
               <div className="relative">
                 <div className="w-20 h-20 bg-gradient-to-br from-blue-500 via-cyan-500 to-blue-600 rounded-2xl flex items-center justify-center text-white font-bold text-2xl shadow-xl border-4 border-white">
@@ -457,7 +459,6 @@ const DoctorDashboard: FC = () => {
               <div className="absolute top-0 right-0 w-20 h-20 bg-blue-400/10 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-500"></div>
               <div className="relative z-10">
                 <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-4 shadow-lg group-hover:scale-110 transition-transform">
-                  {/* Icon placeholder */}
                   <img 
                     src={appointmentpic} 
                     alt="Date" 
@@ -645,14 +646,13 @@ const DoctorDashboard: FC = () => {
         </div>
 
         {/* Statistics Cards Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 mb-5">
           {/* TODAY'S APPOINTMENTS */}
           <div className="relative bg-white/40 backdrop-blur-2xl rounded-3xl p-6 border border-white/40 shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 group overflow-hidden">
             {/* Glass reflection effect */}
             <div className="absolute inset-0 bg-gradient-to-br from-white/30 via-white/10 to-transparent opacity-50"></div>
             {/* Hover glow */}
             <div className="absolute inset-0 opacity-0 group-hover:opacity-100 bg-gradient-to-br from-white/20 to-transparent transition duration-500 pointer-events-none" />
-            
             <div className="relative z-10">
               <div className="flex items-center justify-between mb-5">
                 <div className="w-6 h-6 bg-white/30 backdrop-blur-lg border border-white/40 rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 group-hover:bg-white/40 transition-all duration-300">
@@ -773,6 +773,36 @@ const DoctorDashboard: FC = () => {
               </p>
             </div>
           </div>
+
+          {/* Overview Stats */}
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4">
+              <h3 className="text-lg font-semibold text-slate-900 mb-6 flex items-center">
+                <Activity className="w-5 h-5 mr-2 text-blue-600" />
+                Overview
+              </h3>
+              <div className="space-y-4">
+                {[
+                  { label: "Pending", value: stats.pendingAppointments, img: pendingpic, textColor: "text-blue-600" },
+                  { label: "Confirmed", value: stats.confirmedAppointments, img: confirmedpic, textColor: "text-blue-600" },
+                  { label: "Completed", value: stats.completedAppointments, img: completepic, textColor: "text-blue-600" },
+                  { label: "Cancelled", value: stats.cancelledAppointments, img: cancelpic, textColor: "text-blue-600" },
+                ].map((stat, index) => (
+                  <div key={stat.label} className="flex items-center justify-between py-2">
+                    <div className="flex items-center space-x-3">
+                      <div>
+                        <img
+                          src={stat.img} alt={stat.label} className="w-5 h-5 object-contain"
+                        />
+                      </div>
+                      <span className="text-sm font-bold text-slate-700">{stat.label}</span>
+                    </div>
+                    <span className={`font-bold ${stat.textColor}`}>
+                      {stat.value}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
         </div>
 
 
@@ -1018,7 +1048,7 @@ const DoctorDashboard: FC = () => {
                 className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 hover:shadow-md hover:border-emerald-300 transition-all duration-300 group text-left"
               >
                 <div className="flex items-center space-x-4">
-                  <div className="w-14 h-14 bg-emerald-100 rounded-2xl flex items-center justify-center group-hover:bg-emerald-200 transition-colors">
+                  <div className="w-14 h-14 bg-blue-100 rounded-2xl flex items-center justify-center group-hover:bg-emerald-200 transition-colors">
                     {/* Placeholder for icon */}
                     <img
                       src={appointmentpic}
@@ -1038,12 +1068,12 @@ const DoctorDashboard: FC = () => {
                 className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 hover:shadow-md hover:border-purple-300 transition-all duration-300 group text-left"
               >
                 <div className="flex items-center space-x-4">
-                  <div className="w-14 h-14 bg-purple-100 rounded-2xl flex items-center justify-center group-hover:bg-purple-200 transition-colors">
+                  <div className="w-14 h-14 bg-blue-100 rounded-2xl flex items-center justify-center group-hover:bg-purple-200 transition-colors">
                     {/* Placeholder for icon */}
                     <img
                       src={history}
                       alt="Appointment History"
-                      className="w-6 h-6 object-contain rounded"
+                      className="w-7 h-7 object-contain rounded"
                     />
                   </div>
                   <div>
@@ -1237,7 +1267,11 @@ const DoctorDashboard: FC = () => {
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-lg font-semibold text-slate-900 flex items-center">
-                  <Clock className="w-5 h-5 mr-2 text-blue-600" />
+                  <img
+                    src={clockpic}
+                    alt="Clock"
+                    className="w-10 h-10 mr-2 object-contain"
+                  />
                   Today's Schedule
                 </h3>
                 <span className="text-sm text-slate-500 bg-slate-100 px-2 py-1 rounded">
@@ -1283,37 +1317,11 @@ const DoctorDashboard: FC = () => {
                 )}
               </div>
             </div>
-
-            {/* Overview Stats */}
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4">
-              <h3 className="text-lg font-semibold text-slate-900 mb-6 flex items-center">
-                <Activity className="w-5 h-5 mr-2 text-blue-600" />
-                Overview
-              </h3>
-              <div className="space-y-4">
-                {[
-                  { label: "Pending", value: stats.pendingAppointments, color: "bg-amber-500", textColor: "text-amber-600" },
-                  { label: "Confirmed", value: stats.confirmedAppointments, color: "bg-emerald-500", textColor: "text-emerald-600" },
-                  { label: "Completed", value: stats.completedAppointments, color: "bg-blue-500", textColor: "text-blue-600" },
-                  { label: "Cancelled", value: stats.cancelledAppointments, color: "bg-rose-500", textColor: "text-rose-600" },
-                ].map((stat, index) => (
-                  <div key={stat.label} className="flex items-center justify-between py-2">
-                    <div className="flex items-center space-x-3">
-                      <div className={`w-3 h-3 rounded-full ${stat.color}`}></div>
-                      <span className="text-sm font-medium text-slate-700">{stat.label}</span>
-                    </div>
-                    <span className={`font-bold ${stat.textColor}`}>
-                      {stat.value}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
           </div>
         </div>
       </main>
 
-      {/* Modal */}
+      {/* Modal Para Sa Mga Gwapo*/}
       {showAppointmentDetails && <AppointmentDetailsModal />}
     </div>
   );
