@@ -158,7 +158,7 @@ export default function Profile() {
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-blue-50 via-white to-purple-50">
-      <Navbar role={(user?.role as "patient" | "admin" | "doctor") || "doctor"} /> 
+      <Navbar/> 
 
       <main className="flex-grow overflow-y-auto">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10">

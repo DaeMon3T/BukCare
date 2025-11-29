@@ -47,7 +47,7 @@ const Navbar: React.FC<NavbarProps> = () => {
         return [
           { label: "Dashboard", path: "/doctor/dashboard", icon: Home },
           { label: "Appointments", path: "/doctor/appointments", icon: Calendar },
-          { label: "Availavibility", path: "/doctor/set-availability", icon: ClipboardList },
+          { label: "Availability", path: "/doctor/set-availability", icon: ClipboardList },
         ];
       case "patient":
       default:
@@ -71,71 +71,77 @@ const Navbar: React.FC<NavbarProps> = () => {
 
   // Handle logout and redirect
   const handleLogout = async () => {
-    await logout(); // clears user state and storage
-    navigate("/"); // redirect to login page
+    await logout();
+    navigate("/");
   };
 
   return (
-    <header className="bg-white/80 backdrop-blur-md shadow-sm border-b border-gray-100 sticky top-0 z-50">
-      <div className="w-full px-4 sm:px-6 lg:px-8">
+    <header className="bg-white/70 backdrop-blur-xl shadow-sm border-b border-slate-200/50 sticky top-0 z-50">
+      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
-          {/* Left */}
+          {/* Left - Logo */}
           <div className="flex items-center space-x-3">
-            {/* Hamburger */}
             <button
               onClick={() => setSidebarOpen(true)}
-              className="lg:hidden p-2 rounded-lg hover:bg-gray-100"
+              className="lg:hidden p-2 rounded-lg hover:bg-slate-100/80 transition-colors"
             >
-              <Menu className="w-6 h-6 text-gray-700" />
+              <Menu className="w-6 h-6 text-slate-700" />
             </button>
 
-            {/* Logo */}
             <Link to={homeLink} className="flex items-center space-x-2">
               <img
-                src="/bukcare-logo.svg"
+                src="/bukcare_logo.png"
                 alt="BukCare Logo"
-                className="w-5 h-5 object-cover rounded-sm"
+                className="w-20 h-15 object-cover rounded-sm"
               />
               <span className="text-xl font-semibold text-gray-800">BukCare</span>
             </Link>
           </div>
 
-          {/* Right */}
-          <div className="flex items-center space-x-4">
-            {/* Desktop Links */}
-            <div className="hidden lg:flex items-center space-x-6">
-              {navigationItems.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <Link
-                    key={item.path}
-                    to={item.path}
-                    className="flex items-center space-x-2 text-gray-700 hover:text-blue-600 transition-colors"
-                  >
-                    <Icon className="w-5 h-5" />
-                    <span>{item.label}</span>
-                  </Link>
-                );
-              })}
-            </div>
+          {/* Center - Navigation Links */}
+          <nav className="hidden lg:flex items-center space-x-1 absolute left-1/2 transform -translate-x-1/2">
+            {navigationItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = window.location.pathname === item.path;
+              return (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all ${
+                    isActive
+                      ? "bg-blue-50/80 text-blue-600 font-medium"
+                      : "text-slate-600 hover:text-blue-600 hover:bg-slate-50/80"
+                  }`}
+                >
+                  <Icon className="w-4 h-4" />
+                  <span className="text-sm">{item.label}</span>
+                </Link>
+              );
+            })}
+          </nav>
+
+          {/* Right - Actions */}
+          <div className="flex items-center space-x-3">
+            {/* Search Button (Optional) */}
+            <button className="hidden md:flex p-2 text-slate-600 hover:text-blue-600 hover:bg-blue-50/80 rounded-lg transition-all">
+              <Search className="w-5 h-5" />
+            </button>
 
             {/* Notifications */}
             <div className="relative">
               <button
                 onClick={() => setShowNotifications(!showNotifications)}
-                className="relative p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors duration-200"
+                className="relative p-2 text-slate-600 hover:text-blue-600 hover:bg-blue-50/80 rounded-lg transition-all"
               >
-                <Bell className="w-6 h-6" />
-                <span className="absolute -top-1 -right-1 w-4 h-4 bg-gray-300 text-white text-xs rounded-full flex items-center justify-center">
-                  0
-                </span>
+                <Bell className="w-5 h-5" />
+                <span className="absolute top-1 right-1 w-2 h-2 bg-rose-500 rounded-full animate-pulse"></span>
               </button>
               {showNotifications && (
-                <div className="absolute right-0 mt-2 w-72 bg-white rounded-xl shadow-lg border border-gray-100 py-2 z-50">
-                  <div className="px-4 py-2 border-b border-gray-100">
-                    <h3 className="font-semibold text-gray-800">Notifications</h3>
+                <div className="absolute right-0 mt-2 w-80 bg-white/95 backdrop-blur-xl rounded-xl shadow-xl border border-slate-200/50 overflow-hidden z-50">
+                  <div className="px-4 py-3 bg-gradient-to-r from-blue-50 to-cyan-50 border-b border-slate-200/50">
+                    <h3 className="font-semibold text-slate-800">Notifications</h3>
                   </div>
-                  <div className="p-4 text-gray-500 text-sm text-center">
+                  <div className="p-4 text-slate-500 text-sm text-center">
                     No notifications yet
                   </div>
                 </div>
@@ -146,9 +152,9 @@ const Navbar: React.FC<NavbarProps> = () => {
             <div className="relative">
               <button
                 onClick={() => setShowProfileDropdown(!showProfileDropdown)}
-                className="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-50 transition-colors duration-200"
+                className="flex items-center space-x-2 pl-2 pr-3 py-1.5 rounded-lg hover:bg-slate-50/80 transition-all"
               >
-                <div className="w-8 h-8 rounded-full overflow-hidden">
+                <div className="w-9 h-9 rounded-full overflow-hidden ring-2 ring-slate-200/50">
                   <img
                     src={user.picture || "/default-avatar.png"}
                     alt="Profile"
@@ -156,32 +162,35 @@ const Navbar: React.FC<NavbarProps> = () => {
                   />
                 </div>
                 <div className="hidden md:block text-left">
-                  <p className="text-sm font-medium text-gray-800">{displayName}</p>
-                  <p className="text-xs text-gray-600 capitalize">{userRole}</p>
+                  <p className="text-sm font-medium text-slate-800">{displayName}</p>
+                  <p className="text-xs text-slate-500 capitalize">{userRole}</p>
                 </div>
-                <ChevronDown className="w-4 h-4 text-gray-600" />
+                <ChevronDown className="w-4 h-4 text-slate-500" />
               </button>
 
               {showProfileDropdown && (
-                <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-gray-100 py-2 z-50">
-                  <div className="px-4 py-3 border-b border-gray-100">
-                    <p className="font-semibold text-gray-800">{displayName}</p>
-                    <p className="text-sm text-gray-600">{user.email || "No email"}</p>
+                <div className="absolute right-0 mt-2 w-64 bg-white/95 backdrop-blur-xl rounded-xl shadow-xl border border-slate-200/50 overflow-hidden z-50">
+                  <div className="px-4 py-3 bg-gradient-to-r from-blue-50 to-cyan-50 border-b border-slate-200/50">
+                    <p className="font-semibold text-slate-800">{displayName}</p>
+                    <p className="text-sm text-slate-600">{user.email || "No email"}</p>
                   </div>
                   <div className="py-2">
                     <Link
                       to={profileLink}
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                      onClick={() => setShowProfileDropdown(false)}
+                      className="flex items-center space-x-2 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50/80 transition-colors"
                     >
-                      My Profile
+                      <User className="w-4 h-4" />
+                      <span>My Profile</span>
                     </Link>
                   </div>
-                  <div className="border-t border-gray-100 pt-2">
+                  <div className="border-t border-slate-200/50">
                     <button
                       onClick={handleLogout}
-                      className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                      className="w-full flex items-center space-x-2 px-4 py-2.5 text-sm text-rose-600 hover:bg-rose-50/80 transition-colors"
                     >
-                      <LogOut className="inline w-4 h-4 mr-2" /> Sign Out
+                      <LogOut className="w-4 h-4" />
+                      <span>Sign Out</span>
                     </button>
                   </div>
                 </div>
@@ -196,7 +205,7 @@ const Navbar: React.FC<NavbarProps> = () => {
         {sidebarOpen && (
           <>
             <motion.div
-              className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40"
+              className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 lg:hidden"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -207,53 +216,69 @@ const Navbar: React.FC<NavbarProps> = () => {
               animate={{ x: 0 }}
               exit={{ x: -300 }}
               transition={{ type: "spring", stiffness: 300, damping: 30 }}
-              className="fixed top-0 left-0 h-full w-64 bg-white shadow-lg z-50 p-4"
+              className="fixed top-0 left-0 h-full w-72 bg-white/95 backdrop-blur-xl shadow-2xl z-50 lg:hidden"
             >
-              <div className="flex justify-between items-center mb-6">
-                <Link to={homeLink} className="flex items-center space-x-2">
-                  <img
-                    src="/bukcare-logo.svg"
-                    alt="BukCare Logo"
-                    className="w-5 h-5 object-cover rounded-sm"
-                  />
-                  <span className="text-xl font-semibold text-gray-800">BukCare</span>
-                </Link>
-                <button onClick={() => setSidebarOpen(false)}>
-                  <X className="w-6 h-6 text-gray-600" />
-                </button>
+              <div className="p-6">
+                <div className="flex justify-between items-center mb-8">
+                  <Link to={homeLink} className="flex items-center space-x-2">
+                    <div className="w-9 h-9 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-lg flex items-center justify-center shadow-md">
+                      <span className="text-white font-bold text-lg">B</span>
+                    </div>
+                    <span className="text-xl font-bold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">
+                      BukCare
+                    </span>
+                  </Link>
+                  <button
+                    onClick={() => setSidebarOpen(false)}
+                    className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                  >
+                    <X className="w-5 h-5 text-slate-600" />
+                  </button>
+                </div>
+
+                <nav className="space-y-2">
+                  {navigationItems.map((item) => {
+                    const Icon = item.icon;
+                    const isActive = window.location.pathname === item.path;
+                    return (
+                      <Link
+                        key={item.path}
+                        to={item.path}
+                        onClick={() => setSidebarOpen(false)}
+                        className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-all ${
+                          isActive
+                            ? "bg-blue-50 text-blue-600 font-medium"
+                            : "text-slate-700 hover:bg-slate-50"
+                        }`}
+                      >
+                        <Icon className="w-5 h-5" />
+                        <span>{item.label}</span>
+                      </Link>
+                    );
+                  })}
+                  <Link
+                    to={profileLink}
+                    onClick={() => setSidebarOpen(false)}
+                    className="flex items-center space-x-3 px-4 py-3 rounded-lg text-slate-700 hover:bg-slate-50 transition-all"
+                  >
+                    <User className="w-5 h-5" />
+                    <span>Profile</span>
+                  </Link>
+                </nav>
+
+                <div className="mt-6 pt-6 border-t border-slate-200">
+                  <button
+                    onClick={() => {
+                      handleLogout();
+                      setSidebarOpen(false);
+                    }}
+                    className="flex items-center space-x-3 px-4 py-3 rounded-lg text-rose-600 hover:bg-rose-50 transition-all w-full"
+                  >
+                    <LogOut className="w-5 h-5" />
+                    <span>Logout</span>
+                  </button>
+                </div>
               </div>
-              <nav className="space-y-4">
-                {navigationItems.map((item) => {
-                  const Icon = item.icon;
-                  return (
-                    <Link
-                      key={item.path}
-                      to={item.path}
-                      onClick={() => setSidebarOpen(false)}
-                      className="flex items-center space-x-3 text-gray-700 hover:text-blue-600"
-                    >
-                      <Icon className="w-5 h-5" />
-                      <span>{item.label}</span>
-                    </Link>
-                  );
-                })}
-                <Link
-                  to={profileLink}
-                  onClick={() => setSidebarOpen(false)}
-                  className="flex items-center space-x-3 text-gray-700 hover:text-blue-600"
-                >
-                  <User className="w-5 h-5" /> <span>Profile</span>
-                </Link>
-                <button
-                  onClick={() => {
-                    handleLogout();
-                    setSidebarOpen(false);
-                  }}
-                  className="flex items-center space-x-3 text-red-600 hover:text-red-700 w-full"
-                >
-                  <LogOut className="w-5 h-5" /> <span>Logout</span>
-                </button>
-              </nav>
             </motion.div>
           </>
         )}
