@@ -1,7 +1,7 @@
 // src/pages/doctor/DoctorSetAvailability.tsx
 import { useEffect, useState, useRef } from "react";
 import toast from "react-hot-toast";
-import api from "../../utils/api";
+import api from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
 import Navbar from "@/components/Navbar";
 

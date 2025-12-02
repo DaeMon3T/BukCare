@@ -35,7 +35,7 @@ import {
 } from "recharts";
 
 import Navbar from "@/components/Navbar";
-import api from "@/utils/api";
+import api from "@/services/api";
 import appointmentpic from "@/assets/appointment.png";
 import pendingpic from "@/assets/pending.png";
 import confirmedpic from "@/assets/confirmed.png";

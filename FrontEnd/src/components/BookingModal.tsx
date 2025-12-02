@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import type { Doctor } from "./DoctorCard";
 import { motion, AnimatePresence } from "framer-motion";
-import api from "@/utils/api";
+import api from "@/services/api";
 import toast from "react-hot-toast";
 
 interface BookingModalProps {

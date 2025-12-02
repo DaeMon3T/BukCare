@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
-import api from "@/utils/api";
+import api from "@/services/api";
 import Navbar from "@/components/Navbar";
 import { 
   Calendar, 
@@ -65,13 +65,6 @@ const PatientDashboard = () => {
 
   // Quick actions data
   const quickActions = [
-    {
-      title: "Book Appointment",
-      description: "Schedule a new visit",
-      icon: <Calendar className="w-8 h-8 mb-3" />,
-      gradient: "from-blue-500 to-cyan-500",
-      onClick: () => navigate("/patient/book-appointment")
-    },
     {
       title: "My Appointments",
       description: "View all appointments",

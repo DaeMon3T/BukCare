@@ -5,7 +5,7 @@ import {
   validateEmail,
   validatePassword,
   validateConfirmPassword,
-} from "@/utils/validation";
+} from "@/services/validation";
 import { forgotPassword, verifyOtp, resetPassword } from "@/services/auth/ForgotPasswordAPI";
 import Footer from "@/components/Footer";
 

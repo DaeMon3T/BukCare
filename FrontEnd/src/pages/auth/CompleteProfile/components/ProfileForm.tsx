@@ -12,7 +12,7 @@ import { Eye, EyeOff, AlertCircle } from "lucide-react";
 import {
   validatePassword,
   validateConfirmPassword,
-} from "@/utils/validation";
+} from "@/services/validation";
 
 interface ProfileFormProps {
   role: "doctor" | "patient";
