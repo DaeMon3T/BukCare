@@ -391,7 +391,7 @@ const DoctorDashboard: FC = () => {
   // Appointment Details Modal
   const AppointmentDetailsModal: FC = () =>
   selectedAppointment ? (
-    <div className="fixed inset-0 bg-gradient-to-br from-black/70 via-slate-900/60 to-black/70 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-in fade-in duration-300">
+    <div className="fixed font-display inset-0 bg-gradient-to-br from-black/70 via-slate-900/60 to-black/70 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-in fade-in duration-300">
       <div className="bg-white rounded-3xl max-w-2xl w-full shadow-2xl max-h-[95vh] overflow-hidden transform animate-in zoom-in-95 duration-300 border border-white/20">
         {/* Premium Header with Glass Effect */}
         <div className="relative bg-gradient-to-r from-blue-600 via-cyan-600 to-blue-500 p-4 overflow-hidden">
@@ -655,7 +655,7 @@ const DoctorDashboard: FC = () => {
             <div className="absolute inset-0 opacity-0 group-hover:opacity-100 bg-gradient-to-br from-white/20 to-transparent transition duration-500 pointer-events-none" />
             <div className="relative z-10">
               <div className="flex items-center justify-between mb-5">
-                <div className="w-6 h-6 bg-white/30 backdrop-blur-lg border border-white/40 rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 group-hover:bg-white/40 transition-all duration-300">
+                <div className="w-8 h-8 bg-white/30 backdrop-blur-lg border border-white/40 rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 group-hover:bg-white/40 transition-all duration-300">
                   <img src={appointmentpic} alt="Icon" className="w-7 h-7 object-contain" />
                 </div>
                 <div className="w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center border border-white/30">
@@ -1037,7 +1037,7 @@ const DoctorDashboard: FC = () => {
                     />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-slate-800 text-lg">Set Availability</h3>
+                    <h3 className="font-bold text-slate-800 text-lg">Set Availability</h3>
                     <p className="text-sm text-slate-600 mt-1">Manage your schedule</p>
                   </div>
                 </div>
