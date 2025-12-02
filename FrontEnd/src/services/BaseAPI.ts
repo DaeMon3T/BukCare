@@ -8,10 +8,12 @@ const BaseAPI = axios.create({
   headers: {
     "Content-Type": "application/json",
   },
-  timeout: 10000,
+  timeout: 10000, // 10 seconds
 });
 
-// Request interceptor: Add auth token to requests
+// ---------------------------
+// Request interceptor
+// ---------------------------
 BaseAPI.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem("access_token");
@@ -23,21 +25,49 @@ BaseAPI.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Response interceptor: Handle 401 errors for authenticated routes only
+// ---------------------------
+// Response interceptor: handle 401 and refresh token
+// ---------------------------
 BaseAPI.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
     const { response, config } = error;
-    
-    if (response?.status === 401) {
-      const isAuthEndpoint = config?.url?.includes('/auth/');
-      
-      if (!isAuthEndpoint) {
+
+    // Only retry once
+    if (response?.status === 401 && !config._retry) {
+      config._retry = true;
+
+      const refreshToken = localStorage.getItem("refresh_token");
+      if (!refreshToken) {
         localStorage.clear();
-        window.location.href = '/signin';
+        window.location.href = "/signin";
+        return Promise.reject(error);
+      }
+
+      try {
+        // Call refresh token endpoint
+        const refreshResponse = await axios.post(
+          `${API_BASE_URL}/auth/refresh`,
+          { refresh_token: refreshToken }
+        );
+
+        const newAccessToken = refreshResponse.data.access_token;
+        localStorage.setItem("access_token", newAccessToken);
+
+        // Update headers for original request
+        BaseAPI.defaults.headers.common["Authorization"] = `Bearer ${newAccessToken}`;
+        config.headers["Authorization"] = `Bearer ${newAccessToken}`;
+
+        // Retry original request
+        return BaseAPI(config);
+      } catch (refreshError) {
+        console.error("Token refresh failed:", refreshError);
+        localStorage.clear();
+        window.location.href = "/signin";
+        return Promise.reject(refreshError);
       }
     }
-    
+
     return Promise.reject(error);
   }
 );

@@ -53,11 +53,9 @@ class Doctor(Base):
     
     # Additional doctor information
     bio = Column(Text, nullable=True)
-    consultation_fee = Column(Integer, nullable=True)  # in cents
     is_accepting_patients = Column(Boolean, default=True)
     
     # ✅ ADDED: Timestamps
-    created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
    
     # Relationships (string references prevent circular imports)
