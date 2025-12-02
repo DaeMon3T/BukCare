@@ -62,7 +62,6 @@ def get_all_users(
                 "license_number": user.doctor_profile.license_number if user.doctor_profile else None,
                 "years_of_experience": user.doctor_profile.years_of_experience if user.doctor_profile else None,
                 "bio": user.doctor_profile.bio if user.doctor_profile else None,
-                "consultation_fee": user.doctor_profile.consultation_fee if user.doctor_profile else None,
             } if user.doctor_profile else None
         }
         for user in users
