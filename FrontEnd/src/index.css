@@ -1,4 +1,9 @@
+@import url('https://fonts.googleapis.com/css2?family=Sintony:wght@400;700&display=swap');
 @import "tailwindcss";
+
+@theme {
+  --font-display: "Sintony", sans-serif;
+}
 
 @keyframes slideIn {
   from {

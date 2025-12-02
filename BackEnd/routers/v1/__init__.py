@@ -5,7 +5,7 @@ from .appointments import router as appointments_router
 from .notifications import router as notifications_router
 from .schedules import router as schedules_router
 from .patient.patient import router as patient_router
-from .admin import router as admin_router  # <- Admin router including health
+from .admin import router as admin_router 
 
 router = APIRouter()
 
@@ -15,4 +15,4 @@ router.include_router(appointments_router, prefix="/appointments", tags=["Appoin
 router.include_router(notifications_router, prefix="/notifications", tags=["Notifications"])
 router.include_router(schedules_router, prefix="/schedules", tags=["Schedules"])
 router.include_router(patient_router, prefix="/patient", tags=["Patient"])
-router.include_router(admin_router, prefix="/admin")  # <- All admin routes including health
+router.include_router(admin_router, prefix="/admin")

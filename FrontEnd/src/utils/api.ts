@@ -1,6 +1,6 @@
 import axios from "axios";
 
-// ✅ Base URL (only adds /api/v1 if NOT already included)
+// Base URL sa backend API
 let baseURL = import.meta.env.VITE_API_URL || "http://localhost:8000/v1";
 
 // Prevent double "/api/v1/api/v1" issues
@@ -12,7 +12,7 @@ const api = axios.create({
   withCredentials: true,
 });
 
-// ✅ Attach access token to every request
+// Mag attach ug access token kada request
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem("access_token");
@@ -24,13 +24,13 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// ✅ Handle expired tokens globally (auto-refresh)
+// Handle expired tokens globally (auto-refresh)
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
 
-    // Retry only once if token expired (401)
+    // Retry kung ma expired ang token(401) pero kaisa ra 
     if (
       error.response &&
       error.response.status === 401 &&
@@ -46,7 +46,7 @@ api.interceptors.response.use(
       }
 
       try {
-        // 🔁 Try refreshing token
+        // Try i refreshing ang token
         const refreshResponse = await axios.post(
           `${import.meta.env.VITE_API_URL || "http://localhost:8000/api/v1"}/auth/refresh`,
           { refresh_token: refreshToken }
@@ -55,11 +55,11 @@ api.interceptors.response.use(
         const newAccessToken = refreshResponse.data.access_token;
         localStorage.setItem("access_token", newAccessToken);
 
-        // Update headers
+        // Update sa headers
         api.defaults.headers.common["Authorization"] = `Bearer ${newAccessToken}`;
         originalRequest.headers["Authorization"] = `Bearer ${newAccessToken}`;
 
-        // Retry original request
+        // Retry original request in case ma fail
         return api(originalRequest);
       } catch (refreshError) {
         console.error("Token refresh failed:", refreshError);

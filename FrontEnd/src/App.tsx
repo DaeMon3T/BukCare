@@ -41,7 +41,7 @@ import DoctorSetAvailability from './pages/doctor/SetAvailability';
 import DoctorAppointmentHistory from './pages/doctor/AppointmentHistory';
 
 // Patient Pages
-import PatientHome from './pages/patient/Home';
+import PatientDashboard from './pages/patient/Dashboard';
 import PatientAppointments from './pages/patient/Appointments';
 import PatientProfile from './pages/patient/Profile';
 import FindDoctor from './pages/patient/FindDoctor';
@@ -110,7 +110,7 @@ const App: FC = () => {
               {/* -------------------- Patient Routes -------------------- */}
               <Route
                 path="/patient/home"
-                element={<PatientRoute><PatientHome /></PatientRoute>}
+                element={<PatientRoute><PatientDashboard /></PatientRoute>}
               />
               <Route
                 path="/patient/appointments"
