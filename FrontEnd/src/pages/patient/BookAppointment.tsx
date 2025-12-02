@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import Navbar from "@/components/Navbar";
-import api from "@/utils/api";
+import api from "@/services/api";
 import GetDoctorAPI, { type DoctorAvailability, type Doctor } from "@/services/patient/GetDoctorAPI";
 import AppointmentAvailabilityAPI from "@/services/patient/AppointmentAvailabilityAPI";
 

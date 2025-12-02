@@ -1,7 +1,7 @@
 // FrontEnd/src/pages/patient/Appointments.tsx
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
-import api from "@/utils/api";
+import api from "@/services/api";
 import Navbar from "@/components/Navbar";
 import { Calendar, Clock, User, CheckCircle, XCircle, AlertCircle, Trash2 } from "lucide-react";
 

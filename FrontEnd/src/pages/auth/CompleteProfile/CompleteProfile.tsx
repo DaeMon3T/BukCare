@@ -8,7 +8,7 @@ import toast from "react-hot-toast";
 import { useAuth } from "@/context/AuthContext";
 import Footer from "@/components/Footer";
 import { completeProfile } from "@/services/auth/CompleteProfileAPI";
-import { validateDoctorProfile, validatePatientProfile } from "@/utils/validation";
+import { validateDoctorProfile, validatePatientProfile } from "@/services/validation";
 import ErrorBoundary from "./components/ErrorBoundary";
 import RoleSelection from "./components/RoleSelection";
 import ProfileForm from "./components/ProfileForm";
