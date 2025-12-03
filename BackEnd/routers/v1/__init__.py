@@ -15,4 +15,4 @@ router.include_router(appointments_router, prefix="/appointments", tags=["Appoin
 router.include_router(notifications_router, prefix="/notifications", tags=["Notifications"])
 router.include_router(schedules_router, prefix="/schedules", tags=["Schedules"])
 router.include_router(patient_router, prefix="/patient", tags=["Patient"])
-router.include_router(admin_router, prefix="/admin")
+router.include_router(admin_router, prefix="/admin", tags=["Admin"])

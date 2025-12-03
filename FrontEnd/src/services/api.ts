@@ -48,7 +48,7 @@ api.interceptors.response.use(
       try {
         // Try i refreshing ang token
         const refreshResponse = await axios.post(
-          `${import.meta.env.VITE_API_URL || "http://localhost:8000/api/v1"}/auth/refresh`,
+          `${baseURL}/auth/refresh`,
           { refresh_token: refreshToken }
         );
 
