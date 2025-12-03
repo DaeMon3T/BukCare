@@ -165,3 +165,59 @@ def update_user_status(user_id: int, is_active: bool, current_user: User = Depen
     user.is_active = is_active
     db.commit()
     return {"message": f"User {'activated' if is_active else 'deactivated'} successfully"}
+
+
+# -----------------------------
+# Dashboard Statistics
+# -----------------------------
+@router.get("/dashboard-stats")
+def get_dashboard_stats(
+    current_user: User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    # Total Users
+    total_users = db.query(func.count(User.id)).scalar()
+
+    # Total Patients
+    total_patients = db.query(func.count(User.id)).filter(User.role == UserRole.PATIENT).scalar()
+
+    # Total Doctors
+    total_doctors = db.query(func.count(User.id)).filter(User.role == UserRole.DOCTOR).scalar()
+
+    # Total Admins
+    total_admins = db.query(func.count(User.id)).filter(User.role == UserRole.ADMIN).scalar()
+
+    # Total Appointments (check if you have Appointment model later)
+    try:
+        from models.appointment import Appointment
+        total_appointments = db.query(func.count(Appointment.id)).scalar()
+    except Exception:
+        total_appointments = 0  # temporary fallback if model not yet ready
+
+    # Pending doctor approvals
+    pending_doctors = db.query(func.count(User.id)).filter(
+        User.role == UserRole.PENDING,
+        User.is_doctor_approved == False
+    ).scalar()
+
+    # Active users (logged in last 7 days)
+    active_users = db.query(func.count(User.id)).filter(
+        User.last_login != None,
+        func.now() - User.last_login <= func.interval('7 days')
+    ).scalar()
+
+    # New users registered this week
+    new_users_this_week = db.query(func.count(User.id)).filter(
+        func.date(User.created_at) >= func.date(func.now() - func.interval('7 days'))
+    ).scalar()
+
+    return {
+        "totalUsers": total_users,
+        "totalPatients": total_patients,
+        "totalDoctors": total_doctors,
+        "totalAdmins": total_admins,
+        "totalAppointments": total_appointments,
+        "pendingDoctorApprovals": pending_doctors,
+        "activeUsers": active_users,
+        "newUsersThisWeek": new_users_this_week,
+    }

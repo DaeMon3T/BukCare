@@ -1,4 +1,4 @@
-import BaseAPI from "../BaseAPI.js";
+import BaseAPI from "../BaseAPI.ts";
 
 // -----------------------------
 // Type Definitions
