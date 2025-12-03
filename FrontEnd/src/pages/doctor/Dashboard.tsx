@@ -62,7 +62,6 @@ interface Appointment {
   updated_at: string;
 }
 
-// 📊 Dashboard Statistics
 interface DashboardStats {
   totalAppointments: number;
   todayAppointments: number;
