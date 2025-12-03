@@ -73,8 +73,8 @@ async def rate_limit_middleware(request: Request, call_next):
     # Check global rate limit
     is_allowed, remaining = global_rate_limiter.is_allowed(
         f"global:{client_ip}", 
-        max_requests=100, 
-        window_seconds=3600
+        max_requests=500, 
+        window_seconds=300
     )
     
     if not is_allowed:
