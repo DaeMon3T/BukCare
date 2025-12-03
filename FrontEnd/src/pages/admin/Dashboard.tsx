@@ -1,25 +1,17 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  Server,
-  Activity,
-  Database,
-  Users,
-  UserCheck,
-  UserCog,
-  Calendar,
   TrendingUp,
   Clock,
   CheckCircle,
-  XCircle,
   AlertCircle,
-  Search,
-  Filter,
   Download,
   Plus,
-  Eye,
-  MoreVertical,
+  Users,
+  UserCog,
   Shield,
+  Search,
+  Filter,
 } from "lucide-react";
 import {
   BarChart,
@@ -33,14 +25,16 @@ import {
   Pie,
   Cell,
   Legend,
-  LineChart,
-  Line,
 } from "recharts";
 
 import Navbar from "@/components/Navbar";
 import Notification from "@/components/Notification";
+// FIXED: Separated the default import (value) from named imports (types)
 import adminAPI from "@/services/admin/AdminAPI";
+import type { DashboardStats, SystemHealth } from "@/services/admin/AdminAPI";
 import { useAuth } from "@/context/AuthContext";
+
+// Import Assets
 import totalPatientIcon from "@/assets/total_users.png";
 import patientIcon from "@/assets/patient.png";
 import doctorIcon from "@/assets/doctor.png";
@@ -53,23 +47,6 @@ interface NotificationData {
   message: string;
 }
 
-interface SystemHealth {
-  backend_status: string;
-  database_status: string;
-  uptime: string;
-}
-
-interface AdminStats {
-  totalUsers: number;
-  totalPatients: number;
-  totalDoctors: number;
-  totalAdmins: number;
-  totalAppointments: number;
-  pendingDoctorApprovals: number;
-  activeUsers: number;
-  newUsersThisWeek: number;
-}
-
 const CHART_COLORS = {
   patients: "#3B82F6",
   doctors: "#10B981",
@@ -79,15 +56,20 @@ const CHART_COLORS = {
 
 const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { user } = useAuth();
 
   const [notification, setNotification] = useState<NotificationData | null>(null);
+  
+  // System Health State
   const [systemHealth, setSystemHealth] = useState<SystemHealth>({
-    backend_status: "Unknown",
-    database_status: "Unknown",
+    backend_status: "Checking...",
+    database_status: "Checking...",
     uptime: "0s",
   });
-  const [stats, setStats] = useState<AdminStats>({
+
+  // Dashboard Stats State (Dynamic)
+  const [stats, setStats] = useState<DashboardStats>({
     totalUsers: 0,
     totalPatients: 0,
     totalDoctors: 0,
@@ -96,9 +78,10 @@ const AdminDashboard: React.FC = () => {
     pendingDoctorApprovals: 0,
     activeUsers: 0,
     newUsersThisWeek: 0,
+    weeklyGrowth: [], // Data for Bar Chart
   });
+
   const [loading, setLoading] = useState<boolean>(true);
-  const [searchTerm, setSearchTerm] = useState("");
 
   const showNotification = (type: NotificationData["type"], message: string) => {
     setNotification({ type, message });
@@ -106,35 +89,23 @@ const AdminDashboard: React.FC = () => {
 
   const closeNotification = () => setNotification(null);
 
-  const loadSystemHealth = async () => {
-    try {
-      const response = await adminAPI.getSystemHealth();
-      setSystemHealth(response);
-    } catch (error) {
-      console.error(error);
-      showNotification("error", "Failed to load system health");
-    }
-  };
-
+  // Fetch Real Data from API
   const loadDashboardData = async () => {
     try {
       setLoading(true);
-      await loadSystemHealth();
       
-      // Simulate stats for now - replace with actual API calls when available
-      setStats({
-        totalUsers: 1250,
-        totalPatients: 850,
-        totalDoctors: 45,
-        totalAdmins: 5,
-        totalAppointments: 3420,
-        pendingDoctorApprovals: 8,
-        activeUsers: 234,
-        newUsersThisWeek: 23,
-      });
+      // Fetch both Health and Stats in parallel
+      const [healthData, statsData] = await Promise.all([
+        adminAPI.getSystemHealth(),
+        adminAPI.getDashboardStats(),
+      ]);
+
+      setSystemHealth(healthData);
+      setStats(statsData);
+      
     } catch (error) {
       console.error(error);
-      showNotification("error", "Failed to load dashboard data");
+      showNotification("error", "Failed to load dashboard data. Please check your connection.");
     } finally {
       setLoading(false);
     }
@@ -144,41 +115,23 @@ const AdminDashboard: React.FC = () => {
     loadDashboardData();
   }, []);
 
-  // Generate weekly user growth data
-  const getWeeklyGrowthData = () => {
-    return [
-      { name: "Mon", patients: 12, doctors: 2, admins: 0 },
-      { name: "Tue", patients: 19, doctors: 1, admins: 1 },
-      { name: "Wed", patients: 15, doctors: 3, admins: 0 },
-      { name: "Thu", patients: 22, doctors: 2, admins: 0 },
-      { name: "Fri", patients: 18, doctors: 4, admins: 0 },
-      { name: "Sat", patients: 25, doctors: 1, admins: 0 },
-      { name: "Sun", patients: 20, doctors: 3, admins: 1 },
-    ];
-  };
-
-  // Generate user distribution data
-  const getUserDistributionData = () => {
-    return [
-      { name: "Patients", value: stats.totalPatients, color: CHART_COLORS.patients },
-      { name: "Doctors", value: stats.totalDoctors, color: CHART_COLORS.doctors },
-      { name: "Admins", value: stats.totalAdmins, color: CHART_COLORS.admins },
-    ].filter(item => item.value > 0);
-  };
+  // Prepare Pie Chart Data dynamically based on stats
+  const userDistributionData = [
+    { name: "Patients", value: stats.totalPatients, color: CHART_COLORS.patients },
+    { name: "Doctors", value: stats.totalDoctors, color: CHART_COLORS.doctors },
+    { name: "Admins", value: stats.totalAdmins, color: CHART_COLORS.admins },
+  ].filter(item => item.value > 0);
 
   if (loading) {
     return (
       <div className="h-screen bg-gradient-to-br from-slate-50 via-purple-50 to-blue-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto"></div>
-          <p className="text-slate-600 mt-4">Loading admin dashboard...</p>
+          <p className="text-slate-600 mt-4">Loading analytics...</p>
         </div>
       </div>
     );
   }
-
-  const weeklyGrowthData = getWeeklyGrowthData();
-  const userDistributionData = getUserDistributionData();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50 to-blue-50">
@@ -225,25 +178,15 @@ const AdminDashboard: React.FC = () => {
             <div className="relative z-10">
               <div className="flex items-center justify-between mb-5">
                 <div className="w-14 h-14 backdrop-blur-lg border border-black rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-all duration-300">
-                  <img
-                    src={totalPatientIcon}
-                    alt="Total Users"
-                    className="w-8 h-8"
-                  />
+                  <img src={totalPatientIcon} alt="Total Users" className="w-8 h-8" />
                 </div>
                 <div className="w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center border border-white/30">
                   <TrendingUp className="w-5 h-5 text-slate-700" />
                 </div>
               </div>
-              <p className="text-xs uppercase tracking-wider font-bold text-slate-600/90 mb-2">
-                Total Users
-              </p>
-              <p className="text-5xl font-bold text-slate-900 leading-tight mb-3">
-                {stats.totalUsers}
-              </p>
-              <p className="text-xs text-slate-500 font-medium">
-                +{stats.newUsersThisWeek} this week
-              </p>
+              <p className="text-xs uppercase tracking-wider font-bold text-slate-600/90 mb-2">Total Users</p>
+              <p className="text-5xl font-bold text-slate-900 leading-tight mb-3">{stats.totalUsers}</p>
+              <p className="text-xs text-slate-500 font-medium">+{stats.newUsersThisWeek} this week</p>
             </div>
           </div>
 
@@ -254,22 +197,14 @@ const AdminDashboard: React.FC = () => {
             <div className="relative z-10">
               <div className="flex items-center justify-between mb-5">
                 <div className="w-14 h-14 backdrop-blur-lg border border-black rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-all duration-300">
-                  <img
-                    src={patientIcon}
-                    alt="Total Users"
-                    className="w-8 h-8"
-                  />
+                  <img src={patientIcon} alt="Total Users" className="w-8 h-8" />
                 </div>
                 <div className="w-3 h-3 bg-cyan-400 rounded-full animate-pulse shadow-lg"></div>
               </div>
-              <p className="text-xs uppercase tracking-wider font-bold text-slate-600/90 mb-2">
-                Patients
-              </p>
-              <p className="text-5xl font-bold text-slate-900 leading-tight mb-3">
-                {stats.totalPatients}
-              </p>
+              <p className="text-xs uppercase tracking-wider font-bold text-slate-600/90 mb-2">Patients</p>
+              <p className="text-5xl font-bold text-slate-900 leading-tight mb-3">{stats.totalPatients}</p>
               <p className="text-xs text-slate-500 font-medium">
-                {((stats.totalPatients / stats.totalUsers) * 100).toFixed(1)}% of users
+                {stats.totalUsers > 0 ? ((stats.totalPatients / stats.totalUsers) * 100).toFixed(1) : 0}% of users
               </p>
             </div>
           </div>
@@ -281,54 +216,33 @@ const AdminDashboard: React.FC = () => {
             <div className="relative z-10">
               <div className="flex items-center justify-between mb-5">
                 <div className="w-14 h-14 backdrop-blur-lg border border-black rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-all duration-300">
-                  <img
-                    src={doctorIcon}
-                    alt="Total Users"
-                    className="w-8 h-8"
-                  />
+                  <img src={doctorIcon} alt="Total Users" className="w-8 h-8" />
                 </div>
                 <div className="w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center border border-white/30">
                   <CheckCircle className="w-5 h-5 text-slate-700" />
                 </div>
               </div>
-              <p className="text-xs uppercase tracking-wider font-bold text-slate-600/90 mb-2">
-                Doctors
-              </p>
-              <p className="text-5xl font-bold text-slate-900 leading-tight mb-3">
-                {stats.totalDoctors}
-              </p>
-              <p className="text-xs text-slate-500 font-medium">
-                {stats.pendingDoctorApprovals} pending approval
-              </p>
+              <p className="text-xs uppercase tracking-wider font-bold text-slate-600/90 mb-2">Doctors</p>
+              <p className="text-5xl font-bold text-slate-900 leading-tight mb-3">{stats.totalDoctors}</p>
+              <p className="text-xs text-slate-500 font-medium">{stats.pendingDoctorApprovals} pending approval</p>
             </div>
           </div>
 
           {/* TOTAL APPOINTMENTS */}
           <div className="relative bg-white/40 backdrop-blur-2xl rounded-3xl p-6 border border-white/40 shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 group overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-br from-white/30 via-white/10 to-transparent opacity-50"></div>
-            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 bg-gradient-to-br from-white/20 to-transparent transition duration-500 pointer-events-none" />
             <div className="relative z-10">
               <div className="flex items-center justify-between mb-5">
                 <div className="w-14 h-14 backdrop-blur-lg border border-black rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-all duration-300">
-                  <img
-                    src={appointmentIcon}
-                    alt="Appointment Icon"
-                    className="w-8 h-8"
-                  />
+                  <img src={appointmentIcon} alt="Appointment Icon" className="w-8 h-8" />
                 </div>
                 <div className="w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center border border-white/30">
                   <span className="text-xs font-bold text-slate-700">All</span>
                 </div>
               </div>
-              <p className="text-xs uppercase tracking-wider font-bold text-slate-600/90 mb-2">
-                Appointments
-              </p>
-              <p className="text-5xl font-bold text-slate-900 leading-tight mb-3">
-                {stats.totalAppointments}
-              </p>
-              <p className="text-xs text-slate-500 font-medium">
-                System-wide total
-              </p>
+              <p className="text-xs uppercase tracking-wider font-bold text-slate-600/90 mb-2">Appointments</p>
+              <p className="text-5xl font-bold text-slate-900 leading-tight mb-3">{stats.totalAppointments}</p>
+              <p className="text-xs text-slate-500 font-medium">System-wide total</p>
             </div>
           </div>
 
@@ -341,15 +255,11 @@ const AdminDashboard: React.FC = () => {
             <div className="space-y-3">
               <div className="flex items-center justify-between py-2">
                 <div className="flex items-center space-x-3">
-                  <img
-                    src={backendIcon}
-                    alt="Backend Icon"
-                    className="w-4 h-4"
-                  />
+                  <img src={backendIcon} alt="Backend Icon" className="w-4 h-4" />
                   <span className="text-sm font-medium text-slate-700">Backend</span>
                 </div>
                 <span className={`text-xs font-bold px-2 py-1 rounded-full ${
-                  systemHealth.backend_status === "healthy" 
+                  (systemHealth.backend_status || "").toLowerCase().includes("active") || systemHealth.backend_status === "healthy"
                     ? "bg-green-100 text-green-700" 
                     : "bg-red-100 text-red-700"
                 }`}>
@@ -358,15 +268,11 @@ const AdminDashboard: React.FC = () => {
               </div>
               <div className="flex items-center justify-between py-2">
                 <div className="flex items-center space-x-3">
-                  <img
-                    src={databaseIcon}
-                    alt="Database Icon"
-                    className="w-4 h-4"
-                  />
+                  <img src={databaseIcon} alt="Database Icon" className="w-4 h-4" />
                   <span className="text-sm font-medium text-slate-700">Database</span>
                 </div>
                 <span className={`text-xs font-bold px-2 py-1 rounded-full ${
-                  systemHealth.database_status === "healthy" 
+                   (systemHealth.database_status || "").toLowerCase().includes("connected") || systemHealth.database_status === "healthy"
                     ? "bg-green-100 text-green-700" 
                     : "bg-red-100 text-red-700"
                 }`}>
@@ -419,34 +325,40 @@ const AdminDashboard: React.FC = () => {
                     </div>
                   </div>
 
-                  <ResponsiveContainer width="100%" height={250}>
-                    <BarChart data={weeklyGrowthData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#cbd5e1" strokeOpacity={0.5} />
-                      <XAxis 
-                        dataKey="name" 
-                        stroke="#64748b" 
-                        fontSize={12}
-                        tick={{ fill: '#64748b' }}
-                      />
-                      <YAxis 
-                        stroke="#64748b" 
-                        fontSize={12}
-                        tick={{ fill: '#64748b' }}
-                      />
-                      <Tooltip 
-                        contentStyle={{ 
-                          backgroundColor: 'rgba(15, 23, 42, 0.95)',
-                          border: 'none',
-                          borderRadius: '12px',
-                          color: 'white',
-                          padding: '12px'
-                        }}
-                      />
-                      <Bar dataKey="patients" fill="#3B82F6" radius={[6, 6, 0, 0]} />
-                      <Bar dataKey="doctors" fill="#10B981" radius={[6, 6, 0, 0]} />
-                      <Bar dataKey="admins" fill="#8B5CF6" radius={[6, 6, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
+                  {stats.weeklyGrowth && stats.weeklyGrowth.length > 0 ? (
+                    <ResponsiveContainer width="100%" height={250}>
+                      <BarChart data={stats.weeklyGrowth}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#cbd5e1" strokeOpacity={0.5} />
+                        <XAxis 
+                          dataKey="name" 
+                          stroke="#64748b" 
+                          fontSize={12}
+                          tick={{ fill: '#64748b' }}
+                        />
+                        <YAxis 
+                          stroke="#64748b" 
+                          fontSize={12}
+                          tick={{ fill: '#64748b' }}
+                        />
+                        <Tooltip 
+                          contentStyle={{ 
+                            backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                            border: 'none',
+                            borderRadius: '12px',
+                            color: 'white',
+                            padding: '12px'
+                          }}
+                        />
+                        <Bar dataKey="patients" fill="#3B82F6" radius={[6, 6, 0, 0]} />
+                        <Bar dataKey="doctors" fill="#10B981" radius={[6, 6, 0, 0]} />
+                        <Bar dataKey="admins" fill="#8B5CF6" radius={[6, 6, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="h-[250px] flex items-center justify-center text-slate-400">
+                      <p>No growth data available</p>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -495,7 +407,7 @@ const AdminDashboard: React.FC = () => {
                     </ResponsiveContainer>
                   ) : (
                     <div className="h-[250px] flex items-center justify-center text-slate-400">
-                      <p>No data available</p>
+                      <p>No distribution data available</p>
                     </div>
                   )}
                 </div>

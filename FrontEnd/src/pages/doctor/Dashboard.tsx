@@ -403,7 +403,6 @@ const DoctorDashboard: FC = () => {
           </div>
           <div className="relative z-10 flex justify-between items-start">
             <div className="flex items-center gap-4">
-              {/* Icon placeholder - replace with your image */}
               <div className="w-16 h-16 bg-white backdrop-blur-lg rounded-2xl flex items-center justify-center border border-white/30 shadow-xl">
                 <img 
                   src={bukcarelogo} 
@@ -477,7 +476,6 @@ const DoctorDashboard: FC = () => {
               <div className="absolute top-0 right-0 w-20 h-20 bg-purple-400/10 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-500"></div>
               <div className="relative z-10">
                 <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-4 shadow-lg group-hover:scale-110 transition-transform">
-                  {/* Icon placeholder */}
                   <img 
                     src={pendingpic}
                     alt="Time" 
@@ -496,7 +494,6 @@ const DoctorDashboard: FC = () => {
               <div className="absolute top-0 right-0 w-20 h-20 bg-emerald-400/10 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-500"></div>
               <div className="relative z-10">
                 <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-4 shadow-lg group-hover:scale-110 transition-transform">
-                  {/* Icon placeholder */}
                   <img 
                     src={confirmedpic}
                     alt="Status" 
@@ -546,7 +543,6 @@ const DoctorDashboard: FC = () => {
               <div className="absolute top-0 right-0 w-32 h-32 bg-purple-400/10 rounded-full blur-3xl"></div>
               <div className="relative z-10 flex items-start gap-4">
                 <div className="w-14 h-14 bg-gradient-to-br from-purple-500 to-fuchsia-600 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg group-hover:scale-110 transition-transform">
-                  {/* Icon placeholder */}
                   <img 
                     src="/path-to-your-notes-icon.png" 
                     alt="Notes" 

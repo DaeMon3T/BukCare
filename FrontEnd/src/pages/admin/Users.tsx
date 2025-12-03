@@ -183,7 +183,7 @@ const Users: React.FC = () => {
 
   return (
     <div>
-      <Navbar role="admin" />
+      <Navbar/>
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-6">
         <div className="max-w-7xl mx-auto">
           {/* Header */}
