@@ -73,8 +73,8 @@ async def rate_limit_middleware(request: Request, call_next):
     # Check global rate limit
     is_allowed, remaining = global_rate_limiter.is_allowed(
         f"global:{client_ip}", 
-        max_requests=100, 
-        window_seconds=3600
+        max_requests=500, 
+        window_seconds=300
     )
     
     if not is_allowed:
@@ -101,10 +101,10 @@ async def rate_limit_middleware(request: Request, call_next):
 class EndpointRateLimits:
     def __init__(self):
         self.limits = {
-            "/api/v1/auth/signin": (10, 300),  # 10 requests per 5 minutes (increased from 5)
-            "/api/v1/auth/signup": (5, 300),   # 5 requests per 5 minutes (increased from 3)
-            "/api/v1/auth/refresh": (20, 60),  # 20 requests per minute (increased from 10)
-            "/api/v1/auth/password-reset": (5, 300),  # 5 requests per 5 minutes (increased from 3)
+            "/v1/auth/signin": (10, 300),  # 10 requests per 5 minutes (increased from 5)
+            "/v1/auth/signup": (5, 300),   # 5 requests per 5 minutes (increased from 3)
+            "/v1/auth/refresh": (20, 60),  # 20 requests per minute (increased from 10)
+            "/v1/auth/password-reset": (5, 300),  # 5 requests per 5 minutes (increased from 3)
         }
     
     def get_limit(self, path: str) -> Tuple[int, int]:

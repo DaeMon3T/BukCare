@@ -1,10 +1,13 @@
 import psycopg2
 from psycopg2 import sql
 from dotenv import load_dotenv
+from pathlib import Path
 import os
 
 # Load environment variables from .env
-load_dotenv()
+env_path = Path(__file__).parent.parent / ".env.development"  # adjust if your .env is in BackEnd
+load_dotenv(dotenv_path=env_path)
+
 
 # Step 1: Get DB credentials from .env
 DB_HOST = os.getenv("DATABASE_HOST")

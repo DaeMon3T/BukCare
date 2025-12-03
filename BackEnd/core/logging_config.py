@@ -1,6 +1,5 @@
 # core/logging_config.py
 import logging
-import logging.handlers
 import os
 from pathlib import Path
 from datetime import datetime
@@ -20,11 +19,8 @@ class JSONFormatter(logging.Formatter):
             "line": record.lineno
         }
         
-        # Add exception info if present
         if record.exc_info:
             log_entry["exception"] = self.formatException(record.exc_info)
-        
-        # Add extra fields if present
         if hasattr(record, 'user_id'):
             log_entry["user_id"] = record.user_id
         if hasattr(record, 'request_id'):
@@ -34,74 +30,73 @@ class JSONFormatter(logging.Formatter):
         
         return json.dumps(log_entry)
 
+class LineLimitedRotatingFileHandler(logging.Handler):
+    """Rotate logs when line count exceeds a limit"""
+    def __init__(self, filename, max_lines=1000, backup_count=5, formatter=None):
+        super().__init__()
+        self.filename = Path(filename)
+        self.max_lines = max_lines
+        self.backup_count = backup_count
+        self.formatter = formatter or logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+        self.filename.parent.mkdir(exist_ok=True)
+        self.filename.touch(exist_ok=True)
+
+    def emit(self, record):
+        log_entry = self.format(record)
+        with self.filename.open("a", encoding="utf-8") as f:
+            f.write(log_entry + "\n")
+        self._rotate_if_needed()
+
+    def _rotate_if_needed(self):
+        with self.filename.open("r", encoding="utf-8") as f:
+            lines = f.readlines()
+        if len(lines) > self.max_lines:
+            for i in reversed(range(1, self.backup_count)):
+                old = self.filename.with_suffix(f".{i}")
+                new = self.filename.with_suffix(f".{i+1}")
+                if old.exists():
+                    old.rename(new)
+            self.filename.rename(self.filename.with_suffix(".1"))
+            self.filename.touch()
+
+    def format(self, record):
+        return self.formatter.format(record)
+
 def setup_logging():
-    """Setup comprehensive logging configuration"""
+    """Setup logging with line-based rotation"""
     
-    # Create logs directory
     log_dir = Path("logs")
     log_dir.mkdir(exist_ok=True)
     
-    # Configure root logger
     root_logger = logging.getLogger()
     root_logger.setLevel(logging.INFO)
-    
-    # Clear existing handlers
     root_logger.handlers.clear()
     
-    # Console handler for development
+    # Console handler
     console_handler = logging.StreamHandler()
-    console_handler.setLevel(logging.INFO)
-    console_formatter = logging.Formatter(
-        '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    )
-    console_handler.setFormatter(console_formatter)
+    console_handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
     root_logger.addHandler(console_handler)
     
-    # File handler for general logs
-    file_handler = logging.handlers.RotatingFileHandler(
-        "logs/bukcare.log",
-        maxBytes=10*1024*1024,  # 10MB
-        backupCount=5
-    )
-    file_handler.setLevel(logging.INFO)
-    file_formatter = logging.Formatter(
-        '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    )
-    file_handler.setFormatter(file_formatter)
+    # General log
+    file_handler = LineLimitedRotatingFileHandler("logs/bukcare.log", max_lines=1000, backup_count=5)
+    file_handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
     root_logger.addHandler(file_handler)
     
-    # JSON file handler for structured logs
-    json_handler = logging.handlers.RotatingFileHandler(
-        "logs/bukcare_structured.log",
-        maxBytes=10*1024*1024,  # 10MB
-        backupCount=5
-    )
-    json_handler.setLevel(logging.INFO)
-    json_formatter = JSONFormatter()
-    json_handler.setFormatter(json_formatter)
+    # Structured JSON log
+    json_handler = LineLimitedRotatingFileHandler("logs/bukcare_structured.log", max_lines=1000, backup_count=5, formatter=JSONFormatter())
     root_logger.addHandler(json_handler)
     
-    # Error file handler
-    error_handler = logging.handlers.RotatingFileHandler(
-        "logs/bukcare_errors.log",
-        maxBytes=5*1024*1024,  # 5MB
-        backupCount=3
-    )
+    # Error log
+    error_handler = LineLimitedRotatingFileHandler("logs/bukcare_errors.log", max_lines=1000, backup_count=3, formatter=JSONFormatter())
     error_handler.setLevel(logging.ERROR)
-    error_handler.setFormatter(json_formatter)
     root_logger.addHandler(error_handler)
     
-    # Security log handler
-    security_handler = logging.handlers.RotatingFileHandler(
-        "logs/bukcare_security.log",
-        maxBytes=5*1024*1024,  # 5MB
-        backupCount=3
-    )
+    # Security log
+    security_handler = LineLimitedRotatingFileHandler("logs/bukcare_security.log", max_lines=1000, backup_count=3, formatter=JSONFormatter())
     security_handler.setLevel(logging.WARNING)
-    security_handler.setFormatter(json_formatter)
     root_logger.addHandler(security_handler)
     
-    # Configure specific loggers
+    # Specific loggers
     logging.getLogger("uvicorn").setLevel(logging.INFO)
     logging.getLogger("fastapi").setLevel(logging.INFO)
     logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
@@ -109,35 +104,16 @@ def setup_logging():
     return root_logger
 
 def get_logger(name: str) -> logging.Logger:
-    """Get a logger instance"""
     return logging.getLogger(name)
 
 def log_user_action(logger: logging.Logger, user_id: int, action: str, details: dict = None):
-    """Log user actions with structured data"""
-    extra = {
-        "user_id": user_id,
-        "action": action,
-        "details": details or {}
-    }
+    extra = {"user_id": user_id, "action": action, "details": details or {}}
     logger.info(f"User action: {action}", extra=extra)
 
 def log_security_event(logger: logging.Logger, event: str, user_id: int = None, ip_address: str = None, details: dict = None):
-    """Log security events"""
-    extra = {
-        "security_event": event,
-        "user_id": user_id,
-        "ip_address": ip_address,
-        "details": details or {}
-    }
+    extra = {"security_event": event, "user_id": user_id, "ip_address": ip_address, "details": details or {}}
     logger.warning(f"Security event: {event}", extra=extra)
 
 def log_api_request(logger: logging.Logger, method: str, path: str, user_id: int = None, ip_address: str = None, status_code: int = None):
-    """Log API requests"""
-    extra = {
-        "request_method": method,
-        "request_path": path,
-        "user_id": user_id,
-        "ip_address": ip_address,
-        "status_code": status_code
-    }
+    extra = {"request_method": method, "request_path": path, "user_id": user_id, "ip_address": ip_address, "status_code": status_code}
     logger.info(f"API request: {method} {path}", extra=extra)

@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Optional
 from core.database import get_db
 from models.users import User, UserRole
-from models.doctor import Doctor
+from models.doctor import Doctor, Specialization
 from models.location import Province, City, Barangay
 from core.security import create_access_token, create_refresh_token, get_password_hash
 from core.services.cloudinary_config import cloudinary
@@ -133,13 +133,33 @@ async def complete_profile(
             )
             doctor.prc_license_selfie = result["secure_url"]
 
-        # Handle specializations (JSON)
-        if specializations:
+        
+        # Handle specializations (Many-to-Many)
+        if role.lower() == "doctor" and specializations:
             try:
-                specs = json.loads(specializations)
-                doctor.specializations_json = json.dumps(specs)
+                # Expecting a list of IDs or names
+                specs = json.loads(specializations)  # e.g., ["Cardiology", "Dermatology"]
             except Exception:
-                doctor.specializations_json = specializations
+                specs = [specializations]
+
+            doctor.specializations = []  # clear old ones if needed
+
+            for spec_name_or_id in specs:
+                # Try to find by ID first, fallback to name
+                if isinstance(spec_name_or_id, int) or spec_name_or_id.isdigit():
+                    spec = db.query(Specialization).filter(Specialization.specialization_id == int(spec_name_or_id)).first()
+                else:
+                    spec = db.query(Specialization).filter(Specialization.name == spec_name_or_id).first()
+
+                if not spec:
+                    # Create specialization if it doesn't exist
+                    spec = Specialization(name=str(spec_name_or_id).strip())
+                    db.add(spec)
+                    db.commit()
+                    db.refresh(spec)
+
+                # Add to doctor's specializations
+                doctor.specializations.append(spec)
 
         db.add(doctor)
 
