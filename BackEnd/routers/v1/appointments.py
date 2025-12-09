@@ -8,9 +8,12 @@ from core.database import get_db
 from models.appointment import Appointment, AppointmentStatus
 from models.users import User
 from models.doctor import Doctor
+from models.notification import Notification # <--- Added for History
 from routers.v1.dependencies import get_current_user
 from schemas.appointment import AppointmentCreate
 from utils.appointment_helpers import check_appointment_conflict, get_available_slots
+# 🚀 IMPORT SOCKET MANAGER
+from core.socket_manager import manager 
 
 router = APIRouter()
 
@@ -71,7 +74,7 @@ def get_appointments(
     ]
 
 @router.post("/", response_model=dict)
-def create_appointment(
+async def create_appointment(
     appointment_data: AppointmentCreate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -117,6 +120,34 @@ def create_appointment(
     db.add(appointment)
     db.commit()
     db.refresh(appointment)
+
+    # ==========================================================
+    # 🚀 REAL-TIME NOTIFICATION: Notify the DOCTOR
+    # ==========================================================
+    try:
+        # Message content
+        notif_title = "New Appointment Request"
+        notif_msg = f"Patient {current_user.fname} {current_user.lname} booked an appointment for {appointment.appointment_date.strftime('%b %d, %I:%M %p')}."
+
+        # 1. Save to Database (History)
+        # Note: Ensure you have a Notification model. If not, comment these 3 lines out.
+        # notification = Notification(user_id=doctor.user_id, title=notif_title, message=notif_msg, type="info", appointment_id=appointment.id)
+        # db.add(notification)
+        # db.commit()
+
+        # 2. Send via WebSocket (Live Alert)
+        await manager.send_personal_message(
+            {
+                "type": "NEW_APPOINTMENT",
+                "title": notif_title,
+                "message": notif_msg,
+                "appointment_id": appointment.id
+            },
+            user_id=str(doctor.user_id) # Use the doctor's USER ID
+        )
+    except Exception as e:
+        print(f"Error sending notification: {e}")
+        # Don't fail the request if notification fails
     
     return {
         "id": appointment.id,
@@ -198,7 +229,7 @@ def check_time_availability(
     }
 
 @router.put("/{appointment_id}/status", response_model=dict)
-def update_appointment_status(
+async def update_appointment_status(
     appointment_id: int,
     status: str,
     notes: Optional[str] = None,
@@ -243,7 +274,43 @@ def update_appointment_status(
     
     db.commit()
     db.refresh(appointment)
-    
+
+    # ==========================================================
+    # 🚀 REAL-TIME NOTIFICATION: Notify the PATIENT
+    # ==========================================================
+    try:
+        if status in ["confirmed", "cancelled", "completed"]:
+            # Determine Message
+            title_map = {
+                "confirmed": "Appointment Confirmed ✅",
+                "cancelled": "Appointment Cancelled ❌",
+                "completed": "Appointment Completed 🎉"
+            }
+            
+            doctor_name = f"Dr. {current_user.lname}" if current_user.role.value == "doctor" else "Admin"
+            
+            notif_msg = f"{doctor_name} has {status} your appointment on {appointment.appointment_date.strftime('%b %d')}."
+            
+            # 1. Send via WebSocket (Live Alert)
+            await manager.send_personal_message(
+                {
+                    "type": "APPOINTMENT_UPDATE",
+                    "title": title_map.get(status, "Appointment Update"),
+                    "message": notif_msg,
+                    "status": status,
+                    "appointment_id": appointment.id
+                },
+                user_id=str(appointment.patient_id) # Send to Patient's User ID
+            )
+            
+            # 2. Save to Database (Optional History)
+            # notification = Notification(user_id=appointment.patient_id, title=title_map.get(status), message=notif_msg, type=status, appointment_id=appointment.id)
+            # db.add(notification)
+            # db.commit()
+
+    except Exception as e:
+        print(f"Error sending notification: {e}")
+
     return {
         "id": appointment.id,
         "status": appointment.status.value,
