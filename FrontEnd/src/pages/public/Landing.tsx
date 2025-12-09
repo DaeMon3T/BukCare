@@ -156,33 +156,7 @@ const Landing: React.FC = () => {
         </div>
       </section>
 
-      {/* Call to Action */}
-      <section className="py-16 px-6 text-center">
-        <h2 className="text-3xl font-bold mb-6 drop-shadow-lg">
-          Ready for a Better Health Journey?
-        </h2>
-
-        <p className="mb-8 text-lg max-w-xl mx-auto text-white/80">
-          Join BukCare and manage your appointments effortlessly, securely, and
-          at your convenience.
-        </p>
-
-        <div className="flex justify-center gap-6">
-          <Link
-            to="/signup"
-            className="px-10 py-3 rounded-full bg-[#FFC43D] text-[#1A1A40] font-semibold shadow-[0_4px_12px_rgba(0,0,0,0.25)] hover:bg-[#FFD84C] hover:shadow-[0_6px_18px_rgba(0,0,0,0.3)] transition"
-          >
-            Sign Up Now
-          </Link>
-
-          <Link
-            to="/signin"
-            className="px-10 py-3 rounded-full bg-white text-[#0057B8] font-semibold shadow-md hover:bg-gray-100 transition"
-          >
-            Sign In
-          </Link>
-        </div>
-      </section>
+      
 
       <Footer />
     </div>
