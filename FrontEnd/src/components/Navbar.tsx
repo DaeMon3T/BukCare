@@ -13,11 +13,11 @@ import {
   Search,
   Users,
   Calendar,
-  CheckCircle, // Added for icons
-  Info         // Added for icons
+  CheckCircle, // Added icon
+  Info         // Added icon
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
-// 1. IMPORT WEBSOCKET HOOK
+// 1. IMPORT WEBSOCKET
 import { useWebSocket } from "../context/WebSocketContext";
 
 interface NavbarProps {}
@@ -32,7 +32,6 @@ interface NotificationItem {
 const Navbar: React.FC<NavbarProps> = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  
   // 2. GET WEBSOCKET DATA
   const { lastMessage } = useWebSocket();
 
@@ -40,14 +39,12 @@ const Navbar: React.FC<NavbarProps> = () => {
   const [showNotifications, setShowNotifications] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // Real-time State
+  // 3. REAL-TIME STATE
   const [notificationsList, setNotificationsList] = useState<NotificationItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [toast, setToast] = useState<NotificationItem | null>(null);
 
-  // ------------------------------------------------------------
-  // 3. LISTEN FOR MESSAGES
-  // ------------------------------------------------------------
+  // 4. LISTEN FOR MESSAGES
   useEffect(() => {
     if (lastMessage) {
       const newNotification = {
@@ -104,9 +101,16 @@ const Navbar: React.FC<NavbarProps> = () => {
   };
 
   const navigationItems = getNavigationItems();
-  const homeLink = `/${userRole === 'patient' ? 'patient/home' : userRole + '/dashboard'}`;
+  const homeLink =
+    userRole === "admin"
+      ? "/admin/dashboard"
+      : userRole === "doctor"
+      ? "/doctor/dashboard"
+      : "/patient/home";
+
   const profileLink = `/${userRole}/profile`;
 
+  // Handle logout and redirect
   const handleLogout = async () => {
     await logout();
     navigate("/");
@@ -114,7 +118,7 @@ const Navbar: React.FC<NavbarProps> = () => {
 
   return (
     <>
-      {/* 🔔 4. TOAST NOTIFICATION POPUP */}
+      {/* 5. LIVE TOAST NOTIFICATION POPUP */}
       <AnimatePresence>
         {toast && (
           <motion.div
@@ -183,34 +187,28 @@ const Navbar: React.FC<NavbarProps> = () => {
 
             {/* Right - Actions */}
             <div className="flex items-center space-x-3">
-              {/* 🔔 5. NOTIFICATIONS BELL */}
+              {/* Notifications */}
               <div className="relative">
                 <button
                   onClick={() => {
                     setShowNotifications(!showNotifications);
-                    if (!showNotifications) setUnreadCount(0); // Clear badge on open
+                    if (!showNotifications) setUnreadCount(0); // Clear badge
                   }}
                   className="relative p-2 text-slate-600 hover:text-blue-600 hover:bg-blue-50/80 rounded-lg transition-all"
                 >
                   <Bell className="w-5 h-5" />
                   {unreadCount > 0 && (
-                    <span className="absolute top-1 right-1 w-2 h-2 bg-rose-500 rounded-full animate-pulse"></span>
+                    <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-rose-500 border-2 border-white rounded-full animate-pulse"></span>
                   )}
                 </button>
-
-                <AnimatePresence>
-                  {showNotifications && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: 10 }}
-                      className="absolute right-0 mt-2 w-80 bg-white/95 backdrop-blur-xl rounded-xl shadow-xl border border-slate-200/50 overflow-hidden z-50"
-                    >
-                      <div className="px-4 py-3 bg-gradient-to-r from-blue-50 to-cyan-50 border-b border-slate-200/50 flex justify-between">
-                        <h3 className="font-semibold text-slate-800">Notifications</h3>
-                        <span className="text-xs text-slate-500">{notificationsList.length} New</span>
-                      </div>
-                      <div className="max-h-96 overflow-y-auto">
+                {showNotifications && (
+                  <div className="absolute right-0 mt-2 w-80 bg-white/95 backdrop-blur-xl rounded-xl shadow-xl border border-slate-200/50 overflow-hidden z-50">
+                    <div className="px-4 py-3 bg-gradient-to-r from-blue-50 to-cyan-50 border-b border-slate-200/50 flex justify-between">
+                      <h3 className="font-semibold text-slate-800">Notifications</h3>
+                      <span className="text-xs text-slate-500">{notificationsList.length} New</span>
+                    </div>
+                    {/* 6. DYNAMIC NOTIFICATION LIST */}
+                    <div className="max-h-96 overflow-y-auto">
                         {notificationsList.length === 0 ? (
                           <div className="p-8 text-slate-500 text-sm text-center">No notifications yet</div>
                         ) : (
@@ -234,10 +232,9 @@ const Navbar: React.FC<NavbarProps> = () => {
                             ))}
                           </div>
                         )}
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Profile */}
@@ -292,7 +289,7 @@ const Navbar: React.FC<NavbarProps> = () => {
           </div>
         </div>
 
-        {/* Mobile Sidebar (Kept unchanged) */}
+        {/* Mobile Sidebar (Kept exactly as your original) */}
         <AnimatePresence>
           {sidebarOpen && (
             <>
@@ -311,7 +308,65 @@ const Navbar: React.FC<NavbarProps> = () => {
                 className="fixed top-0 left-0 h-full w-72 bg-white/95 backdrop-blur-xl shadow-2xl z-50 lg:hidden"
               >
                 <div className="p-6">
-                  {/* ... Same mobile sidebar code as before ... */}
+                  <div className="flex justify-between items-center mb-8">
+                    <Link to={homeLink} className="flex items-center space-x-2">
+                      <div className="w-9 h-9 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-lg flex items-center justify-center shadow-md">
+                        <span className="text-white font-bold text-lg">B</span>
+                      </div>
+                      <span className="text-xl font-bold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">
+                        BukCare
+                      </span>
+                    </Link>
+                    <button
+                      onClick={() => setSidebarOpen(false)}
+                      className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                    >
+                      <X className="w-5 h-5 text-slate-600" />
+                    </button>
+                  </div>
+
+                  <nav className="space-y-2">
+                    {navigationItems.map((item) => {
+                      const Icon = item.icon;
+                      const isActive = window.location.pathname === item.path;
+                      return (
+                        <Link
+                          key={item.path}
+                          to={item.path}
+                          onClick={() => setSidebarOpen(false)}
+                          className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-all ${
+                            isActive
+                              ? "bg-blue-50 text-blue-600 font-medium"
+                              : "text-slate-700 hover:bg-slate-50"
+                          }`}
+                        >
+                          <Icon className="w-5 h-5" />
+                          <span>{item.label}</span>
+                        </Link>
+                      );
+                    })}
+                    <Link
+                      to={profileLink}
+                      onClick={() => setSidebarOpen(false)}
+                      className="flex items-center space-x-3 px-4 py-3 rounded-lg text-slate-700 hover:bg-slate-50 transition-all"
+                    >
+                      <User className="w-5 h-5" />
+                      <span>Profile</span>
+                    </Link>
+                  </nav>
+
+                  <div className="mt-6 pt-6 border-t border-slate-200">
+                    <button
+                      onClick={() => {
+                        handleLogout();
+                        setSidebarOpen(false);
+                      }}
+                      className="flex items-center space-x-3 px-4 py-3 rounded-lg text-rose-600 hover:bg-rose-50 transition-all w-full"
+                    >
+                      <LogOut className="w-5 h-5" />
+                      <span>Logout</span>
+                    </button>
+                  </div>
                 </div>
               </motion.div>
             </>
