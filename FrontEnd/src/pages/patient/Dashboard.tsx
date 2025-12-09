@@ -358,7 +358,7 @@ const PatientDashboard = () => {
                 </div>
                 
                 <button
-                  onClick={() => handleBookAppointment(doctor.doctor_id)}
+                  onClick={() => navigate(`/patient/book/${doctor.doctor_id}`)}
                   className="w-full px-4 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 text-white font-semibold hover:from-blue-700 hover:to-cyan-700 transition-all shadow-sm hover:shadow-md"
                 >
                   Book Now

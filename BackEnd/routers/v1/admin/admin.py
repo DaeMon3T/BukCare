@@ -11,6 +11,8 @@ from models.doctor import Doctor
 from routers.v1.dependencies import get_current_admin
 from core.services.email import send_doctor_approval_email, send_doctor_rejection_email
 
+from core.socket_manager import manager
+
 router = APIRouter()
 logger = logging.getLogger("bukcare")
 
@@ -102,7 +104,7 @@ def get_pending_doctors(
 # Approve doctor
 # -----------------------------
 @router.put("/doctors/{user_id}/approve")
-def approve_doctor(user_id: int, current_user: User = Depends(get_current_admin), db: Session = Depends(get_db)):
+async def approve_doctor(user_id: int, current_user: User = Depends(get_current_admin), db: Session = Depends(get_db)):
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -122,12 +124,26 @@ def approve_doctor(user_id: int, current_user: User = Depends(get_current_admin)
     user.approved_by = current_user.id
     db.commit()
 
+
     try:
         send_doctor_approval_email(user)
+
+        await manager.send_personal_message(
+        {
+            "type": "DOCTOR_APPROVED",
+            "title": "Application Approved",
+            "message": "Congratulations! Your doctor application has been approved."
+        },
+        user_id=str(user_id)
+    )
     except Exception as e:
         logger.error(f"Failed to send doctor approval email to {user.email}: {e}")
 
     return {"message": "Doctor approved successfully, email notification sent"}
+
+    
+
+    
 
 # -----------------------------
 # Reject doctor
@@ -177,26 +193,22 @@ def get_dashboard_stats(
     db: Session = Depends(get_db)
 ):
     try:
-        # 1. Basic Counts
         total_users = db.query(func.count(User.id)).scalar() or 0
         total_patients = db.query(func.count(User.id)).filter(User.role == UserRole.PATIENT).scalar() or 0
         total_doctors = db.query(func.count(User.id)).filter(User.role == UserRole.DOCTOR).scalar() or 0
         total_admins = db.query(func.count(User.id)).filter(User.role == UserRole.ADMIN).scalar() or 0
 
-        # 2. Appointments (Safety Check)
         try:
             from models.appointment import Appointment
             total_appointments = db.query(func.count(Appointment.id)).scalar() or 0
         except Exception:
             total_appointments = 0
 
-        # 3. Status Specifics
         pending_doctors = db.query(func.count(User.id)).filter(
             User.role == UserRole.PENDING,
             User.is_doctor_approved == False
         ).scalar() or 0
 
-        # Active users logic (Safe Python comparison)
         week_ago = datetime.utcnow() - timedelta(days=7)
         active_users = db.query(func.count(User.id)).filter(
             User.last_login >= week_ago
@@ -206,19 +218,16 @@ def get_dashboard_stats(
             User.created_at >= week_ago
         ).scalar() or 0
 
-        # 4. Weekly Growth Data (Safe Date Range Approach)
         weekly_growth = []
         today = datetime.utcnow().date()
         
         for i in range(6, -1, -1):
             date_target = today - timedelta(days=i)
-            day_name = date_target.strftime("%a") # "Mon", "Tue"
+            day_name = date_target.strftime("%a")
             
-            # Create a full day range for filtering: 00:00:00 to 23:59:59
             start_of_day = datetime.combine(date_target, time.min)
             end_of_day = datetime.combine(date_target, time.max)
             
-            # Use standard >= and <= comparisons which work on ALL databases (Postgres/SQLite/MySQL)
             daily_stats = db.query(
                 func.sum(case((User.role == UserRole.PATIENT, 1), else_=0)).label('patients'),
                 func.sum(case((User.role == UserRole.DOCTOR, 1), else_=0)).label('doctors'),
@@ -248,8 +257,11 @@ def get_dashboard_stats(
             "weeklyGrowth": weekly_growth
         }
     
+
+    # -----------------------------
+    # Error Handling
+    # -----------------------------
     except Exception as e:
-        # This will print the exact Python error to your terminal so we can debug if it fails again
         import traceback
         traceback.print_exc() 
         logger.error(f"Dashboard Stats Error: {str(e)}")
