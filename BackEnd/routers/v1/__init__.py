@@ -6,6 +6,7 @@ from .notifications import router as notifications_router
 from .schedules import router as schedules_router
 from .patient.patient import router as patient_router
 from .admin import router as admin_router 
+from .websocket import router as websocker_router
 
 router = APIRouter()
 
@@ -16,3 +17,4 @@ router.include_router(notifications_router, prefix="/notifications", tags=["Noti
 router.include_router(schedules_router, prefix="/schedules", tags=["Schedules"])
 router.include_router(patient_router, prefix="/patient", tags=["Patient"])
 router.include_router(admin_router, prefix="/admin", tags=["Admin"])
+router.include_router(websocker_router, tags=["WebSocket"])

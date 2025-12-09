@@ -8,9 +8,9 @@ interface Specialization {
 
 export interface Doctor {
   doctor_id: number;
-  avatar?: string; // optional
+  avatar?: string;
   name: string;
-  specialization?: Specialization;
+  specializations?: Specialization;
   address: string;
   email: string;
 }
@@ -39,7 +39,7 @@ const DoctorCard: React.FC<DoctorCardProps> = ({ doctor }) => {
         />
         <h3 className="text-xl font-semibold text-gray-800">{doctor.name}</h3>
         <p className="text-sm text-blue-600 font-medium">
-          {doctor.specialization?.name || "General Practice"}
+          {doctor.specializations?.name || "General Practice"}
         </p>
       </div>
 

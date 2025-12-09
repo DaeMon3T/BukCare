@@ -47,6 +47,7 @@ import PatientProfile from './pages/patient/Profile';
 import FindDoctor from './pages/patient/FindDoctor';
 import BookAppointment from './pages/patient/BookAppointment';
 import PatientAppointmentHistory from './pages/patient/AppointmentHistory';
+import { WebSocketProvider } from './context/WebSocketContext';
 
 // --------------------
 // App Component
@@ -55,89 +56,91 @@ const App: FC = () => {
   return (
     <ErrorBoundary>
       <AuthProvider>
-        <Router>
-          <Toaster position="top-center" reverseOrder={false} />
+        <WebSocketProvider>
+          <Router>
+            <Toaster position="top-center" reverseOrder={false} />
 
-          <div className="App">
-            <Routes>
-              {/* -------------------- Public Routes -------------------- */}
-              <Route path="/" element={<Landing />} />
-              <Route path="/about" element={<About />} />
-              <Route path="/contact" element={<Contact />} />
-              <Route path="/services" element={<Services />} />
-              <Route path="/terms" element={<Terms />} />
-              <Route path="/privacy" element={<Privacy />} />
+            <div className="App">
+              <Routes>
+                {/* -------------------- Public Routes -------------------- */}
+                <Route path="/" element={<Landing />} />
+                <Route path="/about" element={<About />} />
+                <Route path="/contact" element={<Contact />} />
+                <Route path="/services" element={<Services />} />
+                <Route path="/terms" element={<Terms />} />
+                <Route path="/privacy" element={<Privacy />} />
 
-              {/* -------------------- Auth Routes -------------------- */}
-              <Route path="/signin" element={<SignIn />} />
-              <Route path="/signup" element={<SignUp />} />
-              <Route path="/forgot-password" element={<ForgotPassword />} />
-              <Route path="/complete-profile" element={<CompleteProfile />} />
+                {/* -------------------- Auth Routes -------------------- */}
+                <Route path="/signin" element={<SignIn />} />
+                <Route path="/signup" element={<SignUp />} />
+                <Route path="/forgot-password" element={<ForgotPassword />} />
+                <Route path="/complete-profile" element={<CompleteProfile />} />
 
-              {/* ✅ Google OAuth Callback Handler */}
-              <Route path="/auth/callback" element={<GoogleCallbackHandler />} />
-              <Route path="/auth/success" element={<OAuthSuccess />} />
+                {/* ✅ Google OAuth Callback Handler */}
+                <Route path="/auth/callback" element={<GoogleCallbackHandler />} />
+                <Route path="/auth/success" element={<OAuthSuccess />} />
 
-              {/* -------------------- Admin Routes -------------------- */}
-              <Route
-                path="/admin/dashboard"
-                element={<AdminRoute><AdminDashboard /></AdminRoute>}
-              />
-              <Route
-                path="/admin/users"
-                element={<AdminRoute><AdminUsers /></AdminRoute>}
-              />
-              <Route
-                path="/admin/users/:id"
-                element={<AdminRoute><Usersdetail /></AdminRoute>}
-              />
+                {/* -------------------- Admin Routes -------------------- */}
+                <Route
+                  path="/admin/dashboard"
+                  element={<AdminRoute><AdminDashboard /></AdminRoute>}
+                />
+                <Route
+                  path="/admin/users"
+                  element={<AdminRoute><AdminUsers /></AdminRoute>}
+                />
+                <Route
+                  path="/admin/users/:id"
+                  element={<AdminRoute><Usersdetail /></AdminRoute>}
+                />
 
-              <Route
-                path="/admin/profile"
-                element={<AdminRoute><AdminProfile /></AdminRoute>}
-              />
-              
+                <Route
+                  path="/admin/profile"
+                  element={<AdminRoute><AdminProfile /></AdminRoute>}
+                />
+                
 
-              {/* -------------------- Doctor Routes -------------------- */}
-              <Route element={<DoctorRoute><DoctorLayout /></DoctorRoute>}>
-                <Route path="/doctor/dashboard" element={<DoctorDashboard />} />
-                <Route path="/doctor/appointments" element={<DoctorAppointments />} />
-                <Route path="/doctor/set-availability" element={<DoctorSetAvailability />} />
-                <Route path="/doctor/profile" element={<DoctorProfile />} />
-                <Route path="/doctor/appointment-history" element={<DoctorAppointmentHistory />} />
-              </Route>
+                {/* -------------------- Doctor Routes -------------------- */}
+                <Route element={<DoctorRoute><DoctorLayout /></DoctorRoute>}>
+                  <Route path="/doctor/dashboard" element={<DoctorDashboard />} />
+                  <Route path="/doctor/appointments" element={<DoctorAppointments />} />
+                  <Route path="/doctor/set-availability" element={<DoctorSetAvailability />} />
+                  <Route path="/doctor/profile" element={<DoctorProfile />} />
+                  <Route path="/doctor/appointment-history" element={<DoctorAppointmentHistory />} />
+                </Route>
 
-              {/* -------------------- Patient Routes -------------------- */}
-              <Route
-                path="/patient/home"
-                element={<PatientRoute><PatientDashboard /></PatientRoute>}
-              />
-              <Route
-                path="/patient/appointments"
-                element={<PatientRoute><PatientAppointments /></PatientRoute>}
-              />
-              <Route
-                path="/patient/find-doctor"
-                element={<PatientRoute><FindDoctor /></PatientRoute>}
-              />
-              <Route
-                path="/patient/book/:doctor_id"
-                element={<PatientRoute><BookAppointment /></PatientRoute>}
-              />
-              <Route
-                path="/patient/profile"
-                element={<PatientRoute><PatientProfile /></PatientRoute>}
-              />
-              <Route
-                path="/patient/appointment-history"
-                element={<PatientRoute><PatientAppointmentHistory /></PatientRoute>}
-              />
+                {/* -------------------- Patient Routes -------------------- */}
+                <Route
+                  path="/patient/home"
+                  element={<PatientRoute><PatientDashboard /></PatientRoute>}
+                />
+                <Route
+                  path="/patient/appointments"
+                  element={<PatientRoute><PatientAppointments /></PatientRoute>}
+                />
+                <Route
+                  path="/patient/find-doctor"
+                  element={<PatientRoute><FindDoctor /></PatientRoute>}
+                />
+                <Route
+                  path="/patient/book/:doctor_id"
+                  element={<PatientRoute><BookAppointment /></PatientRoute>}
+                />
+                <Route
+                  path="/patient/profile"
+                  element={<PatientRoute><PatientProfile /></PatientRoute>}
+                />
+                <Route
+                  path="/patient/appointment-history"
+                  element={<PatientRoute><PatientAppointmentHistory /></PatientRoute>}
+                />
 
-              {/* -------------------- Catch-All -------------------- */}
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </div>
-        </Router>
+                {/* -------------------- Catch-All -------------------- */}
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+            </div>
+          </Router>
+        </WebSocketProvider>
       </AuthProvider>
     </ErrorBoundary>
   );
