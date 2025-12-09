@@ -1,14 +1,16 @@
-// FrontEnd/src/pages/patient/Appointments.tsx
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import toast from "react-hot-toast";
 import api from "@/services/api";
 import Navbar from "@/components/Navbar";
 import { Calendar, Clock, User, CheckCircle, XCircle, AlertCircle, Trash2 } from "lucide-react";
+// 1. IMPORT WEBSOCKET HOOK
+import { useWebSocket } from "@/context/WebSocketContext";
 
 interface Appointment {
   id: number;
   patient_id: number;
   doctor_id: number;
+  doctor_name?: string; // Added optional field if backend sends it
   appointment_date: string;
   reason: string | null;
   status: string;
@@ -18,39 +20,73 @@ interface Appointment {
 }
 
 const PatientAppointments = () => {
+  // 2. GET LIVE DATA
+  const { lastMessage } = useWebSocket();
+  
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "pending" | "confirmed" | "completed" | "cancelled">("all");
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
 
-  const fetchAppointments = async () => {
+  // 3. UPDATED FETCH (Supports Silent Refresh)
+  const fetchAppointments = useCallback(async (isBackground = false) => {
     try {
-      setLoading(true);
+      if (!isBackground) setLoading(true);
       const response = await api.get("/appointments/");
       setAppointments(response.data);
     } catch (err: any) {
       console.error("Failed to load appointments:", err);
-      toast.error("Failed to load appointments");
+      if (!isBackground) toast.error("Failed to load appointments");
     } finally {
-      setLoading(false);
+      if (!isBackground) setLoading(false);
     }
-  };
+  }, []);
+
+  // 4. WEBSOCKET LISTENER 🚀
+  useEffect(() => {
+    if (!lastMessage) return;
+
+    // CASE A: Status Update (Doctor confirmed/cancelled)
+    if (lastMessage.type === "APPOINTMENT_UPDATE") {
+      setAppointments((prev) => 
+        prev.map((appt) => 
+          appt.id === lastMessage.appointment_id 
+            ? { ...appt, status: lastMessage.status } 
+            : appt
+        )
+      );
+      // Toast is handled globally by Navbar, but you can add specific logic here if needed
+    }
+
+    // CASE B: Deletion
+    if (lastMessage.type === "APPOINTMENT_DELETED") {
+      setAppointments((prev) => 
+        prev.filter((appt) => appt.id !== lastMessage.appointment_id)
+      );
+    }
+
+    // CASE C: New Appointment (e.g. Admin created one for you)
+    if (lastMessage.type === "NEW_APPOINTMENT") {
+      fetchAppointments(true);
+    }
+  }, [lastMessage, fetchAppointments]);
+
+  // Initial Load
+  useEffect(() => {
+    fetchAppointments();
+  }, [fetchAppointments]);
 
   const deleteAppointment = async (id: number) => {
     try {
       await api.delete(`/appointments/${id}/permanent`);
       toast.success("Appointment permanently deleted");
-      fetchAppointments();
       setDeleteConfirm(null);
+      // WebSocket APPOINTMENT_DELETED signal will handle the UI removal
     } catch (err: any) {
       console.error("Delete failed:", err);
       toast.error(err?.response?.data?.detail || "Failed to delete appointment");
     }
   };
-
-  useEffect(() => {
-    fetchAppointments();
-  }, []);
 
   const filteredAppointments = appointments.filter((appt) => {
     if (filter === "all") return true;
@@ -169,21 +205,11 @@ const PatientAppointments = () => {
               <table className="min-w-full">
                 <thead className="bg-gradient-to-r from-slate-50 to-slate-100 border-b border-slate-200">
                   <tr>
-                    <th className="p-4 text-left text-sm font-bold text-slate-700">
-                      Doctor
-                    </th>
-                    <th className="p-4 text-left text-sm font-bold text-slate-700">
-                      Date & Time
-                    </th>
-                    <th className="p-4 text-left text-sm font-bold text-slate-700">
-                      Reason
-                    </th>
-                    <th className="p-4 text-left text-sm font-bold text-slate-700">
-                      Status
-                    </th>
-                    <th className="p-4 text-left text-sm font-bold text-slate-700">
-                      Actions
-                    </th>
+                    <th className="p-4 text-left text-sm font-bold text-slate-700">Doctor</th>
+                    <th className="p-4 text-left text-sm font-bold text-slate-700">Date & Time</th>
+                    <th className="p-4 text-left text-sm font-bold text-slate-700">Reason</th>
+                    <th className="p-4 text-left text-sm font-bold text-slate-700">Status</th>
+                    <th className="p-4 text-left text-sm font-bold text-slate-700">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -199,11 +225,14 @@ const PatientAppointments = () => {
                               <User className="w-5 h-5 text-white" />
                             </div>
                             <div>
-                              <p className="text-sm font-semibold text-slate-900">Doctor #{appt.doctor_id}</p>
+                              <p className="text-sm font-semibold text-slate-900">
+                                Doctor #{appt.doctor_id}
+                              </p>
                               <p className="text-xs text-slate-500">ID: {appt.id}</p>
                             </div>
                           </div>
                         </td>
+
                         <td className="p-4">
                           <div className="flex items-start gap-2">
                             <Calendar className="w-4 h-4 text-slate-500 mt-0.5" />
@@ -238,7 +267,7 @@ const PatientAppointments = () => {
                                     onClick={() => deleteAppointment(appt.id)}
                                     className="px-3 py-1.5 rounded-lg bg-red-600 text-white text-xs font-semibold hover:bg-red-700 transition-all"
                                   >
-                                    Confirm Delete
+                                    Confirm
                                   </button>
                                   <button
                                     onClick={() => setDeleteConfirm(null)}
@@ -328,7 +357,7 @@ const PatientAppointments = () => {
                               onClick={() => deleteAppointment(appt.id)}
                               className="flex-1 px-4 py-3 bg-red-600 text-white rounded-xl font-semibold hover:bg-red-700 transition-all"
                             >
-                              Confirm Delete
+                              Confirm
                             </button>
                             <button
                               onClick={() => setDeleteConfirm(null)}

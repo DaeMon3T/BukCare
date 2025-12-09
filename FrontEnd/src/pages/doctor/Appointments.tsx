@@ -1,9 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import api from "@/services/api";
 import Navbar from "@/components/Navbar";
 import { Calendar, Clock, User, CheckCircle, XCircle, AlertCircle, Trash2, History } from "lucide-react";
+// 1. IMPORT WEBSOCKET HOOK
+import { useWebSocket } from "@/context/WebSocketContext";
 
 interface Appointment {
   id: number;
@@ -20,29 +22,70 @@ interface Appointment {
 
 const DoctorAppointments = () => {
   const navigate = useNavigate();
+  // 2. GET LIVE DATA FROM SOCKET
+  const { lastMessage } = useWebSocket();
+  
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "pending" | "confirmed">("all");
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
 
-  const fetchAppointments = async () => {
+  // 3. UPDATED FETCH FUNCTION (Supports Silent Refresh)
+  // We use useCallback so we can call it safely inside useEffect
+  const fetchAppointments = useCallback(async (isBackground = false) => {
     try {
-      setLoading(true);
+      if (!isBackground) setLoading(true);
       const response = await api.get("/appointments/");
       setAppointments(response.data);
     } catch (err: any) {
       console.error("Failed to load appointments:", err);
-      toast.error("Failed to load appointments");
+      // Only show error toast on initial load to avoid spamming user
+      if (!isBackground) toast.error("Failed to load appointments");
     } finally {
-      setLoading(false);
+      if (!isBackground) setLoading(false);
     }
-  };
+  }, []);
+
+  // 4. WEBSOCKET LISTENER (The Real-Time Logic) 🚀
+  useEffect(() => {
+    if (!lastMessage) return;
+
+    // SCENARIO A: A Patient booked a NEW appointment
+    if (lastMessage.type === "NEW_APPOINTMENT") {
+      toast.success("New Appointment Request!");
+      fetchAppointments(true); // Silent refresh (updates list without loading spinner)
+    }
+
+    // SCENARIO B: Status was updated (e.g., from another device/tab)
+    if (lastMessage.type === "APPOINTMENT_UPDATE") {
+      setAppointments((prev) => 
+        prev.map((appt) => 
+          appt.id === lastMessage.appointment_id 
+            ? { ...appt, status: lastMessage.status } 
+            : appt
+        )
+      );
+    }
+
+    // SCENARIO C: Appointment was deleted
+    if (lastMessage.type === "APPOINTMENT_DELETED") {
+      setAppointments((prev) => 
+        prev.filter((appt) => appt.id !== lastMessage.appointment_id)
+      );
+    }
+  }, [lastMessage, fetchAppointments]);
+
+  // Initial Load
+  useEffect(() => {
+    fetchAppointments();
+  }, [fetchAppointments]);
 
   const updateStatus = async (id: number, newStatus: "confirmed" | "completed") => {
     try {
       await api.put(`/appointments/${id}/status?status=${newStatus}`);
       toast.success(`Appointment ${newStatus}`);
-      fetchAppointments();
+      // No need to fetchAppointments() manually here because 
+      // the backend sends an APPOINTMENT_UPDATE signal that handles the UI update!
     } catch (err: any) {
       console.error("Action failed:", err);
       toast.error(err?.response?.data?.detail || "Action failed");
@@ -53,17 +96,13 @@ const DoctorAppointments = () => {
     try {
       await api.delete(`/appointments/${id}/permanent`);
       toast.success("Appointment permanently deleted");
-      fetchAppointments();
       setDeleteConfirm(null);
+      // Backend sends APPOINTMENT_DELETED signal -> UI updates automatically
     } catch (err: any) {
       console.error("Delete failed:", err);
       toast.error(err?.response?.data?.detail || "Failed to delete appointment");
     }
   };
-
-  useEffect(() => {
-    fetchAppointments();
-  }, []);
 
   const filteredAppointments = appointments.filter((appt) => {
     if (filter === "all") return true;
@@ -148,8 +187,6 @@ const DoctorAppointments = () => {
           </button>
         </div>
 
-        
-
         {/* Filter Tabs */}
         <div className="flex gap-3 flex-wrap mb-6">
           {["all", "pending", "confirmed"].map((f) => {
@@ -193,24 +230,12 @@ const DoctorAppointments = () => {
               <table className="min-w-full">
                 <thead className="bg-gradient-to-r from-slate-50 to-slate-100 border-b border-slate-200">
                   <tr>
-                    <th className="p-4 text-left text-sm font-bold text-slate-700">
-                      Patient ID
-                    </th>
-                    <th className="p-4 text-left text-sm font-bold text-slate-700">
-                      Patient Name
-                    </th>
-                    <th className="p-4 text-left text-sm font-bold text-slate-700">
-                      Date & Time
-                    </th>
-                    <th className="p-4 text-left text-sm font-bold text-slate-700">
-                      Reason
-                    </th>
-                    <th className="p-4 text-left text-sm font-bold text-slate-700">
-                      Status
-                    </th>
-                    <th className="p-4 text-left text-sm font-bold text-slate-700">
-                      Actions
-                    </th>
+                    <th className="p-4 text-left text-sm font-bold text-slate-700">Patient ID</th>
+                    <th className="p-4 text-left text-sm font-bold text-slate-700">Patient Name</th>
+                    <th className="p-4 text-left text-sm font-bold text-slate-700">Date & Time</th>
+                    <th className="p-4 text-left text-sm font-bold text-slate-700">Reason</th>
+                    <th className="p-4 text-left text-sm font-bold text-slate-700">Status</th>
+                    <th className="p-4 text-left text-sm font-bold text-slate-700">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -344,8 +369,6 @@ const DoctorAppointments = () => {
                         {appt.status}
                       </span>
                     </div>
-
-
 
                     <div className="space-y-3 mb-4">
                       <div className="flex items-center gap-2 text-sm">
