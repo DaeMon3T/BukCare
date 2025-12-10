@@ -64,7 +64,7 @@ const App: FC = () => {
               <Routes>
                 {/* -------------------- Public Routes -------------------- */}
                 <Route path="/" element={<Landing />} />
-                <Route path="/about" element={<About />} />
+                <Route path="/About" element={<About />} />
                 <Route path="/contact" element={<Contact />} />
                 <Route path="/services" element={<Services />} />
                 <Route path="/terms" element={<Terms />} />
