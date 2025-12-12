@@ -1,17 +1,14 @@
 from sqlalchemy import Column, String, Integer, BigInteger, Boolean, DateTime, ForeignKey, Enum
-
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from core.database import Base
 import enum
-
 
 class UserRole(str, enum.Enum):
     ADMIN = "admin"
     DOCTOR = "doctor"
     PATIENT = "patient"
     PENDING = "pending"
-
 
 class User(Base):
     __tablename__ = "users"
@@ -88,6 +85,21 @@ class User(Base):
         "Notification",
         foreign_keys="Notification.target_user_id",
         back_populates="target_user",
+        cascade="all, delete-orphan"
+    )
+
+    # Relationships - Messages (FIXED: Added for Chat Feature)
+    sent_messages = relationship(
+        "Message",
+        foreign_keys="Message.sender_id",
+        back_populates="sender",
+        cascade="all, delete-orphan"
+    )
+    
+    received_messages = relationship(
+        "Message",
+        foreign_keys="Message.receiver_id",
+        back_populates="receiver",
         cascade="all, delete-orphan"
     )
 

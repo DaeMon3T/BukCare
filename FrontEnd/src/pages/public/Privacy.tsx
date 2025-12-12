@@ -5,7 +5,7 @@ import Footer from "@/components/Footer";
 const Privacy: React.FC = () => {
   return (
     <div className="flex flex-col min-h-screen">
-      <Navbar role="patient" />
+      <Navbar/>
 
       <main className="flex-grow px-6 py-8">
         <h1 className="text-3xl font-bold mb-6">Privacy Policy</h1>

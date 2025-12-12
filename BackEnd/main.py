@@ -13,6 +13,7 @@ import logging
 import traceback
 from routers.v1 import router as v1_router
 from utils.admin import create_admin_if_not_exists
+from models.message import Message
 
 def create_app() -> FastAPI:
     setup_logging()

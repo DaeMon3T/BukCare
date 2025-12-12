@@ -137,23 +137,23 @@ async def create_appointment(
 
         # 2. Send via WebSocket (Live Alert)
         await manager.send_personal_message(
-        {
-            "type": "NEW_APPOINTMENT",
-            "title": notif_title,
-            "message": notif_msg,
-            
-            # 🚀 ADD THIS PAYLOAD so frontend can render it instantly
-            "appointment": {
-                "id": appointment.id,
-                "patient_name": f"{current_user.fname} {current_user.lname}",
-                "appointment_date": appointment.appointment_date.isoformat(),
-                "reason": appointment.reason,
-                "status": "pending",
-                "notes": appointment.notes
-            }
-        },
-        user_id=str(doctor.user_id)
-    )
+            {
+                "type": "NEW_APPOINTMENT",
+                "title": notif_title,
+                "message": notif_msg,
+                
+                # 🚀 ADD THIS PAYLOAD so frontend can render it instantly
+                "appointment": {
+                    "id": appointment.id,
+                    "patient_name": f"{current_user.fname} {current_user.lname}",
+                    "appointment_date": appointment.appointment_date.isoformat(),
+                    "reason": appointment.reason,
+                    "status": "pending",
+                    "notes": appointment.notes
+                }
+            },
+            user_id=str(doctor.user_id)
+        )
     except Exception as e:
         print(f"Error sending notification: {e}")
         # Don't fail the request if notification fails
@@ -277,43 +277,20 @@ async def update_appointment_status(
             detail=f"Invalid status. Must be one of: {', '.join(valid_statuses)}"
         )
     
+    # Update Database Record
     appointment.status = AppointmentStatus(status)
-    if notes: appointment.notes = notes
+    if notes:
+        appointment.notes = notes
+    
     db.commit()
     db.refresh(appointment)
 
-    try:
-        # Message Data
-        notif_data = {
-            "type": "APPOINTMENT_UPDATE",
-            "appointment_id": appointment.id,
-            "status": status,
-            "message": f"Appointment status updated to {status}"
-        }
-
-        # 1. Notify PATIENT
-        await manager.send_personal_message(
-            {**notif_data, "title": "Appointment Update"},
-            user_id=str(appointment.patient_id)
-        )
-
-        # 2. Notify DOCTOR (So their other tabs/devices update instantly)
-        await manager.send_personal_message(
-            {**notif_data, "title": "Schedule Updated"},
-            user_id=str(appointment.doctor_id)
-        )
-
-    except Exception as e:
-        print(f"Socket Error: {e}")
-
-    return { "id": appointment.id, "status": appointment.status.value, "updated_at": appointment.updated_at }
-
     # ==========================================================
-    # 🚀 REAL-TIME NOTIFICATION: Notify the PATIENT
+    # 🚀 REAL-TIME NOTIFICATION (Moved BEFORE return)
     # ==========================================================
     try:
         if status in ["confirmed", "cancelled", "completed"]:
-            # Determine Message
+            # Determine Message Content
             title_map = {
                 "confirmed": "Appointment Confirmed ✅",
                 "cancelled": "Appointment Cancelled ❌",
@@ -322,9 +299,11 @@ async def update_appointment_status(
             
             doctor_name = f"Dr. {current_user.lname}" if current_user.role.value == "doctor" else "Admin"
             
-            notif_msg = f"{doctor_name} has {status} your appointment on {appointment.appointment_date.strftime('%b %d')}."
-            
-            # 1. Send via WebSocket (Live Alert)
+            # Safe date formatting
+            date_str = appointment.appointment_date.strftime('%b %d') if appointment.appointment_date else "Unknown Date"
+            notif_msg = f"{doctor_name} has marked your appointment as {status}."
+
+            # 1. Send via WebSocket (Live Alert to Patient)
             await manager.send_personal_message(
                 {
                     "type": "APPOINTMENT_UPDATE",
@@ -333,10 +312,22 @@ async def update_appointment_status(
                     "status": status,
                     "appointment_id": appointment.id
                 },
-                user_id=str(appointment.patient_id) # Send to Patient's User ID
+                user_id=str(appointment.patient_id) 
             )
             
-            # 2. Save to Database (Optional History)
+            # 2. Notify DOCTOR (Optional: updates other tabs/devices)
+            await manager.send_personal_message(
+                {
+                    "type": "APPOINTMENT_UPDATE",
+                    "title": "Schedule Updated",
+                    "message": f"You updated appointment status to {status}",
+                    "status": status,
+                    "appointment_id": appointment.id
+                },
+                user_id=str(appointment.doctor_id)
+            )
+            
+            # 3. Save to Database (Optional History - Uncomment if needed)
             # notification = Notification(user_id=appointment.patient_id, title=title_map.get(status), message=notif_msg, type=status, appointment_id=appointment.id)
             # db.add(notification)
             # db.commit()
@@ -344,6 +335,7 @@ async def update_appointment_status(
     except Exception as e:
         print(f"Error sending notification: {e}")
 
+    # Return Response
     return {
         "id": appointment.id,
         "status": appointment.status.value,
@@ -404,6 +396,7 @@ async def delete_appointment_permanently(
     db.delete(appointment)
     db.commit()
 
+    # 🚀 REAL-TIME NOTIFICATION: Notify frontend to remove item
     try:
         msg = { "type": "APPOINTMENT_DELETED", "appointment_id": appointment_id }
         await manager.send_personal_message(msg, user_id=str(patient_id))
@@ -411,7 +404,7 @@ async def delete_appointment_permanently(
     except Exception as e:
         print(f"Socket error: {e}")
     
-    return {"message": "Deleted"}
+    return {"message": "Appointment permanently deleted", "deleted_id": appointment_id}
 
 @router.get("/upcoming")
 def get_upcoming_appointments(
