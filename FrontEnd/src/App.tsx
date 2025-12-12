@@ -24,7 +24,6 @@ import About from './pages/public/About';
 import Contact from './pages/public/Contact';
 import Services from './pages/public/Services';
 import Terms from './pages/public/Terms';
-import Privacy from './pages/public/Privacy';
 
 // Admin Pages
 import AdminDashboard from './pages/admin/Dashboard';
@@ -68,7 +67,7 @@ const App: FC = () => {
                 <Route path="/contact" element={<Contact />} />
                 <Route path="/services" element={<Services />} />
                 <Route path="/terms" element={<Terms />} />
-                <Route path="/privacy" element={<Privacy />} />
+               
 
                 {/* -------------------- Auth Routes -------------------- */}
                 <Route path="/signin" element={<SignIn />} />

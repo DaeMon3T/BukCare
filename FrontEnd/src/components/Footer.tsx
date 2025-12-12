@@ -5,8 +5,8 @@ const Footer: React.FC = () => {
   const currentYear = new Date().getFullYear();
 
   return (
-    <footer className="bg-[#1A1A40] text-white/70 py-8">
-      <div className="container mx-auto px-4 flex flex-col items-center space-y-4">
+    <footer className="bg-[#222] text-white pt-16 pb-8 px-6">
+      <div className="max-w-7xl mx-auto grid md:grid-cols-4 gap-8 border-b border-gray-800 pb-12 ml-205">
         
         {/* Copyright */}
         <div className="text-sm text-white/50 text-center">
@@ -14,17 +14,14 @@ const Footer: React.FC = () => {
         </div>
 
         {/* Links */}
-        <div className="flex gap-6 text-sm">
-          <Link to="/terms" className="hover:text-[#FFC43D] transition">
+        {/* <div className="flex gap-6 text-sm">
+          <Link to="./Terms" className="hover:text-[#FFC43D] transition">
             Terms of Service
           </Link>
-          <Link to="/privacy" className="hover:text-[#FFC43D] transition">
+          <Link to="./Terms" className="hover:text-[#FFC43D] transition">
             Privacy Policy
           </Link>
-          <Link to="/contact" className="hover:text-[#FFC43D] transition">
-            Contact
-          </Link>
-        </div>
+        </div> */}
       </div>
     </footer>
   );

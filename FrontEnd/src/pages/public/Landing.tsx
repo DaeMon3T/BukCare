@@ -97,43 +97,25 @@ const Landing: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen font-sans bg-white text-gray-700">
+    <div className="min-h-screen bg-white text-slate-600 font-sans">
       
-      {/* 1. TOP BAR (Gray) */}
-      <div className="bg-[#f8f9fa] border-b border-gray-200 hidden md:block">
-        <div className="max-w-9xl mx-auto px-4 py-3 flex justify-between items-center text-xs font-medium text-gray-600">
-            <div className="flex items-center gap-6">
-                {/* Logo Area Space Filler if needed, or straight text */}
-            </div>
-            <div className="flex items-center gap-8 mr-20">
-                <div className="flex items-center">
-                    <div className="bg-[#00aeef] p-1.5 rounded text-white mr-2"><IconMapPin /></div>
-                    <span>Bukidnon, Philippines</span>
-                </div>
-                <div className="flex items-center">
-                    <div className="bg-[#00aeef] p-1.5 rounded text-white mr-2"><IconClock /></div>
-                    <span>24/7</span>
-                </div>
-                <div className="flex items-center">
-                    <div className="bg-[#00aeef] p-1.5 rounded text-white mr-2"><IconPhone /></div>
-                    <span>bukcare.app@gmail.com</span>
-                </div>
-            </div>
-        </div>
-      </div>
-
       {/* 2. NAVIGATION BAR (White) */}
-      <nav className="bg-white py-2 shadow-sm sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 flex justify-between items-center">
+      <nav className="bg-white shadow-sm sticky top-0 z-50">
+        <div className="max-w-8xl mx-auto px-6 h-20 flex items-center justify-between">
+          {/* Logo Group */}
+          <div className="flex items-center gap-2 ml-78">
+            <div className="text-2xl font-bold text-slate-800">
+              <span className="text-[#0099cc]">Buk</span>Care
+            </div>
+          </div>
 
             {/* Links */}
-            <div className="hidden md:flex items-center gap-20 text-sm font-bold text-gray-600 uppercase tracking-wide ml-65 pt-3 pb-3">
+            <div className="hidden md:flex items-center gap-20 text-sm font-bold text-gray-600 uppercase tracking-wide pt-3 pb-3">
                 <Link to="/" className="text-[#00aeef]" onClick={handleScrollTop}>Home</Link>
                 <Link to="./About" className="hover:text-[#00aeef] transition" onClick={handleScrollTop}>About</Link>
-                <Link to="#" className="hover:text-[#00aeef] transition">Doctors</Link>
-                <Link to="#" className="hover:text-[#00aeef] transition">Departments</Link>
-                <Link to="#" className="hover:text-[#00aeef] transition">Pricing</Link>
-                <Link to="#" className="hover:text-[#00aeef] transition">Contact</Link>
+                <Link to="./Services" className="hover:text-[#00aeef] transition">Services</Link>
+                <Link to="./Contact" className="hover:text-[#00aeef] transition">Contact</Link>
+                <Link to="./Terms" className="hover:text-[#00aeef] transition">Terms of Services & Privacy Policy</Link>
             </div>
 
             {/* Search / Social Icons (Simulated) */}
@@ -195,37 +177,37 @@ const Landing: React.FC = () => {
             {/* Card 1: Qualified Doctors (Blue) */}
             <div className="bg-[#00aeef] p-10 text-white text-center group hover:bg-[#009bd5] transition duration-300">
                 <div className="flex justify-center"><IconStethoscopeWhite /></div>
-                <h3 className="text-xl font-bold mb-4 uppercase tracking-wider">Qualified Doctors</h3>
+                <h3 className="text-xl font-bold mb-4 uppercase tracking-wider">Centralize Online Scheduling</h3>
                 <p className="text-white/80 text-sm leading-relaxed mb-6">
-                    Browse our directory of qualified doctors in Bukidnon and view their available schedules instantly.
+                    Replace manual booking methods with a digital system that allows patients to schedule their own appointments online.
                 </p>
-                <Link to="#" className="text-xs font-bold border border-white/30 px-4 py-2 rounded uppercase hover:bg-white hover:text-[#00aeef] transition">
+                {/* <Link to="#" className="text-xs font-bold border border-white/30 px-4 py-2 rounded uppercase hover:bg-white hover:text-[#00aeef] transition">
                     Read More
-                </Link>
+                </Link> */}
             </div>
 
             {/* Card 2: Emergency Services (Lighter Blue) */}
             <div className="bg-[#48c7f4] p-10 text-white text-center group hover:bg-[#3bb5e0] transition duration-300">
                 <div className="flex justify-center"><IconEmergencyWhite /></div>
-                <h3 className="text-xl font-bold mb-4 uppercase tracking-wider">Emergency Services</h3>
+                <h3 className="text-xl font-bold mb-4 uppercase tracking-wider">Real-Time Notifications</h3>
                 <p className="text-white/80 text-sm leading-relaxed mb-6">
-                   Need urgent care? Find the nearest clinics and emergency rooms available 24/7 in your area.
+                   Get instant alerts if a doctor’s schedule changes or if they become unavailable, preventing wasted trips to the hospital.
                 </p>
-                <Link to="#" className="text-xs font-bold border border-white/30 px-4 py-2 rounded uppercase hover:bg-white hover:text-[#48c7f4] transition">
+                {/* <Link to="#" className="text-xs font-bold border border-white/30 px-4 py-2 rounded uppercase hover:bg-white hover:text-[#48c7f4] transition">
                     Read More
-                </Link>
+                </Link> */}
             </div>
 
              {/* Card 3: 24/7 Services (Cyan) */}
              <div className="bg-[#2dc7f8] p-10 text-white text-center group hover:bg-[#20b4e2] transition duration-300">
                 <div className="flex justify-center"><IconTransplantWhite /></div>
-                <h3 className="text-xl font-bold mb-4 uppercase tracking-wider">Online Booking</h3>
+                <h3 className="text-xl font-bold mb-4 uppercase tracking-wider">Live Doctor Availability</h3>
                 <p className="text-white/80 text-sm leading-relaxed mb-6">
-                    Book appointments with your preferred specialists anytime, anywhere, without visiting the clinic.
+                   Patients can view a doctor's schedule and availability in real-time before booking.
                 </p>
-                <Link to="#" className="text-xs font-bold border border-white/30 px-4 py-2 rounded uppercase hover:bg-white hover:text-[#2dc7f8] transition">
+                {/* <Link to="#" className="text-xs font-bold border border-white/30 px-4 py-2 rounded uppercase hover:bg-white hover:text-[#2dc7f8] transition">
                     Read More
-                </Link>
+                </Link> */}
             </div>
 
         </div>
@@ -233,14 +215,12 @@ const Landing: React.FC = () => {
 
       {/* 5. TRUST/SOCIAL PROOF */}
       <div className="py-16 bg-white text-center">
-         <p className="text-gray-400 font-bold text-xs uppercase tracking-widest mb-6">Trusted by Healthcare Professionals</p>
+         <p className="text-gray-400 font-bold text-xs uppercase tracking-widest mb-6">Impact and Benefits</p>
          <div className="flex flex-wrap justify-center gap-8 md:gap-16 opacity-60 grayscale">
             {/* Simple Text Placeholders for Logos */}
-            <span className="text-2xl font-bold text-gray-300">MEDICAL</span>
-            <span className="text-2xl font-bold text-gray-300">HEALTH</span>
-            <span className="text-2xl font-bold text-gray-300">CLINIC+</span>
-            <span className="text-2xl font-bold text-gray-300">PHARMA</span>
-            <span className="text-2xl font-bold text-gray-300">CARE</span>
+            <span className="text-2xl font-bold text-gray-300">FOR COMMUNITY</span>
+            <span className="text-2xl font-bold text-gray-300">FOR HOSPITAL</span>
+            <span className="text-2xl font-bold text-gray-300">FOR HEALTHCARE</span>
          </div>
       </div>
 
@@ -334,7 +314,7 @@ const Landing: React.FC = () => {
         <div className="max-w-7xl mx-auto pt-8 flex flex-col md:flex-row justify-between items-center text-gray-500 text-xs">
             <p>&copy; 2025 BukCare. All rights reserved.</p>
             <div className="flex space-x-4 mt-4 md:mt-0">
-                <Link to="./Privacy" className="hover:text-white" onClick={handleScrollTop}>Privacy Policy</Link>
+                <Link to="./Terms" className="hover:text-white" onClick={handleScrollTop}>Privacy Policy</Link>
                 <Link to="./Terms" className="hover:text-white" onClick={handleScrollTop}>Terms of Service</Link>
             </div>
         </div>
