@@ -19,6 +19,7 @@ import {
 import { useAuth } from "../context/AuthContext";
 // 1. IMPORT WEBSOCKET
 import { useWebSocket } from "../context/WebSocketContext";
+import notificationsAPI from "@/services/notifications";
 
 interface NavbarProps {}
 
@@ -43,6 +44,36 @@ const Navbar: React.FC<NavbarProps> = () => {
   const [notificationsList, setNotificationsList] = useState<NotificationItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [toast, setToast] = useState<NotificationItem | null>(null);
+
+  useEffect(() => {
+    const fetchHistory = async () => {
+      try {
+        const history = await notificationsAPI.getAll();
+        
+        // Convert API format to UI format if needed
+        const formatted = history.map((n: any) => ({
+          title: n.title,
+          message: n.message,
+          type: n.type,
+          timestamp: new Date(n.created_at),
+          isRead: n.is_read
+        }));
+
+        setNotificationsList(formatted);
+        
+        // Count unread
+        const unread = formatted.filter((n: any) => !n.isRead).length;
+        setUnreadCount(unread);
+        
+      } catch (error) {
+        console.error("Failed to load notification history");
+      }
+    };
+
+    if (user) {
+      fetchHistory();
+    }
+  }, [user]);
 
   // 4. LISTEN FOR MESSAGES
   useEffect(() => {

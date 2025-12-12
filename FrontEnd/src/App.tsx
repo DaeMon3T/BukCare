@@ -38,6 +38,7 @@ import DoctorAppointments from './pages/doctor/Appointments';
 import DoctorProfile from './pages/doctor/Profile';
 import DoctorSetAvailability from './pages/doctor/SetAvailability';
 import DoctorAppointmentHistory from './pages/doctor/AppointmentHistory';
+import Messages from './pages/doctor/Messages';
 
 // Patient Pages
 import PatientDashboard from './pages/patient/Dashboard';
@@ -47,6 +48,7 @@ import FindDoctor from './pages/patient/FindDoctor';
 import BookAppointment from './pages/patient/BookAppointment';
 import PatientAppointmentHistory from './pages/patient/AppointmentHistory';
 import { WebSocketProvider } from './context/WebSocketContext';
+import PatientMessages from './pages/patient/Messages';
 
 // --------------------
 // App Component
@@ -106,6 +108,7 @@ const App: FC = () => {
                   <Route path="/doctor/set-availability" element={<DoctorSetAvailability />} />
                   <Route path="/doctor/profile" element={<DoctorProfile />} />
                   <Route path="/doctor/appointment-history" element={<DoctorAppointmentHistory />} />
+                  <Route path="/doctor/messages" element={<Messages />} />
                 </Route>
 
                 {/* -------------------- Patient Routes -------------------- */}
@@ -132,6 +135,10 @@ const App: FC = () => {
                 <Route
                   path="/patient/appointment-history"
                   element={<PatientRoute><PatientAppointmentHistory /></PatientRoute>}
+                />
+                <Route
+                  path="/patient/messages"
+                  element={<PatientRoute><PatientMessages /></PatientRoute>}
                 />
 
                 {/* -------------------- Catch-All -------------------- */}
