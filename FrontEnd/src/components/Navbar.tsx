@@ -13,11 +13,11 @@ import {
   Search,
   Users,
   Calendar,
-  CheckCircle, // Added for icons
-  Info         // Added for icons
+  CheckCircle,
+  Info,
+  MessageSquare, // Messages icon
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
-// 1. IMPORT WEBSOCKET HOOK
 import { useWebSocket } from "../context/WebSocketContext";
 
 interface NavbarProps {}
@@ -32,45 +32,39 @@ interface NotificationItem {
 const Navbar: React.FC<NavbarProps> = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  
-  // 2. GET WEBSOCKET DATA
+
   const { lastMessage } = useWebSocket();
 
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // Real-time State
   const [notificationsList, setNotificationsList] = useState<NotificationItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [toast, setToast] = useState<NotificationItem | null>(null);
 
-  // ------------------------------------------------------------
-  // 3. LISTEN FOR MESSAGES
-  // ------------------------------------------------------------
+  // Placeholder for unread messages count
+  const [unreadMessagesCount] = useState(0);
+
   useEffect(() => {
-    if (lastMessage) {
-      const newNotification = {
-        title: lastMessage.title || "New Notification",
-        message: lastMessage.message || "You have a new update.",
-        type: lastMessage.type,
-        timestamp: new Date()
-      };
-
-      // Add to list & Increment badge
-      setNotificationsList((prev) => [newNotification, ...prev]);
-      setUnreadCount((prev) => prev + 1);
-
-      // Show Toast Popup
-      setToast(newNotification);
-
-      // Hide Toast after 5 seconds
-      const timer = setTimeout(() => setToast(null), 5000);
-      return () => clearTimeout(timer);
+    if (!lastMessage) {
+      return;
     }
+
+    const newNotification = {
+      title: lastMessage.title || "New Notification",
+      message: lastMessage.message || "You have a new update.",
+      type: lastMessage.type,
+      timestamp: new Date(),
+    };
+    setNotificationsList((prev) => [newNotification, ...prev]);
+    setUnreadCount((prev) => prev + 1);
+    setToast(newNotification);
+
+    const timer = setTimeout(() => setToast(null), 5000);
+    return () => clearTimeout(timer);
   }, [lastMessage]);
 
-  // Wait until user is loaded
   if (!user) return null;
 
   const userRole = user.role || "patient";
@@ -80,6 +74,7 @@ const Navbar: React.FC<NavbarProps> = () => {
     `${user.fname || ""} ${user.lname || ""}`.trim() ||
     "Guest";
 
+  // Navigation items including Messages for patient & doctor
   const getNavigationItems = () => {
     switch (userRole) {
       case "admin":
@@ -91,6 +86,7 @@ const Navbar: React.FC<NavbarProps> = () => {
         return [
           { label: "Dashboard", path: "/doctor/dashboard", icon: Home },
           { label: "Appointments", path: "/doctor/appointments", icon: Calendar },
+          { label: "Messages", path: "/doctor/messages", icon: MessageSquare },
           { label: "Availability", path: "/doctor/set-availability", icon: ClipboardList },
         ];
       case "patient":
@@ -99,12 +95,13 @@ const Navbar: React.FC<NavbarProps> = () => {
           { label: "Home", path: "/patient/home", icon: Home },
           { label: "Find Doctors", path: "/patient/find-doctor", icon: Search },
           { label: "Appointments", path: "/patient/appointments", icon: ClipboardList },
+          { label: "Messages", path: "/patient/messages", icon: MessageSquare },
         ];
     }
   };
 
   const navigationItems = getNavigationItems();
-  const homeLink = `/${userRole === 'patient' ? 'patient/home' : userRole + '/dashboard'}`;
+  const homeLink = `/${userRole === "patient" ? "patient/home" : userRole + "/dashboard"}`;
   const profileLink = `/${userRole}/profile`;
 
   const handleLogout = async () => {
@@ -114,7 +111,7 @@ const Navbar: React.FC<NavbarProps> = () => {
 
   return (
     <>
-      {/* 🔔 4. TOAST NOTIFICATION POPUP */}
+      {/* Toast Notification */}
       <AnimatePresence>
         {toast && (
           <motion.div
@@ -164,11 +161,14 @@ const Navbar: React.FC<NavbarProps> = () => {
               {navigationItems.map((item) => {
                 const Icon = item.icon;
                 const isActive = window.location.pathname === item.path;
+
+                const isMessages = item.label === "Messages";
+
                 return (
                   <Link
                     key={item.path}
                     to={item.path}
-                    className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all ${
+                    className={`relative flex items-center space-x-2 px-4 py-2 rounded-lg transition-all ${
                       isActive
                         ? "bg-blue-50/80 text-blue-900 font-bold"
                         : "text-slate-600 hover:text-blue-600 hover:bg-slate-50/80"
@@ -176,6 +176,9 @@ const Navbar: React.FC<NavbarProps> = () => {
                   >
                     <Icon className="w-6 h-6" />
                     <span className="text-sm">{item.label}</span>
+                    {isMessages && unreadMessagesCount > 0 && (
+                      <span className="absolute top-1 right-1 w-2 h-2 bg-rose-500 rounded-full animate-pulse"></span>
+                    )}
                   </Link>
                 );
               })}
@@ -183,12 +186,12 @@ const Navbar: React.FC<NavbarProps> = () => {
 
             {/* Right - Actions */}
             <div className="flex items-center space-x-3">
-              {/* 🔔 5. NOTIFICATIONS BELL */}
+              {/* Notifications Bell */}
               <div className="relative">
                 <button
                   onClick={() => {
                     setShowNotifications(!showNotifications);
-                    if (!showNotifications) setUnreadCount(0); // Clear badge on open
+                    if (!showNotifications) setUnreadCount(0);
                   }}
                   className="relative p-2 text-slate-600 hover:text-blue-600 hover:bg-blue-50/80 rounded-lg transition-all"
                 >
@@ -218,17 +221,20 @@ const Navbar: React.FC<NavbarProps> = () => {
                             {notificationsList.map((notif, index) => (
                               <div key={index} className="p-4 hover:bg-slate-50 transition-colors">
                                 <div className="flex gap-3">
-                                   <div className="mt-1">
-                                    {notif.type?.includes('APPROVED') || notif.type === 'success' ? 
-                                      <CheckCircle className="w-4 h-4 text-green-500" /> : 
+                                  <div className="mt-1">
+                                    {notif.type?.includes("APPROVED") || notif.type === "success" ? (
+                                      <CheckCircle className="w-4 h-4 text-green-500" />
+                                    ) : (
                                       <Info className="w-4 h-4 text-blue-500" />
-                                    }
-                                   </div>
-                                   <div>
-                                      <h5 className="text-sm font-medium text-slate-800">{notif.title}</h5>
-                                      <p className="text-xs text-slate-600 mt-1">{notif.message}</p>
-                                      <p className="text-[10px] text-slate-400 mt-2">{notif.timestamp.toLocaleTimeString()}</p>
-                                   </div>
+                                    )}
+                                  </div>
+                                  <div>
+                                    <h5 className="text-sm font-medium text-slate-800">{notif.title}</h5>
+                                    <p className="text-xs text-slate-600 mt-1">{notif.message}</p>
+                                    <p className="text-[10px] text-slate-400 mt-2">
+                                      {notif.timestamp.toLocaleTimeString()}
+                                    </p>
+                                  </div>
                                 </div>
                               </div>
                             ))}
@@ -240,7 +246,7 @@ const Navbar: React.FC<NavbarProps> = () => {
                 </AnimatePresence>
               </div>
 
-              {/* Profile */}
+              {/* Profile Dropdown */}
               <div className="relative">
                 <button
                   onClick={() => setShowProfileDropdown(!showProfileDropdown)}
@@ -292,7 +298,7 @@ const Navbar: React.FC<NavbarProps> = () => {
           </div>
         </div>
 
-        {/* Mobile Sidebar (Kept unchanged) */}
+        {/* Mobile Sidebar */}
         <AnimatePresence>
           {sidebarOpen && (
             <>
@@ -311,7 +317,7 @@ const Navbar: React.FC<NavbarProps> = () => {
                 className="fixed top-0 left-0 h-full w-72 bg-white/95 backdrop-blur-xl shadow-2xl z-50 lg:hidden"
               >
                 <div className="p-6">
-                  {/* ... Same mobile sidebar code as before ... */}
+                  {/* ... Mobile sidebar content ... */}
                 </div>
               </motion.div>
             </>
