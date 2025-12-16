@@ -12,6 +12,7 @@ class Message(Base):
     content = Column(Text, nullable=False)
     timestamp = Column(DateTime, default=datetime.utcnow)
     is_read = Column(Boolean, default=False)
+    is_delete = Column(Boolean, default=False)
 
     # Relationships
     sender = relationship("User", foreign_keys=[sender_id], back_populates="sent_messages")

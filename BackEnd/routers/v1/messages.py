@@ -217,3 +217,46 @@ async def send_message(
     )
     
     return new_message
+
+
+@router.delete("/{message_id}", response_model=dict)
+async def delete_message(
+    message_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    # 1. Find Message
+    message = db.query(Message).filter(Message.id == message_id).first()
+    if not message:
+        raise HTTPException(status_code=404, detail="Message not found")
+
+    # 2. Permission Check (Only sender can delete)
+    if message.sender_id != current_user.id:
+        raise HTTPException(status_code=403, detail="You can only delete your own messages")
+
+    # 3. Soft Delete
+    message.is_deleted = True
+    message.content = "Message unsent" # Optional: Change content
+    db.commit()
+
+    # 4. 🚀 REAL-TIME NOTIFICATION
+    # Notify Receiver
+    await manager.send_personal_message(
+        {
+            "type": "MESSAGE_DELETED",
+            "message_id": message_id,
+            "conversation_id": current_user.id # To help UI update preview
+        },
+        user_id=str(message.receiver_id)
+    )
+    
+    # Notify Sender (for other tabs)
+    await manager.send_personal_message(
+        {
+            "type": "MESSAGE_DELETED",
+            "message_id": message_id
+        },
+        user_id=str(current_user.id)
+    )
+
+    return {"message": "Message deleted"}

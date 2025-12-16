@@ -1,17 +1,21 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Send, Search, MoreVertical, Phone, Video, User, ArrowLeft } from "lucide-react";
+import { Send, Search, MoreVertical, Phone, Video, User, ArrowLeft, MessageSquarePlus } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import { useAuth } from "@/context/AuthContext";
 import { useWebSocket } from "@/context/WebSocketContext";
-import messagesAPI from "@/services/messages";
-import type { Conversation, Message } from "@/services/messages";
 import toast from "react-hot-toast";
+
+// FIX 1: Import service normally
+import messagesAPI from "@/services/messages";
+// FIX 2: Import types separately
+import type { Conversation, Message, UserSearchResult } from "@/services/messages";
 
 const PatientMessages: React.FC = () => {
   const { user } = useAuth();
   const { lastMessage } = useWebSocket();
   
   const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [searchResults, setSearchResults] = useState<UserSearchResult[]>([]); // Added searchResults state
   const [activeChat, setActiveChat] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
@@ -37,11 +41,53 @@ const PatientMessages: React.FC = () => {
     }
   };
 
-  // 2. Fetch Messages when Active Chat Changes
+  // 2. Search Logic (Debounced) - Added from Doctor version for consistency
+  useEffect(() => {
+    const delayDebounceFn = setTimeout(async () => {
+      if (searchTerm.trim().length > 0) {
+        try {
+          const results = await messagesAPI.searchUsers(searchTerm);
+          setSearchResults(results);
+        } catch (error) {
+          console.error("Search failed", error);
+        }
+      } else {
+        setSearchResults([]);
+      }
+    }, 300);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [searchTerm]);
+
+  // 3. Start Chat with New User (Logic added to handle search results)
+  const startNewChat = (userResult: UserSearchResult) => {
+    const existingConv = conversations.find(c => c.user_id === userResult.id);
+    
+    if (existingConv) {
+      setActiveChat(existingConv);
+    } else {
+      // FIX: Strict type handling for optional properties
+      const tempConv: Conversation = {
+        user_id: userResult.id,
+        name: userResult.name,
+        role: userResult.role,
+        picture: userResult.picture || "", // Default to empty string if undefined/null
+        unread_count: 0,
+        last_message: "",
+        last_message_time: new Date().toISOString()
+      } as Conversation; // Cast to satisfy strict checks
+      
+      setActiveChat(tempConv);
+    }
+    setSearchTerm("");
+    setSearchResults([]);
+    setIsMobileChatOpen(true);
+  };
+
+  // 4. Fetch Messages when Active Chat Changes
   useEffect(() => {
     if (activeChat) {
       loadChatHistory(activeChat.user_id);
-      // Mark as read in UI instantly
       setConversations(prev => 
         prev.map(c => c.user_id === activeChat.user_id ? { ...c, unread_count: 0 } : c)
       );
@@ -65,22 +111,50 @@ const PatientMessages: React.FC = () => {
     }, 100);
   };
 
-  // 3. WEBSOCKET LISTENER
+  // 5. WEBSOCKET LISTENER (FIXED FOR DUPLICATES & TYPES)
   useEffect(() => {
     if (!lastMessage || lastMessage.type !== "CHAT_MESSAGE") return;
 
     const incomingMsg = lastMessage.message;
-    const currentUserId = Number(user?.id) || 0;
+    const currentUserId = Number(user?.id) || 0; // Fix type cast
 
-    // A. Append to chat if open
-    if (activeChat && (incomingMsg.sender_id === activeChat.user_id || incomingMsg.receiver_id === activeChat.user_id)) {
-      setMessages(prev => [...prev, incomingMsg]);
+    const senderId = incomingMsg.sender_id;
+    const receiverId = incomingMsg.receiver_id;
+
+    // Check relevance
+    const isRelevantToActiveChat = activeChat && (
+        (senderId === activeChat.user_id && receiverId === currentUserId) || 
+        (senderId === currentUserId && receiverId === activeChat.user_id)
+    );
+
+    // A. Update Chat Window
+    if (isRelevantToActiveChat) {
+      setMessages(prev => {
+        // 1. Check exact ID match
+        if (prev.some(m => m.id === incomingMsg.id)) return prev;
+
+        // 2. Optimistic replacement logic
+        if (senderId === currentUserId) {
+            const tempIndex = prev.findIndex(m => 
+               m.content === incomingMsg.content && 
+               m.id > 1000000000000 && 
+               m.sender_id === currentUserId
+            );
+
+            if (tempIndex !== -1) {
+               const newMessages = [...prev];
+               newMessages[tempIndex] = incomingMsg;
+               return newMessages;
+            }
+        }
+        return [...prev, incomingMsg];
+      });
       scrollToBottom();
     }
 
-    // B. Update List Preview
+    // B. Update Sidebar List
     setConversations(prev => {
-      const otherUserId = incomingMsg.sender_id === currentUserId ? incomingMsg.receiver_id : incomingMsg.sender_id;
+      const otherUserId = senderId === currentUserId ? receiverId : senderId;
       const exists = prev.find(c => c.user_id === otherUserId);
       
       if (exists) {
@@ -96,14 +170,14 @@ const PatientMessages: React.FC = () => {
           return c;
         }).sort((a, b) => new Date(b.last_message_time!).getTime() - new Date(a.last_message_time!).getTime());
       } else {
-        loadConversations(); // New conversation started
+        loadConversations(); 
         return prev;
       }
     });
 
   }, [lastMessage, activeChat, user]);
 
-  // 4. Send Message
+  // 6. Send Message
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMessage.trim() || !activeChat) return;
@@ -111,11 +185,13 @@ const PatientMessages: React.FC = () => {
     const tempContent = newMessage;
     setNewMessage(""); 
 
+    const currentUserId = Number(user?.id) || 0; // Fix type cast
+
     try {
       // Optimistic UI
       const optimisticMsg: Message = {
         id: Date.now(),
-        sender_id: Number(user?.id) || 0,
+        sender_id: currentUserId,
         receiver_id: activeChat.user_id,
         content: tempContent,
         timestamp: new Date().toISOString(),
@@ -128,15 +204,25 @@ const PatientMessages: React.FC = () => {
       await messagesAPI.sendMessage(activeChat.user_id, tempContent);
       
       // Update Sidebar
-      setConversations(prev => prev.map(c => 
-        c.user_id === activeChat.user_id 
-          ? { ...c, last_message: tempContent, last_message_time: new Date().toISOString() } 
-          : c
-      ).sort((a, b) => new Date(b.last_message_time!).getTime() - new Date(a.last_message_time!).getTime()));
+      setConversations(prev => {
+         const exists = prev.find(c => c.user_id === activeChat.user_id);
+         if (exists) {
+            return prev.map(c => 
+              c.user_id === activeChat.user_id 
+                ? { ...c, last_message: tempContent, last_message_time: new Date().toISOString() } 
+                : c
+            ).sort((a, b) => new Date(b.last_message_time!).getTime() - new Date(a.last_message_time!).getTime());
+         } else {
+            setTimeout(() => loadConversations(), 500);
+            return prev;
+         }
+      });
 
     } catch (error) {
       console.error("Failed to send", error);
       toast.error("Failed to send message");
+      // Optional: remove optimistic message on failure
+      setMessages(prev => prev.filter(m => m.content !== tempContent));
     }
   };
 
@@ -171,9 +257,39 @@ const PatientMessages: React.FC = () => {
           </div>
 
           <div className="flex-1 overflow-y-auto">
+             
+             {/* SEARCH RESULTS SECTION */}
+             {searchTerm.trim().length > 0 && (
+              <div className="mb-4">
+                <p className="px-4 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">Search Results</p>
+                {searchResults.length === 0 ? (
+                   <p className="px-4 text-sm text-slate-500 italic">No user found</p>
+                ) : (
+                   searchResults.map(result => (
+                      <div 
+                        key={result.id}
+                        onClick={() => startNewChat(result)}
+                        className="px-4 py-3 flex items-center gap-3 cursor-pointer hover:bg-blue-50 transition-colors"
+                      >
+                         <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold">
+                            {result.name.charAt(0)}
+                         </div>
+                         <div>
+                            <p className="text-sm font-semibold text-slate-900">{result.name}</p>
+                            <p className="text-xs text-slate-500 capitalize">{result.role}</p>
+                         </div>
+                         <MessageSquarePlus className="w-4 h-4 text-blue-400 ml-auto" />
+                      </div>
+                   ))
+                )}
+                <div className="border-b border-slate-100 my-2"></div>
+              </div>
+            )}
+
+            {/* CONVERSATION LIST */}
             {loading ? (
               <div className="p-8 text-center text-slate-400">Loading...</div>
-            ) : filteredConversations.length === 0 ? (
+            ) : conversations.length === 0 && !searchTerm ? (
               <div className="p-8 text-center text-slate-400">No conversations yet</div>
             ) : (
               <div className="divide-y divide-slate-50">
@@ -255,7 +371,7 @@ const PatientMessages: React.FC = () => {
 
               <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50/50">
                 {messages.map((msg, idx) => {
-                  const isMe = msg.sender_id === Number(user?.id);
+                  const isMe = msg.sender_id === (Number(user?.id) || 0); // Fix type cast
                   return (
                     <div key={idx} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
                       <div className={`max-w-[75%] px-4 py-3 rounded-2xl shadow-sm ${
