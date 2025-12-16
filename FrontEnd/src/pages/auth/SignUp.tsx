@@ -7,8 +7,6 @@ import {
   Stethoscope,
   Ambulance,
 } from "lucide-react";
-// Assuming you have this component based on the SignIn reference
-// If not, you can remove this import and the <LoadingGear> block
 import LoadingGear from "@/components/common/LoadingGear"; 
 import Footer from "@/components/Footer";
 

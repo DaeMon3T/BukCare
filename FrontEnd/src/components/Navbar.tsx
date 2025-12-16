@@ -13,13 +13,12 @@ import {
   Search,
   Users,
   Calendar,
-  CheckCircle, // Added icon
-  Info         // Added icon
+  CheckCircle,
+  Info,
+  MessageCircle // Added icon for chat
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
-// 1. IMPORT WEBSOCKET
 import { useWebSocket } from "../context/WebSocketContext";
-import notificationsAPI from "@/services/notifications";
 
 interface NavbarProps {}
 
@@ -33,69 +32,63 @@ interface NotificationItem {
 const Navbar: React.FC<NavbarProps> = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  // 2. GET WEBSOCKET DATA
   const { lastMessage } = useWebSocket();
 
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // 3. REAL-TIME STATE
   const [notificationsList, setNotificationsList] = useState<NotificationItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [toast, setToast] = useState<NotificationItem | null>(null);
 
+  // ------------------------------------------------------------
+  // 🔔 WEBSOCKET LISTENER (FIXED)
+  // ------------------------------------------------------------
   useEffect(() => {
-    const fetchHistory = async () => {
-      try {
-        const history = await notificationsAPI.getAll();
-        
-        // Convert API format to UI format if needed
-        const formatted = history.map((n: any) => ({
-          title: n.title,
-          message: n.message,
-          type: n.type,
-          timestamp: new Date(n.created_at),
-          isRead: n.is_read
-        }));
+    if (!lastMessage) return;
 
-        setNotificationsList(formatted);
-        
-        // Count unread
-        const unread = formatted.filter((n: any) => !n.isRead).length;
-        setUnreadCount(unread);
-        
-      } catch (error) {
-        console.error("Failed to load notification history");
-      }
+    let title = "New Notification";
+    let messageContent = "You have a new update.";
+    let type = lastMessage.type || "info";
+
+    // 1. Handle CHAT Messages separately to prevent Object-render crash
+    if (type === "CHAT_MESSAGE") {
+        // Option A: Don't show toast for chat (let the Chat Page handle it)
+        // return; 
+
+        // Option B: Show toast with message content (Recommended)
+        title = `Message from ${lastMessage.message.sender_name || "User"}`;
+        messageContent = lastMessage.message.content; // Extract string content!
+    } else {
+        // Standard System Notifications
+        title = lastMessage.title || title;
+        messageContent = lastMessage.message || messageContent;
+    }
+
+    // Double check that messageContent is a string (Safety)
+    if (typeof messageContent !== "string") {
+        console.warn("Received non-string message content:", messageContent);
+        messageContent = "New activity received.";
+    }
+
+    const newNotification = {
+      title: title,
+      message: messageContent,
+      type: type,
+      timestamp: new Date()
     };
 
-    if (user) {
-      fetchHistory();
-    }
-  }, [user]);
+    // Add to list & Increment badge
+    setNotificationsList((prev) => [newNotification, ...prev]);
+    setUnreadCount((prev) => prev + 1);
 
-  // 4. LISTEN FOR MESSAGES
-  useEffect(() => {
-    if (lastMessage) {
-      const newNotification = {
-        title: lastMessage.title || "New Notification",
-        message: lastMessage.message || "You have a new update.",
-        type: lastMessage.type,
-        timestamp: new Date()
-      };
+    // Show Toast Popup
+    setToast(newNotification);
 
-      // Add to list & Increment badge
-      setNotificationsList((prev) => [newNotification, ...prev]);
-      setUnreadCount((prev) => prev + 1);
-
-      // Show Toast Popup
-      setToast(newNotification);
-
-      // Hide Toast after 5 seconds
-      const timer = setTimeout(() => setToast(null), 5000);
-      return () => clearTimeout(timer);
-    }
+    // Hide Toast after 5 seconds
+    const timer = setTimeout(() => setToast(null), 5000);
+    return () => clearTimeout(timer);
   }, [lastMessage]);
 
   // Wait until user is loaded
@@ -120,6 +113,8 @@ const Navbar: React.FC<NavbarProps> = () => {
           { label: "Dashboard", path: "/doctor/dashboard", icon: Home },
           { label: "Appointments", path: "/doctor/appointments", icon: Calendar },
           { label: "Availability", path: "/doctor/set-availability", icon: ClipboardList },
+          // Added Messages Link for convenience
+          { label: "Messages", path: "/doctor/messages", icon: MessageCircle },
         ];
       case "patient":
       default:
@@ -127,21 +122,16 @@ const Navbar: React.FC<NavbarProps> = () => {
           { label: "Home", path: "/patient/home", icon: Home },
           { label: "Find Doctors", path: "/patient/find-doctor", icon: Search },
           { label: "Appointments", path: "/patient/appointments", icon: ClipboardList },
+          // Added Messages Link for convenience
+          { label: "Messages", path: "/patient/messages", icon: MessageCircle },
         ];
     }
   };
 
   const navigationItems = getNavigationItems();
-  const homeLink =
-    userRole === "admin"
-      ? "/admin/dashboard"
-      : userRole === "doctor"
-      ? "/doctor/dashboard"
-      : "/patient/home";
-
+  const homeLink = `/${userRole === 'patient' ? 'patient/home' : userRole + '/dashboard'}`;
   const profileLink = `/${userRole}/profile`;
 
-  // Handle logout and redirect
   const handleLogout = async () => {
     await logout();
     navigate("/");
@@ -149,7 +139,7 @@ const Navbar: React.FC<NavbarProps> = () => {
 
   return (
     <>
-      {/* 5. LIVE TOAST NOTIFICATION POPUP */}
+      {/* 🔔 TOAST NOTIFICATION POPUP */}
       <AnimatePresence>
         {toast && (
           <motion.div
@@ -159,11 +149,15 @@ const Navbar: React.FC<NavbarProps> = () => {
             className="fixed top-24 right-4 z-[100] bg-white border border-blue-100 shadow-xl rounded-xl p-4 w-80 flex items-start gap-3 pointer-events-auto"
           >
             <div className="p-2 bg-blue-50 rounded-full text-blue-600">
-              <Bell className="w-5 h-5" />
+              {toast.type === "CHAT_MESSAGE" ? (
+                  <MessageCircle className="w-5 h-5" />
+              ) : (
+                  <Bell className="w-5 h-5" />
+              )}
             </div>
             <div className="flex-1">
               <h4 className="font-semibold text-gray-800 text-sm">{toast.title}</h4>
-              <p className="text-gray-600 text-xs mt-1">{toast.message}</p>
+              <p className="text-gray-600 text-xs mt-1 line-clamp-2">{toast.message}</p>
             </div>
             <button onClick={() => setToast(null)} className="text-gray-400 hover:text-gray-600">
               <X className="w-4 h-4" />
@@ -232,14 +226,20 @@ const Navbar: React.FC<NavbarProps> = () => {
                     <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-rose-500 border-2 border-white rounded-full animate-pulse"></span>
                   )}
                 </button>
-                {showNotifications && (
-                  <div className="absolute right-0 mt-2 w-80 bg-white/95 backdrop-blur-xl rounded-xl shadow-xl border border-slate-200/50 overflow-hidden z-50">
-                    <div className="px-4 py-3 bg-gradient-to-r from-blue-50 to-cyan-50 border-b border-slate-200/50 flex justify-between">
-                      <h3 className="font-semibold text-slate-800">Notifications</h3>
-                      <span className="text-xs text-slate-500">{notificationsList.length} New</span>
-                    </div>
-                    {/* 6. DYNAMIC NOTIFICATION LIST */}
-                    <div className="max-h-96 overflow-y-auto">
+
+                <AnimatePresence>
+                  {showNotifications && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 10 }}
+                      className="absolute right-0 mt-2 w-80 bg-white/95 backdrop-blur-xl rounded-xl shadow-xl border border-slate-200/50 overflow-hidden z-50"
+                    >
+                      <div className="px-4 py-3 bg-gradient-to-r from-blue-50 to-cyan-50 border-b border-slate-200/50 flex justify-between">
+                        <h3 className="font-semibold text-slate-800">Notifications</h3>
+                        <span className="text-xs text-slate-500">{notificationsList.length} New</span>
+                      </div>
+                      <div className="max-h-96 overflow-y-auto">
                         {notificationsList.length === 0 ? (
                           <div className="p-8 text-slate-500 text-sm text-center">No notifications yet</div>
                         ) : (
@@ -248,14 +248,17 @@ const Navbar: React.FC<NavbarProps> = () => {
                               <div key={index} className="p-4 hover:bg-slate-50 transition-colors">
                                 <div className="flex gap-3">
                                    <div className="mt-1">
-                                    {notif.type?.includes('APPROVED') || notif.type === 'success' ? 
-                                      <CheckCircle className="w-4 h-4 text-green-500" /> : 
+                                    {notif.type === 'CHAT_MESSAGE' ? (
+                                      <MessageCircle className="w-4 h-4 text-purple-500" />
+                                    ) : notif.type?.includes('APPROVED') || notif.type === 'success' ? (
+                                      <CheckCircle className="w-4 h-4 text-green-500" /> 
+                                    ) : (
                                       <Info className="w-4 h-4 text-blue-500" />
-                                    }
+                                    )}
                                    </div>
                                    <div>
                                       <h5 className="text-sm font-medium text-slate-800">{notif.title}</h5>
-                                      <p className="text-xs text-slate-600 mt-1">{notif.message}</p>
+                                      <p className="text-xs text-slate-600 mt-1 line-clamp-1">{notif.message}</p>
                                       <p className="text-[10px] text-slate-400 mt-2">{notif.timestamp.toLocaleTimeString()}</p>
                                    </div>
                                 </div>
@@ -263,9 +266,10 @@ const Navbar: React.FC<NavbarProps> = () => {
                             ))}
                           </div>
                         )}
-                    </div>
-                  </div>
-                )}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
 
               {/* Profile */}
@@ -320,7 +324,7 @@ const Navbar: React.FC<NavbarProps> = () => {
           </div>
         </div>
 
-        {/* Mobile Sidebar (Kept exactly as your original) */}
+        {/* Mobile Sidebar */}
         <AnimatePresence>
           {sidebarOpen && (
             <>

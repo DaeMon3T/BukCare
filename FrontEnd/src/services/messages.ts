@@ -55,6 +55,10 @@ const messagesAPI = {
     });
     return response.data;
   },
+
+  deleteMessage: async (messageId: number): Promise<void> => {
+    await api.delete(`/messages/${messageId}`);
+  }
 };
 
 export default messagesAPI;
