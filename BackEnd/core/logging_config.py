@@ -1,4 +1,3 @@
-# core/logging_config.py
 import logging
 import os
 from pathlib import Path
@@ -31,36 +30,77 @@ class JSONFormatter(logging.Formatter):
         return json.dumps(log_entry)
 
 class LineLimitedRotatingFileHandler(logging.Handler):
-    """Rotate logs when line count exceeds a limit"""
+    """Rotate logs when line count exceeds a limit (Windows Safe)"""
     def __init__(self, filename, max_lines=1000, backup_count=5, formatter=None):
         super().__init__()
         self.filename = Path(filename)
         self.max_lines = max_lines
         self.backup_count = backup_count
         self.formatter = formatter or logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+        
+        # Ensure directory exists
         self.filename.parent.mkdir(exist_ok=True)
-        self.filename.touch(exist_ok=True)
-
-    def emit(self, record):
-        log_entry = self.format(record)
-        with self.filename.open("a", encoding="utf-8") as f:
-            f.write(log_entry + "\n")
-        self._rotate_if_needed()
-
-    def _rotate_if_needed(self):
-        with self.filename.open("r", encoding="utf-8") as f:
-            lines = f.readlines()
-        if len(lines) > self.max_lines:
-            for i in reversed(range(1, self.backup_count)):
-                old = self.filename.with_suffix(f".{i}")
-                new = self.filename.with_suffix(f".{i+1}")
-                if old.exists():
-                    old.rename(new)
-            self.filename.rename(self.filename.with_suffix(".1"))
+        # Ensure file exists
+        if not self.filename.exists():
             self.filename.touch()
 
-    def format(self, record):
-        return self.formatter.format(record)
+    def emit(self, record):
+        try:
+            log_entry = self.format(record)
+            # Open and close on every write to avoid file locking issues on Windows
+            with self.filename.open("a", encoding="utf-8") as f:
+                f.write(log_entry + "\n")
+            self._rotate_if_needed()
+        except Exception:
+            self.handleError(record)
+
+    def _rotate_if_needed(self):
+        # 1. Check line count
+        try:
+            with self.filename.open("r", encoding="utf-8") as f:
+                # Readlines is simple but loads file into memory. 
+                # Fine for 1000 lines.
+                lines = f.readlines()
+        except FileNotFoundError:
+            return 
+
+        if len(lines) <= self.max_lines:
+            return
+
+        # 2. Perform Rotation (Backwards: .4 -> .5, then .3 -> .4)
+        for i in range(self.backup_count - 1, 0, -1):
+            sfn = self.filename.with_suffix(f".{i}")     # Source: app.log.1
+            dfn = self.filename.with_suffix(f".{i + 1}") # Dest:   app.log.2
+            
+            if sfn.exists():
+                # 🔥 WINDOWS FIX: Force delete destination if it exists
+                if dfn.exists():
+                    try:
+                        dfn.unlink()
+                    except PermissionError:
+                        continue # Skip if locked
+                
+                try:
+                    sfn.rename(dfn)
+                except OSError:
+                    pass
+
+        # 3. Rename current log to .1
+        dfn = self.filename.with_suffix(".1")
+        if dfn.exists():
+            try:
+                dfn.unlink()
+            except PermissionError:
+                pass # If locked, we can't rotate. Just keep appending to main file.
+                return
+
+        try:
+            self.filename.rename(dfn)
+        except OSError:
+            pass
+
+        # 4. Create fresh empty log file
+        self.filename.touch()
 
 def setup_logging():
     """Setup logging with line-based rotation"""

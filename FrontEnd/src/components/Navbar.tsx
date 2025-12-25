@@ -15,18 +15,22 @@ import {
   Calendar,
   CheckCircle,
   Info,
-  MessageCircle // Added icon for chat
+  MessageCircle
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useWebSocket } from "../context/WebSocketContext";
+import notificationsAPI from "../services/notifications"; // Ensure path is correct
 
 interface NavbarProps {}
 
 interface NotificationItem {
+  id: number;
   title: string;
   message: string;
   type?: string;
   timestamp: Date;
+  isRead: boolean;
+  appointment_id?: number;
 }
 
 const Navbar: React.FC<NavbarProps> = () => {
@@ -42,64 +46,128 @@ const Navbar: React.FC<NavbarProps> = () => {
   const [unreadCount, setUnreadCount] = useState(0);
   const [toast, setToast] = useState<NotificationItem | null>(null);
 
-  // ------------------------------------------------------------
-  // 🔔 WEBSOCKET LISTENER (FIXED)
-  // ------------------------------------------------------------
+  // 1. FETCH HISTORY ON MOUNT
+  useEffect(() => {
+    const fetchHistory = async () => {
+      try {
+        const history = await notificationsAPI.getAll();
+        
+        const formatted = history.map((n: any) => ({
+          id: n.id,
+          title: n.title,
+          message: n.message,
+          type: n.type,
+          timestamp: new Date(n.created_at),
+          isRead: n.is_read,
+          appointment_id: n.appointment_id
+        }));
+
+        setNotificationsList(formatted);
+        
+        const unread = formatted.filter((n: any) => !n.isRead).length;
+        setUnreadCount(unread);
+        
+      } catch (error) {
+        console.error("Failed to load notification history");
+      }
+    };
+
+    if (user) {
+      fetchHistory();
+    }
+  }, [user]);
+
+  // 2. LISTEN FOR MESSAGES (FIXED - No Ghosts 👻)
   useEffect(() => {
     if (!lastMessage) return;
+
+    // 🔥 CHECK: Is this message old? (Older than 2 seconds)
+    // If we just navigated to this page, the message exists in context but is "old".
+    const isFresh = Date.now() - (lastMessage._receivedAt || 0) < 2000;
+
+    if (!isFresh) {
+        // Even if it's not fresh, we might want to update the notification list/badge count 
+        // silently, but we definitely DO NOT show the toast popup.
+        return; 
+    }
 
     let title = "New Notification";
     let messageContent = "You have a new update.";
     let type = lastMessage.type || "info";
+    let appointment_id = null;
 
-    // 1. Handle CHAT Messages separately to prevent Object-render crash
+    // ... (Your existing logic for extracting CHAT vs SYSTEM content) ...
+    // [Keep your existing switch logic here for CHAT_MESSAGE vs notification object]
+    // ...
+
     if (type === "CHAT_MESSAGE") {
-        // Option A: Don't show toast for chat (let the Chat Page handle it)
-        // return; 
-
-        // Option B: Show toast with message content (Recommended)
-        title = `Message from ${lastMessage.message.sender_name || "User"}`;
-        messageContent = lastMessage.message.content; // Extract string content!
-    } else {
-        // Standard System Notifications
-        title = lastMessage.title || title;
-        messageContent = lastMessage.message || messageContent;
+        const senderName = lastMessage.message.sender_name || "User";
+        title = `Message from ${senderName}`;
+        messageContent = lastMessage.message.content || "Sent a message"; 
+    } else if (lastMessage.notification) {
+        title = lastMessage.notification.title;
+        messageContent = lastMessage.notification.message;
+        type = lastMessage.notification.type;
+        appointment_id = lastMessage.notification.appointment_id;
     }
 
-    // Double check that messageContent is a string (Safety)
-    if (typeof messageContent !== "string") {
-        console.warn("Received non-string message content:", messageContent);
-        messageContent = "New activity received.";
-    }
-
-    const newNotification = {
-      title: title,
+    const newNotification: NotificationItem = {
+      id: Date.now(),
+      title,
       message: messageContent,
-      type: type,
-      timestamp: new Date()
+      type,
+      timestamp: new Date(),
+      isRead: false,
+      appointment_id: appointment_id || undefined
     };
 
     // Add to list & Increment badge
     setNotificationsList((prev) => [newNotification, ...prev]);
-    setUnreadCount((prev) => prev + 1);
+    if (type !== "CHAT_MESSAGE") {
+        setUnreadCount((prev) => prev + 1);
+    }
 
-    // Show Toast Popup
+    // ✅ SHOW TOAST (Only because we passed the freshness check)
     setToast(newNotification);
 
     // Hide Toast after 5 seconds
     const timer = setTimeout(() => setToast(null), 5000);
     return () => clearTimeout(timer);
-  }, [lastMessage]);
+  }, [lastMessage]); // Dependency on lastMessage ensures this runs when new data arrives
+
+  // 3. HANDLE CLICKING A NOTIFICATION
+  const handleNotificationClick = async (notif: NotificationItem) => {
+    // A. Navigate based on type
+    if (notif.type === "CHAT_MESSAGE") {
+        navigate(user?.role === 'doctor' ? '/doctor/messages' : '/patient/messages');
+    } else if (notif.appointment_id) {
+        navigate(user?.role === 'doctor' ? '/doctor/appointments' : '/patient/appointments');
+    }
+
+    // B. Mark as read in Backend
+    if (!notif.isRead && notif.type !== "CHAT_MESSAGE") {
+        try {
+            await notificationsAPI.markAsRead(notif.id);
+            
+            // C. Update Local State
+            setNotificationsList(prev => prev.map(n => 
+                n.id === notif.id ? { ...n, isRead: true } : n
+            ));
+            setUnreadCount(prev => Math.max(0, prev - 1));
+        } catch (error) {
+            console.error("Failed to mark as read");
+        }
+    }
+
+    // D. Close Dropdown
+    setShowNotifications(false);
+  };
 
   // Wait until user is loaded
   if (!user) return null;
 
   const userRole = user.role || "patient";
-
-  const displayName =
-    user.name?.trim() ||
-    `${user.fname || ""} ${user.lname || ""}`.trim() ||
-    "Guest";
+  const displayName = user.name?.trim() || `${user.fname || ""} ${user.lname || ""}`.trim() || "Guest";
 
   const getNavigationItems = () => {
     switch (userRole) {
@@ -113,7 +181,6 @@ const Navbar: React.FC<NavbarProps> = () => {
           { label: "Dashboard", path: "/doctor/dashboard", icon: Home },
           { label: "Appointments", path: "/doctor/appointments", icon: Calendar },
           { label: "Availability", path: "/doctor/set-availability", icon: ClipboardList },
-          // Added Messages Link for convenience
           { label: "Messages", path: "/doctor/messages", icon: MessageCircle },
         ];
       case "patient":
@@ -122,7 +189,6 @@ const Navbar: React.FC<NavbarProps> = () => {
           { label: "Home", path: "/patient/home", icon: Home },
           { label: "Find Doctors", path: "/patient/find-doctor", icon: Search },
           { label: "Appointments", path: "/patient/appointments", icon: ClipboardList },
-          // Added Messages Link for convenience
           { label: "Messages", path: "/patient/messages", icon: MessageCircle },
         ];
     }
@@ -146,7 +212,8 @@ const Navbar: React.FC<NavbarProps> = () => {
             initial={{ opacity: 0, y: -20, x: 20 }}
             animate={{ opacity: 1, y: 0, x: 0 }}
             exit={{ opacity: 0, y: -20, x: 20 }}
-            className="fixed top-24 right-4 z-[100] bg-white border border-blue-100 shadow-xl rounded-xl p-4 w-80 flex items-start gap-3 pointer-events-auto"
+            className="fixed top-24 right-4 z-[100] bg-white border border-blue-100 shadow-xl rounded-xl p-4 w-80 flex items-start gap-3 pointer-events-auto cursor-pointer hover:bg-slate-50"
+            onClick={() => handleNotificationClick(toast)}
           >
             <div className="p-2 bg-blue-50 rounded-full text-blue-600">
               {toast.type === "CHAT_MESSAGE" ? (
@@ -159,7 +226,13 @@ const Navbar: React.FC<NavbarProps> = () => {
               <h4 className="font-semibold text-gray-800 text-sm">{toast.title}</h4>
               <p className="text-gray-600 text-xs mt-1 line-clamp-2">{toast.message}</p>
             </div>
-            <button onClick={() => setToast(null)} className="text-gray-400 hover:text-gray-600">
+            <button 
+                onClick={(e) => {
+                    e.stopPropagation(); 
+                    setToast(null);
+                }} 
+                className="text-gray-400 hover:text-gray-600"
+            >
               <X className="w-4 h-4" />
             </button>
           </motion.div>
@@ -215,10 +288,7 @@ const Navbar: React.FC<NavbarProps> = () => {
               {/* Notifications */}
               <div className="relative">
                 <button
-                  onClick={() => {
-                    setShowNotifications(!showNotifications);
-                    if (!showNotifications) setUnreadCount(0); // Clear badge
-                  }}
+                  onClick={() => setShowNotifications(!showNotifications)}
                   className="relative p-2 text-slate-600 hover:text-blue-600 hover:bg-blue-50/80 rounded-lg transition-all"
                 >
                   <Bell className="w-5 h-5" />
@@ -237,7 +307,7 @@ const Navbar: React.FC<NavbarProps> = () => {
                     >
                       <div className="px-4 py-3 bg-gradient-to-r from-blue-50 to-cyan-50 border-b border-slate-200/50 flex justify-between">
                         <h3 className="font-semibold text-slate-800">Notifications</h3>
-                        <span className="text-xs text-slate-500">{notificationsList.length} New</span>
+                        <span className="text-xs text-slate-500">{unreadCount} Unread</span>
                       </div>
                       <div className="max-h-96 overflow-y-auto">
                         {notificationsList.length === 0 ? (
@@ -245,7 +315,11 @@ const Navbar: React.FC<NavbarProps> = () => {
                         ) : (
                           <div className="divide-y divide-slate-100">
                             {notificationsList.map((notif, index) => (
-                              <div key={index} className="p-4 hover:bg-slate-50 transition-colors">
+                              <div 
+                                key={index} 
+                                onClick={() => handleNotificationClick(notif)}
+                                className={`p-4 hover:bg-slate-50 transition-colors cursor-pointer ${!notif.isRead ? 'bg-blue-50/30' : ''}`}
+                              >
                                 <div className="flex gap-3">
                                    <div className="mt-1">
                                     {notif.type === 'CHAT_MESSAGE' ? (
@@ -257,7 +331,9 @@ const Navbar: React.FC<NavbarProps> = () => {
                                     )}
                                    </div>
                                    <div>
-                                      <h5 className="text-sm font-medium text-slate-800">{notif.title}</h5>
+                                      <h5 className={`text-sm ${!notif.isRead ? 'font-semibold text-slate-900' : 'font-medium text-slate-700'}`}>
+                                        {notif.title}
+                                      </h5>
                                       <p className="text-xs text-slate-600 mt-1 line-clamp-1">{notif.message}</p>
                                       <p className="text-[10px] text-slate-400 mt-2">{notif.timestamp.toLocaleTimeString()}</p>
                                    </div>
@@ -292,6 +368,8 @@ const Navbar: React.FC<NavbarProps> = () => {
                   <ChevronDown className="w-4 h-4 text-slate-500" />
                 </button>
 
+                {/* ... Profile Dropdown & Mobile Sidebar (Code remains same as yours) ... */}
+                {/* [Keep your existing Profile Dropdown and Mobile Sidebar code here, it is correct] */}
                 {showProfileDropdown && (
                   <div className="absolute right-0 mt-2 w-64 bg-white/95 backdrop-blur-xl rounded-xl shadow-xl border border-slate-200/50 overflow-hidden z-50">
                     <div className="px-4 py-3 bg-gradient-to-r from-blue-50 to-cyan-50 border-b border-slate-200/50">
@@ -343,6 +421,7 @@ const Navbar: React.FC<NavbarProps> = () => {
                 className="fixed top-0 left-0 h-full w-72 bg-white/95 backdrop-blur-xl shadow-2xl z-50 lg:hidden"
               >
                 <div className="p-6">
+                  {/* ... Same Mobile Menu Logic ... */}
                   <div className="flex justify-between items-center mb-8">
                     <Link to={homeLink} className="flex items-center space-x-2">
                       <div className="w-9 h-9 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-lg flex items-center justify-center shadow-md">
@@ -359,8 +438,7 @@ const Navbar: React.FC<NavbarProps> = () => {
                       <X className="w-5 h-5 text-slate-600" />
                     </button>
                   </div>
-
-                  <nav className="space-y-2">
+                   <nav className="space-y-2">
                     {navigationItems.map((item) => {
                       const Icon = item.icon;
                       const isActive = window.location.pathname === item.path;
@@ -389,8 +467,7 @@ const Navbar: React.FC<NavbarProps> = () => {
                       <span>Profile</span>
                     </Link>
                   </nav>
-
-                  <div className="mt-6 pt-6 border-t border-slate-200">
+                   <div className="mt-6 pt-6 border-t border-slate-200">
                     <button
                       onClick={() => {
                         handleLogout();

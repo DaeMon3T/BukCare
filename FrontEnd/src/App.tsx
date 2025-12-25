@@ -5,8 +5,10 @@ import type { FC } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './context/AuthContext';
+import { WebSocketProvider } from './context/WebSocketContext'; // ✅ Imported
 import { AdminRoute, DoctorRoute, PatientRoute } from './routes/ProtectedRoutes';
 import ErrorBoundary from './components/ErrorBoundary';
+import { CallProvider } from './context/CallContext';
 
 // Auth Components
 import GoogleCallbackHandler from './components/auth/GoogleCallbackHandler';
@@ -29,7 +31,7 @@ import Terms from './pages/public/Terms';
 import AdminDashboard from './pages/admin/Dashboard';
 import AdminProfile from './pages/admin/Profile';
 import AdminUsers from './pages/admin/Users';
-import Usersdetail from './pages/admin/Usersdetail'; // Added user details page
+import Usersdetail from './pages/admin/Usersdetail';
 
 // Doctor Pages
 import DoctorLayout from './layouts/DoctorLayout';
@@ -47,7 +49,6 @@ import PatientProfile from './pages/patient/Profile';
 import FindDoctor from './pages/patient/FindDoctor';
 import BookAppointment from './pages/patient/BookAppointment';
 import PatientAppointmentHistory from './pages/patient/AppointmentHistory';
-import { WebSocketProvider } from './context/WebSocketContext';
 import PatientMessages from './pages/patient/Messages';
 
 // --------------------
@@ -57,19 +58,22 @@ const App: FC = () => {
   return (
     <ErrorBoundary>
       <AuthProvider>
-        <WebSocketProvider>
-          <Router>
+        {/*
+          Now WebSocketProvider is inside Router, allowing it to use navigation hooks if needed.
+        */}
+        <Router>
+          <WebSocketProvider>
+            <CallProvider>
             <Toaster position="top-center" reverseOrder={false} />
 
             <div className="App">
               <Routes>
                 {/* -------------------- Public Routes -------------------- */}
                 <Route path="/" element={<Landing />} />
-                <Route path="/About" element={<About />} />
+                <Route path="/about" element={<About />} />
                 <Route path="/contact" element={<Contact />} />
                 <Route path="/services" element={<Services />} />
                 <Route path="/terms" element={<Terms />} />
-               
 
                 {/* -------------------- Auth Routes -------------------- */}
                 <Route path="/signin" element={<SignIn />} />
@@ -77,7 +81,7 @@ const App: FC = () => {
                 <Route path="/forgot-password" element={<ForgotPassword />} />
                 <Route path="/complete-profile" element={<CompleteProfile />} />
 
-                {/* ✅ Google OAuth Callback Handler */}
+                {/* Google OAuth Callback Handler */}
                 <Route path="/auth/callback" element={<GoogleCallbackHandler />} />
                 <Route path="/auth/success" element={<OAuthSuccess />} />
 
@@ -94,12 +98,10 @@ const App: FC = () => {
                   path="/admin/users/:id"
                   element={<AdminRoute><Usersdetail /></AdminRoute>}
                 />
-
                 <Route
                   path="/admin/profile"
                   element={<AdminRoute><AdminProfile /></AdminRoute>}
                 />
-                
 
                 {/* -------------------- Doctor Routes -------------------- */}
                 <Route element={<DoctorRoute><DoctorLayout /></DoctorRoute>}>
@@ -145,8 +147,9 @@ const App: FC = () => {
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </div>
-          </Router>
-        </WebSocketProvider>
+            </CallProvider>
+          </WebSocketProvider>
+        </Router>
       </AuthProvider>
     </ErrorBoundary>
   );

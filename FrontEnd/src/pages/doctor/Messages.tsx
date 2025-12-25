@@ -1,14 +1,11 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Send, Search, MoreVertical, Phone, Video, User, ArrowLeft, MessageSquarePlus, Trash2, Reply, Forward } from "lucide-react";
+import { Send, Search, MoreVertical, Phone, Video as VideoIcon, User, ArrowLeft, MessageSquarePlus, Trash2, Reply } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import { useAuth } from "@/context/AuthContext";
 import { useWebSocket } from "@/context/WebSocketContext";
 import toast from "react-hot-toast";
-
-// FIX 1: Import the service (default export) normally
+// Note: VideoCall import removed as we use New Tab strategy
 import messagesAPI from "@/services/messages"; 
-
-// FIX 2: Import the types separately using 'import type'
 import type { Conversation, Message, UserSearchResult } from "@/services/messages";
 
 const Messages: React.FC = () => {
@@ -24,10 +21,7 @@ const Messages: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [isMobileChatOpen, setIsMobileChatOpen] = useState(false);
   
-  // State for message options menu
   const [activeMessageId, setActiveMessageId] = useState<number | null>(null);
-  const [longPressTimer, setLongPressTimer] = useState<NodeJS.Timeout | null>(null);
-
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // 1. Fetch Conversations
@@ -46,7 +40,7 @@ const Messages: React.FC = () => {
     }
   };
 
-  // 2. Search Logic (Debounced)
+  // 2. Search Logic
   useEffect(() => {
     const delayDebounceFn = setTimeout(async () => {
       if (searchTerm.trim().length > 0) {
@@ -59,34 +53,31 @@ const Messages: React.FC = () => {
       } else {
         setSearchResults([]);
       }
-    }, 300); // Wait 300ms after typing stops
+    }, 300);
 
     return () => clearTimeout(delayDebounceFn);
   }, [searchTerm]);
 
   // 3. Start Chat with New User
   const startNewChat = (userResult: UserSearchResult) => {
-    // Check if we already have a conversation with this person
     const existingConv = conversations.find(c => c.user_id === userResult.id);
     
     if (existingConv) {
       setActiveChat(existingConv);
     } else {
-      // Create a temporary conversation object
-      // FIX: Ensure picture is a string (default to empty string if undefined)
       const tempConv: Conversation = {
         user_id: userResult.id,
         name: userResult.name,
         role: userResult.role,
-        picture: userResult.picture || "", 
         unread_count: 0,
         last_message: "",
-        last_message_time: new Date().toISOString() 
+        last_message_time: new Date().toISOString(),
+        ...(userResult.picture ? { picture: userResult.picture } : {})
       } as Conversation; 
       
       setActiveChat(tempConv);
     }
-    setSearchTerm(""); // Clear search
+    setSearchTerm(""); 
     setSearchResults([]);
     setIsMobileChatOpen(true);
   };
@@ -95,7 +86,7 @@ const Messages: React.FC = () => {
   useEffect(() => {
     if (activeChat) {
       loadChatHistory(activeChat.user_id);
-      // Mark local unread as 0
+      // Mark as read locally in the list
       setConversations(prev => 
         prev.map(c => c.user_id === activeChat.user_id ? { ...c, unread_count: 0 } : c)
       );
@@ -112,170 +103,182 @@ const Messages: React.FC = () => {
     }
   };
 
+  // Scroll to bottom whenever messages change
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
   const scrollToBottom = () => {
-    setTimeout(() => {
-      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }, 100);
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  // 5. WebSocket Listener (FIXED FOR DUPLICATES)
+  // 5. WebSocket Listener
   useEffect(() => {
     if (!lastMessage) return;
 
-    // HANDLE DELETION
+    // A. HANDLE DELETION
     if (lastMessage.type === "MESSAGE_DELETED") {
         setMessages(prev => prev.map(m => 
             m.id === lastMessage.message_id 
-                ? { ...m, content: "Message unsent", is_read: true } // Mark as deleted logic if needed, or filter out
+                ? { ...m, content: "Message unsent" } 
                 : m
-        ).filter(m => m.id !== lastMessage.message_id)); // OR just remove it completely:
-        // Note: Choose one strategy. If you want "Message unsent" text, keep map. If you want it gone, use filter.
-        // Let's use filter to completely remove for now as per previous request context, or update content.
-        // Actually, let's just filter it out for cleaner UI unless 'is_deleted' flag exists.
-        // If the backend sends 'is_deleted', we could show it.
-        // For now, let's assume we remove it from the view:
-         setMessages(prev => prev.filter(m => m.id !== lastMessage.message_id));
+        ));
+        return;
     }
 
-    if (lastMessage.type !== "CHAT_MESSAGE") return;
+    // B. HANDLE NEW MESSAGE
+    if (lastMessage.type === "CHAT_MESSAGE" && lastMessage.message) {
+        const incomingMsg = lastMessage.message;
+        const currentUserId = Number(user?.id) || 0;
+        const senderId = incomingMsg.sender_id;
+        const receiverId = incomingMsg.receiver_id;
 
-    const incomingMsg = lastMessage.message;
-    // Fix type mismatch: Auth ID is string | number, Message ID is number
-    const currentUserId = Number(user?.id) || 0;
+        // Check if message belongs to current active chat
+        const isRelevantToActiveChat = activeChat && (
+            (senderId === activeChat.user_id && receiverId === currentUserId) || 
+            (senderId === currentUserId && receiverId === activeChat.user_id)
+        );
 
-    // Logic: If I am sender, other is receiver. If I am receiver, other is sender.
-    const senderId = incomingMsg.sender_id;
-    const receiverId = incomingMsg.receiver_id;
+        if (isRelevantToActiveChat) {
+          setMessages(prev => {
+            // Avoid duplicates
+            if (prev.some(m => m.id === incomingMsg.id)) return prev;
 
-    const isRelevantToActiveChat = activeChat && (
-        (senderId === activeChat.user_id && receiverId === currentUserId) || 
-        (senderId === currentUserId && receiverId === activeChat.user_id)
-    );
+            // Handle Optimistic UI replacement (Sender side)
+            if (senderId === currentUserId) {
+                const tempIndex = prev.findIndex(m => 
+                   m.content === incomingMsg.content && 
+                   m.id > 1000000000000 && 
+                   m.sender_id === currentUserId
+                );
 
-    // A. Update Chat Window
-    if (isRelevantToActiveChat) {
-      setMessages(prev => {
-        // 1. Check if we already have this exact message ID (from a previous socket event)
-        if (prev.some(m => m.id === incomingMsg.id)) return prev;
-
-        // 2. OPTIMISTIC REPLACEMENT (The Fix)
-        // If *I* sent this message, find the temporary one I created earlier
-        if (senderId === currentUserId) {
-           // Look for a message with same content and a huge temporary ID (timestamp)
-           // created in the last 10 seconds
-           const tempIndex = prev.findIndex(m => 
-              m.content === incomingMsg.content && 
-              m.id > 1000000000000 && // Temp IDs are big timestamps
-              m.sender_id === currentUserId
-           );
-
-           if (tempIndex !== -1) {
-              // REPLACE the temp message with the real one
-              const newMessages = [...prev];
-              newMessages[tempIndex] = incomingMsg;
-              return newMessages;
-           }
+                if (tempIndex !== -1) {
+                   const newMessages = [...prev];
+                   newMessages[tempIndex] = incomingMsg; // Replace temp with real
+                   return newMessages;
+                }
+            }
+            return [...prev, incomingMsg];
+          });
         }
 
-        // If no match found, append normally
-        return [...prev, incomingMsg];
-      });
-      scrollToBottom();
-    }
-
-    // B. Update Sidebar List
-    setConversations(prev => {
-      const otherUserId = senderId === currentUserId ? receiverId : senderId;
-      const exists = prev.find(c => c.user_id === otherUserId);
-      
-      if (exists) {
-        return prev.map(c => {
-          if (c.user_id === otherUserId) {
-            return {
-              ...c,
-              last_message: incomingMsg.content,
-              last_message_time: incomingMsg.timestamp,
-              unread_count: (activeChat?.user_id === otherUserId) ? 0 : c.unread_count + 1
-            };
+        // Update Conversation List (Move to top, update preview)
+        setConversations(prev => {
+          const otherUserId = senderId === currentUserId ? receiverId : senderId;
+          const exists = prev.find(c => c.user_id === otherUserId);
+          
+          if (exists) {
+            return prev.map(c => {
+              if (c.user_id === otherUserId) {
+                return {
+                  ...c,
+                  last_message: incomingMsg.content.includes("📞 Started a Video Call") ? "📞 Video Call" : incomingMsg.content,
+                  last_message_time: incomingMsg.timestamp,
+                  unread_count: (activeChat?.user_id === otherUserId) ? 0 : c.unread_count + 1
+                };
+              }
+              return c;
+            }).sort((a, b) => new Date(b.last_message_time!).getTime() - new Date(a.last_message_time!).getTime());
+          } else {
+            loadConversations(); // Reload if it's a new conversation
+            return prev;
           }
-          return c;
-        }).sort((a, b) => new Date(b.last_message_time!).getTime() - new Date(a.last_message_time!).getTime());
-      } else {
-        // Reload list to get new user details
-        loadConversations(); 
-        return prev;
-      }
-    });
-
+        });
+    }
   }, [lastMessage, activeChat, user]);
 
-  // 6. Send Message
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newMessage.trim() || !activeChat) return;
-
-    const tempContent = newMessage;
-    setNewMessage(""); 
-
-    const currentUserId = Number(user?.id) || 0;
-
-    try {
-      // Optimistic UI
-      const optimisticMsg: Message = {
-        id: Date.now(),
-        sender_id: currentUserId,
-        receiver_id: activeChat.user_id,
-        content: tempContent,
-        timestamp: new Date().toISOString(),
-        is_read: false
-      };
-      setMessages(prev => [...prev, optimisticMsg]);
-      scrollToBottom();
-
-      // API Call
-      await messagesAPI.sendMessage(activeChat.user_id, tempContent);
-      
-      // Update Sidebar Preview
-      setConversations(prev => {
-        const exists = prev.find(c => c.user_id === activeChat.user_id);
-        if(exists) {
-             return prev.map(c => 
-                c.user_id === activeChat.user_id 
-                  ? { ...c, last_message: tempContent, last_message_time: new Date().toISOString() } 
-                  : c
-              ).sort((a, b) => new Date(b.last_message_time!).getTime() - new Date(a.last_message_time!).getTime());
-        } else {
-            setTimeout(() => loadConversations(), 500);
-            return prev;
-        }
-      });
-
-    } catch (error) {
-      console.error("Failed to send", error);
-      toast.error("Failed to send message");
-    }
-  };
-
+  // 6. Delete Message Logic
   const handleDeleteMessage = async (msgId: number) => {
-    // Optimistic remove
-    setMessages(prev => prev.filter(m => m.id !== msgId));
-    setActiveMessageId(null); // Close menu
+    setMessages(prev => prev.map(m => 
+        m.id === msgId ? { ...m, content: "Message unsent" } : m
+    ));
+    setActiveMessageId(null); 
     
     try {
         await messagesAPI.deleteMessage(msgId);
     } catch (error) {
         console.error("Failed to delete", error);
         toast.error("Failed to delete message");
-        // Revert would require re-fetching or keeping a copy, simplified here
+        if (activeChat) loadChatHistory(activeChat.user_id);
     }
   };
+
+  // 7. Send Message Helper
+  const sendMessageInternal = async (text: string) => {
+    if (!text.trim() || !activeChat || !user?.id) return;
+    const currentUserId = Number(user.id);
+
+    // Optimistic Update
+    const optimisticMsg: Message = {
+        id: Date.now(), // Temp ID
+        sender_id: currentUserId,
+        receiver_id: activeChat.user_id,
+        content: text,
+        timestamp: new Date().toISOString(),
+        is_read: false
+    };
+
+    setMessages(prev => [...prev, optimisticMsg]);
+    
+    // Update conversation list preview optimistically
+    setConversations(prev => {
+        const exists = prev.find(c => c.user_id === activeChat.user_id);
+        if(exists) {
+            return prev.map(c => 
+               c.user_id === activeChat.user_id 
+                 ? { ...c, last_message: text.includes("📞") ? "📞 Video Call" : text, last_message_time: new Date().toISOString() } 
+                 : c
+            ).sort((a, b) => new Date(b.last_message_time!).getTime() - new Date(a.last_message_time!).getTime());
+       }
+       return prev;
+    });
+
+    try {
+      await messagesAPI.sendMessage(activeChat.user_id, text);
+    } catch (error) {
+      console.error("Failed to send", error);
+      toast.error("Failed to send message");
+      setMessages(prev => prev.filter(m => m.id !== optimisticMsg.id)); // Remove on fail
+    }
+  };
+
+  const handleSendMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if(!newMessage.trim()) return;
+    const temp = newMessage;
+    setNewMessage("");
+    await sendMessageInternal(temp);
+  };
+
+  // 8. 🎥 HANDLE VIDEO CALL (NEW TAB VERSION)
+  const handleStartVideoCall = async () => {
+    if (!activeChat || !user?.id) return;
+    
+    const currentUserId = Number(user.id);
+    
+    // Generate unique room ID
+    const id1 = Math.min(currentUserId, activeChat.user_id);
+    const id2 = Math.max(currentUserId, activeChat.user_id);
+    const roomId = `BukCare_Consult_${id1}_${id2}_${Date.now()}`;
+    
+    // Create the invitation link message
+    const inviteMessage = `📞 Started a Video Call. Join here: ${roomId}`;
+    
+    // Send invitation
+    await sendMessageInternal(inviteMessage);
+
+    // Open Jitsi in New Tab
+    window.open(`https://meet.jit.si/${roomId}`, "_blank");
+  };
+
+  // Touch/Long press handlers
+  const [longPressTimer, setLongPressTimer] = useState<NodeJS.Timeout | null>(null);
 
   const handleTouchStart = (id: number) => {
     const timer = setTimeout(() => {
         setActiveMessageId(id);
-        // Vibrate for feedback on mobile if supported
         if (navigator.vibrate) navigator.vibrate(50);
-    }, 500); // 500ms long press
+    }, 500); 
     setLongPressTimer(timer);
   };
 
@@ -286,7 +289,6 @@ const Messages: React.FC = () => {
     }
   };
 
-  // Close menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
         if (activeMessageId !== null && !(event.target as Element).closest('.message-options-menu')) {
@@ -413,6 +415,7 @@ const Messages: React.FC = () => {
         <div className={`flex-1 bg-white rounded-2xl shadow-sm border border-slate-200 flex flex-col ${!isMobileChatOpen ? 'hidden md:flex' : 'flex'}`}>
           {activeChat ? (
             <>
+              {/* Chat Header */}
               <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-white rounded-t-2xl">
                 <div className="flex items-center gap-3">
                   <button onClick={() => setIsMobileChatOpen(false)} className="md:hidden p-2 -ml-2 text-slate-500">
@@ -434,26 +437,32 @@ const Messages: React.FC = () => {
                 </div>
                 <div className="flex gap-2">
                   <button className="p-2 text-slate-400 hover:bg-slate-50 rounded-full"><Phone className="w-5 h-5" /></button>
-                  <button className="p-2 text-slate-400 hover:bg-slate-50 rounded-full"><Video className="w-5 h-5" /></button>
+                  {/* 📹 VIDEO CALL BUTTON - NEW TAB VERSION */}
+                  <button 
+                    onClick={handleStartVideoCall}
+                    className="p-2 text-slate-400 hover:bg-slate-50 hover:text-purple-600 transition-colors rounded-full"
+                    title="Start Video Call"
+                  >
+                    <VideoIcon className="w-5 h-5" />
+                  </button>
                   <button className="p-2 text-slate-400 hover:bg-slate-50 rounded-full"><MoreVertical className="w-5 h-5" /></button>
                 </div>
               </div>
 
+              {/* Chat Messages */}
               <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50/50">
                 {messages.map((msg, idx) => {
                   const isMe = msg.sender_id === (Number(user?.id) || 0);
+                  const isDeleted = msg.content === "Message unsent";
                   
                   return (
                     <div 
                         key={idx} 
                         className={`flex ${isMe ? 'justify-end' : 'justify-start'} group relative`}
-                        onMouseLeave={() => setActiveMessageId(null)} // Hide menu on mouse leave
+                        onMouseLeave={() => setActiveMessageId(null)}
                     >
-                      
-                      {/* MESSAGE OPTIONS (3 Vertical Dots or Long Press Menu) */}
-                      {isMe && (
+                      {isMe && !isDeleted && (
                         <div className="relative flex items-center">
-                           {/* Trigger Button (Visible on Hover / Long Press Active) */}
                            <button 
                               className={`p-1 mr-2 text-slate-400 hover:text-slate-600 rounded-full opacity-0 group-hover:opacity-100 transition-opacity ${activeMessageId === msg.id ? 'opacity-100' : ''}`}
                               onClick={(e) => {
@@ -464,7 +473,6 @@ const Messages: React.FC = () => {
                               <MoreVertical className="w-4 h-4" />
                            </button>
 
-                           {/* Popup Menu */}
                            {activeMessageId === msg.id && (
                               <div className="message-options-menu absolute bottom-8 right-0 bg-white shadow-xl border border-slate-100 rounded-lg py-1 w-32 z-10 animate-in fade-in zoom-in-95 duration-200">
                                  <button 
@@ -475,37 +483,54 @@ const Messages: React.FC = () => {
                                  </button>
                                  <button 
                                     className="w-full text-left px-4 py-2 text-xs text-slate-600 hover:bg-slate-50 flex items-center gap-2 opacity-50 cursor-not-allowed"
-                                    title="Coming soon"
                                  >
                                     <Reply className="w-3 h-3" /> Reply
-                                 </button>
-                                 <button 
-                                    className="w-full text-left px-4 py-2 text-xs text-slate-600 hover:bg-slate-50 flex items-center gap-2 opacity-50 cursor-not-allowed"
-                                    title="Coming soon"
-                                 >
-                                    <Forward className="w-3 h-3" /> Forward
                                  </button>
                               </div>
                            )}
                         </div>
                       )}
 
-                      <div 
-                        className={`max-w-[75%] px-4 py-3 rounded-2xl shadow-sm relative ${
+                      <div className={`max-w-[75%] px-4 py-3 rounded-2xl shadow-sm relative ${
                           isMe 
                             ? 'bg-purple-600 text-white rounded-br-none' 
                             : 'bg-white text-slate-800 border border-slate-100 rounded-bl-none'
-                        }`}
-                        // Long Press Handlers
-                        onTouchStart={() => handleTouchStart(msg.id)}
+                        } ${isDeleted ? 'opacity-70 italic bg-gray-100 border-gray-200 text-gray-500' : ''}`}
+                        onTouchStart={() => !isDeleted && handleTouchStart(msg.id)}
                         onTouchEnd={handleTouchEnd}
-                        // Disable default context menu on long press
                         onContextMenu={(e) => e.preventDefault()} 
                       >
-                        <p className="text-sm">{msg.content}</p>
-                        <p className={`text-[10px] mt-1 text-right ${isMe ? 'text-purple-200' : 'text-slate-400'}`}>
-                          {new Date(msg.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                        </p>
+                        <div className="text-sm">
+                            {/* 📞 SPECIAL RENDERING FOR VIDEO CALL INVITES */}
+                            {msg.content.includes("📞 Started a Video Call. Join here:") ? (
+                                <div className="flex flex-col gap-3 my-1">
+                                    <span className="font-medium opacity-90">{msg.content.split("Join here:")[0]}</span>
+                                    <button 
+                                        onClick={() => {
+                                            const roomId = msg.content.split("Join here:")[1]?.trim();
+                                            if (roomId) {
+                                                window.open(`https://meet.jit.si/${roomId}`, "_blank");
+                                            }
+                                        }}
+                                        className={`flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-all transform active:scale-95 ${
+                                            isMe 
+                                                ? "bg-white text-purple-600 hover:bg-purple-50" 
+                                                : "bg-purple-600 text-white hover:bg-purple-700"
+                                        }`}
+                                    >
+                                        <VideoIcon className="w-4 h-4" />
+                                        Join Video Call
+                                    </button>
+                                </div>
+                            ) : (
+                                msg.content
+                            )}
+                        </div>
+                        {!isDeleted && (
+                            <p className={`text-[10px] mt-1 text-right ${isMe ? 'text-purple-200' : 'text-slate-400'}`}>
+                            {new Date(msg.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                            </p>
+                        )}
                       </div>
                     </div>
                   );
@@ -513,6 +538,7 @@ const Messages: React.FC = () => {
                 <div ref={messagesEndRef} />
               </div>
 
+              {/* Input Area */}
               <div className="p-4 bg-white border-t border-slate-100 rounded-b-2xl">
                 <form onSubmit={handleSendMessage} className="flex gap-2">
                   <input
@@ -542,7 +568,6 @@ const Messages: React.FC = () => {
             </div>
           )}
         </div>
-
       </div>
     </div>
   );

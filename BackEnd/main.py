@@ -14,6 +14,8 @@ import traceback
 from routers.v1 import router as v1_router
 from utils.admin import create_admin_if_not_exists
 from models.message import Message
+from routers.v1 import notifications
+from routers.v1 import tips
 
 def create_app() -> FastAPI:
     setup_logging()
@@ -26,7 +28,7 @@ def create_app() -> FastAPI:
     )
 
     # ============================================================
-    # ⭐ FIXED: CORS MUST BE ADDED FIRST BEFORE ANY MIDDLEWARE ⭐
+    # FIXED: CORS MUST BE ADDED FIRST BEFORE ANY MIDDLEWARE
     # ============================================================
     app.add_middleware(
         CORSMiddleware,
@@ -50,18 +52,34 @@ def create_app() -> FastAPI:
     app.middleware("http")(rate_limit_middleware)
     app.middleware("http")(endpoint_rate_limit_middleware)
 
+    # ============================================================
+    # NOTIFICATIONS ROUTER
+    # Changed prefix to "/v1/notifications" to match the rest of your API
+    # WebSocket URL will be: ws://localhost:8000/v1/notifications/ws/{user_id}
+    # ============================================================
+    app.include_router(notifications.router, prefix="/v1/notifications", tags=["Notifications"])
+
+    
+    # ============================================================
+    # HEALTH TIPS ROUTER
+    # ============================================================
+    app.include_router(tips.router, prefix="/v1")
+
+
     # DB initialization
     Base.metadata.create_all(bind=engine)
     logger.info("Database tables created successfully")
 
-    # API routes
+    # ============================================================
+    # MAIN V1 ROUTER (Appointments, Auth, etc.)
+    # ============================================================
     app.include_router(v1_router, prefix="/v1")
 
-    # ✅ Startup event for tasks like creating default admin
+    # Startup event for tasks like creating default admin
     @app.on_event("startup")
     def startup_tasks():
-        # ❌ Commented out - implement this if needed
-        create_admin_if_not_exists()
+        # Commented out - implement this if needed
+        # create_admin_if_not_exists()
         logger.info("Startup tasks completed")
 
     # ================================
