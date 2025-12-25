@@ -118,8 +118,11 @@ const DoctorDashboard: FC = () => {
     try {
       setLoading(true);
       const [appointmentsRes, schedulesRes] = await Promise.all([
-        api.get<Appointment[]>("/appointments/"),
-        api.get<Schedule[]>("/schedules"),
+        // UPDATED: Use the specific doctor endpoint
+        api.get<Appointment[]>("/appointments/doctor"), 
+        
+        // This remains the same if you have a schedules endpoint
+        api.get<Schedule[]>("/schedules"), 
       ]);
       
       setAppointments(appointmentsRes.data);
@@ -127,6 +130,7 @@ const DoctorDashboard: FC = () => {
       calculateStats(appointmentsRes.data);
     } catch (error: any) {
       console.error("Failed to load data:", error);
+      // Optional: Check if error is 403 (Forbidden) -> Redirect to login
       toast.error("Failed to load dashboard data");
     } finally {
       setLoading(false);
@@ -291,10 +295,26 @@ const DoctorDashboard: FC = () => {
 
   const handleUpdateStatus = async (appointmentId: number, newStatus: string) => {
     try {
-      await api.put(`/appointments/${appointmentId}/status?status=${newStatus}`);
+      // UPDATED: Send as JSON body { "status": newStatus }
+      await api.put(`/appointments/${appointmentId}/status`, { 
+        status: newStatus 
+      });
+      
       toast.success(`Appointment ${newStatus}`);
-      fetchData();
+      
+      // OPTIMISTIC UPDATE: Update UI immediately without waiting for re-fetch
+      // This makes the app feel faster
+      setAppointments(prev => prev.map(appt => 
+        appt.id === appointmentId ? { ...appt, status: newStatus } : appt
+      ));
+      
+      // Close modal if open
       setShowAppointmentDetails(false);
+      
+      // Recalculate stats immediately with the new local state
+      // (Or just call fetchData() if you prefer absolute accuracy)
+      fetchData(); 
+      
     } catch (error: any) {
       console.error("Failed to update status:", error);
       toast.error("Failed to update appointment status");

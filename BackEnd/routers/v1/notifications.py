@@ -1,36 +1,61 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect, status, Query
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
+from datetime import datetime
+from pydantic import BaseModel
 
 from core.database import get_db
 from models.notification import Notification
 from routers.v1.dependencies import get_current_user
 from models.users import User
+from core.socket_manager import manager
 
 router = APIRouter()
 
-@router.get("/", response_model=List[dict])
+# --- Pydantic Schema for Response ---
+class NotificationResponse(BaseModel):
+    id: int
+    title: str
+    message: str
+    type: str
+    is_read: bool
+    created_at: datetime
+    appointment_id: Optional[int] = None
+
+    class Config:
+        from_attributes = True
+
+# --- Endpoints ---
+
+@router.websocket("/ws/{user_id}")
+async def websocket_endpoint(websocket: WebSocket, user_id: int):
+    """
+    The single connection point for ALL real-time events 
+    (Chat messages + Bell notifications).
+    """
+    await manager.connect(websocket, str(user_id))
+    try:
+        while True:
+            # Keep the connection open to receive messages (if needed)
+            # or just to keep the heartbeat alive.
+            data = await websocket.receive_text()
+            # Optional: You can handle incoming socket messages here if needed
+    except WebSocketDisconnect:
+        manager.disconnect(str(user_id))
+
+@router.get("/", response_model=List[NotificationResponse])
 def get_notifications(
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    limit: int = Query(20, le=100), # Pagination limit
+    skip: int = 0
 ):
     """Get all notifications for the current user"""
     notifications = db.query(Notification).filter(
         Notification.target_user_id == current_user.id
-    ).order_by(Notification.created_at.desc()).all()
+    ).order_by(Notification.created_at.desc()).offset(skip).limit(limit).all()
     
-    return [
-        {
-            "id": notification.id,
-            "title": notification.title,
-            "message": notification.message,
-            "type": notification.type,
-            "is_read": notification.is_read,
-            "created_at": notification.created_at,
-            "appointment_id": notification.appointment_id
-        }
-        for notification in notifications
-    ]
+    return notifications
 
 @router.patch("/{notification_id}/read")
 def mark_notification_read(
@@ -105,4 +130,3 @@ def get_unread_count(
     ).count()
     
     return {"unread_count": unread_count}
-
