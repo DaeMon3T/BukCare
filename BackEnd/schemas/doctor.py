@@ -43,7 +43,7 @@ class Specialization(SpecializationBase):
 # ---------------------------
 class DoctorBase(BaseModel):
     user_id: int
-    # ✅ REMOVED: province_id, city_id, barangay_id (these are in User model)
+    # REMOVED: province_id, city_id, barangay_id (these are in User model)
     license_number: Optional[str] = None
     years_of_experience: Optional[int] = None
     bio: Optional[str] = None
@@ -59,7 +59,7 @@ class DoctorCreate(DoctorBase):
 
 
 class DoctorUpdate(BaseModel):
-    # ✅ REMOVED: province_id, city_id, barangay_id
+    # REMOVED: province_id, city_id, barangay_id
     license_number: Optional[str] = None
     years_of_experience: Optional[int] = None
     bio: Optional[str] = None
@@ -87,8 +87,8 @@ class DoctorResponse(BaseModel):
     is_doctor_approved: bool
     availabilities: List[DoctorAvailability] = []
     avatar: Optional[str] = None
-    created_at: Optional[datetime] = None  # ✅ Make optional
-    updated_at: Optional[datetime] = None  # ✅ Make optional
+    created_at: Optional[datetime] = None  # Make optional
+    updated_at: Optional[datetime] = None  # Make optional
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -105,5 +105,5 @@ class Doctor(BaseModel):
     is_verified: bool
     is_doctor_approved: bool
     is_accepting_patients: Optional[bool] = None
-    created_at: Optional[datetime] = None  # ✅ Make optional
-    updated_at: Optional[datetime] = None  # ✅ Make optional
+    created_at: Optional[datetime] = None  # Make optional
+    updated_at: Optional[datetime] = None  # Make optional

@@ -103,6 +103,13 @@ class User(Base):
         cascade="all, delete-orphan"
     )
 
+    vitals = relationship(
+        "PatientVital",
+        back_populates="patient",
+        uselist=False,  # One-to-One: A user has one "current status" record
+        cascade="all, delete-orphan"
+    )
+
     # Self-relationship for admin approvals
     approved_by_user = relationship("User", remote_side=[id])
 

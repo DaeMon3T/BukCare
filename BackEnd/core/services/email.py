@@ -18,13 +18,13 @@ def send_email(to: str, subject: str, body: str):
             server.starttls()
             server.login(settings.EMAIL_HOST_USER, settings.EMAIL_HOST_PASSWORD)
             server.send_message(msg)
-            print(f"✅ Email sent to {to}")
+            print(f"Email sent to {to}")
     except Exception as e:
-        print(f"❌ Failed to send email to {to}: {e}")
+        print(f"Failed to send email to {to}: {e}")
 
 def send_doctor_approval_email(user: User):
     """Sends approval email to a doctor."""
-    subject = "Your Doctor Account Has Been Approved ✅"
+    subject = "Your Doctor Account Has Been Approved"
     body = f"""
 Hi {user.fname},
 
@@ -38,7 +38,7 @@ BukCare Team
 
 def send_doctor_rejection_email(user: User, reason: str = None):
     """Sends rejection email to a doctor."""
-    subject = "Your Doctor Account Has Been Rejected ❌"
+    subject = "Your Doctor Account Has Been Rejected"
     body = f"""
 Hi {user.fname},
 

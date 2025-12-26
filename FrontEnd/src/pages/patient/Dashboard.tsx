@@ -1,34 +1,35 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
+import { useWebSocket } from "@/context/WebSocketContext"; // ✅ USE GLOBAL SOCKET
 import api from "@/services/api";
 import Navbar from "@/components/Navbar";
+import QuickActions from "@/components/QuickActions";
+import HealthVitals from "@/components/thVitals";
+
 import { 
   Calendar, 
   Clock, 
-  User, 
-  Heart, 
   Activity, 
-  Stethoscope,
-  Brain,
-  Baby,
-  Eye,
-  Bone,
-  ArrowRight,
-  Star,
-  Zap,
-  Quote
+  Stethoscope, 
+  Brain, 
+  Baby, 
+  Eye, 
+  Bone, 
+  Heart, 
+  Star, 
+  Zap, 
+  Quote,
+  CheckCircle2, 
+  Hourglass 
 } from "lucide-react";
 import toast from "react-hot-toast";
 
-// --- TYPES & INTERFACES ---
+// --- TYPES ---
 interface Doctor {
   doctor_id: number;
   name: string;
   specialization?: string;
-  years_of_experience?: number;
-  is_verified: boolean;
-  address?: string;
   avatar?: string;
 }
 
@@ -37,29 +38,25 @@ interface Appointment {
   doctor_name: string;
   appointment_date: string;
   reason: string | null;
-  status: string;
+  status: string; 
 }
 
-// ✅ NEW: Interface for the Smart Tip
 interface HealthTip {
-  category: "Morning" | "Afternoon" | "Evening" | "General" | "Cardiology" | "Dermatology" | string;
+  category: string;
   text: string;
-  source?: string;
 }
 
 const PatientDashboard = () => {
   const { user } = useAuth();
+  const { lastMessage } = useWebSocket(); // ✅ Hook into the live stream
   const navigate = useNavigate();
   
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [nextAppointment, setNextAppointment] = useState<Appointment | null>(null);
   const [stats, setStats] = useState({ total: 0, pending: 0, completed: 0 });
   const [loading, setLoading] = useState(true);
-  
-  // ✅ FIXED STATE: Typed correctly as HealthTip object or null
   const [healthTip, setHealthTip] = useState<HealthTip | null>(null);
 
-  // Categories Config
   const categories = [
     { name: "General", icon: <Stethoscope className="w-5 h-5" />, color: "bg-blue-100 text-blue-600", specialization: "General Practice" },
     { name: "Cardiology", icon: <Heart className="w-5 h-5" />, color: "bg-rose-100 text-rose-600", specialization: "Cardiology" },
@@ -69,61 +66,84 @@ const PatientDashboard = () => {
     { name: "Eye Care", icon: <Eye className="w-5 h-5" />, color: "bg-emerald-100 text-emerald-600", specialization: "Ophthalmology" },
   ];
 
-  useEffect(() => {
-    fetchDashboardData();
+  // 1. DATA FETCHING LOGIC (Wrapped in useCallback for stability)
+  const fetchDashboardData = useCallback(async (isBackground = false) => {
+    try {
+        if (!isBackground) setLoading(true);
+
+        // Fetch everything in parallel
+        const [doctorsRes, apptRes, tipRes] = await Promise.allSettled([
+            api.get("/doctors/"),
+            api.get("/appointments/"),
+            api.get("/tips/daily")
+        ]);
+
+        // Process Doctors
+        if (doctorsRes.status === "fulfilled") {
+            setDoctors(doctorsRes.value.data.slice(0, 4));
+        }
+
+        // Process Tip
+        if (tipRes.status === "fulfilled") {
+            setHealthTip(tipRes.value.data);
+        } else {
+            setHealthTip({ category: "General", text: "Small steps lead to big changes!" });
+        }
+
+        // Process Appointments & Stats
+        if (apptRes.status === "fulfilled") {
+            const allAppts = apptRes.value.data;
+            
+            setStats({
+                total: allAppts.length,
+                pending: allAppts.filter((a: any) => a.status === "pending").length,
+                completed: allAppts.filter((a: any) => a.status === "completed").length,
+            });
+
+            // Logic to find the "Hero" appointment (Next one in the future)
+            const upcoming = allAppts
+                .filter((a: any) => {
+                    const apptDate = new Date(a.appointment_date);
+                    const now = new Date();
+                    return apptDate > now && 
+                           a.status !== 'cancelled' && 
+                           a.status !== 'completed';
+                })
+                .sort((a: any, b: any) => new Date(a.appointment_date).getTime() - new Date(b.appointment_date).getTime());
+            
+            setNextAppointment(upcoming[0] || null);
+        }
+
+    } catch (error: any) {
+        console.error("Dashboard error:", error);
+    } finally {
+        if (!isBackground) setLoading(false);
+    }
   }, []);
 
-  const fetchDashboardData = async () => {
-    try {
-      setLoading(true);
-      
-      // 1. Fetch Doctors
-      try {
-        const doctorsResponse = await api.get("/doctors/");
-        setDoctors(doctorsResponse.data.slice(0, 4));
-      } catch (e) { console.warn("Failed to load doctors"); }
-      
-      // 2. Fetch Appointments & Stats
-      try {
-        const apptResponse = await api.get("/appointments/");
-        const allAppts = apptResponse.data;
-        
-        setStats({
-          total: allAppts.length,
-          pending: allAppts.filter((a: any) => a.status === "pending").length,
-          completed: allAppts.filter((a: any) => a.status === "completed").length,
-        });
+  // 2. INITIAL MOUNT
+  useEffect(() => {
+    fetchDashboardData();
+  }, [fetchDashboardData]);
 
-        // Find Next Appointment (Future only)
-        const upcoming = allAppts
-            .filter((a: any) => new Date(a.appointment_date) > new Date() && a.status !== 'cancelled')
-            .sort((a: any, b: any) => new Date(a.appointment_date).getTime() - new Date(b.appointment_date).getTime());
-        
-        setNextAppointment(upcoming[0] || null);
-      } catch (err) {
-        console.log("No appointments found");
-      }
-
-      // 3. 🔥 FETCH SMART TIP FROM BACKEND
-      try {
-        const tipResponse = await api.get("/tips/daily");
-        setHealthTip(tipResponse.data);
-      } catch (err) {
-        // Fallback if backend tip fails
-        setHealthTip({ 
-            text: "Stay hydrated and healthy! Small steps lead to big changes.", 
-            category: "General" 
-        });
-      }
-      
-    } catch (error: any) {
-      console.error("Dashboard critical error:", error);
-      toast.error("Failed to load dashboard");
-    } finally {
-      setLoading(false);
+  // 3. ⚡ REAL-TIME LISTENER
+  // This listens for signals from the backend (Doctor accepted, new booking, etc.)
+  useEffect(() => {
+    if (lastMessage) {
+        if (lastMessage.type === "APPOINTMENT_UPDATE" || lastMessage.type === "NEW_APPOINTMENT") {
+            // Refresh data silently (no loading spinner)
+            fetchDashboardData(true);
+            
+            if (lastMessage.status === "confirmed") {
+                toast.success("Good news! Your appointment was confirmed. 🎉");
+            } else if (lastMessage.status === "completed") {
+                toast.success("Appointment marked as completed.");
+            }
+        }
     }
-  };
+  }, [lastMessage, fetchDashboardData]);
 
+  // Helpers
   const getGreeting = () => {
     const hour = new Date().getHours();
     if (hour < 12) return "Good Morning";
@@ -149,11 +169,11 @@ const PatientDashboard = () => {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
         
-        {/* 1. HEADER SECTION */}
+        {/* HEADER SECTION */}
         <div className="flex flex-col md:flex-row justify-between md:items-end gap-4">
           <div>
             <h1 className="text-3xl font-bold text-slate-900">
-              {getGreeting()}, <span className="text-blue-600">{user?.fname || user?.name || "Patient"}</span>
+              {getGreeting()}, <span className="text-blue-600">{user?.fname || "Patient"}</span>
             </h1>
             <p className="text-slate-500 mt-1">Here is your daily health overview.</p>
           </div>
@@ -169,23 +189,39 @@ const PatientDashboard = () => {
           </div>
         </div>
 
-        {/* 2. HERO GRID */}
+        {/* HERO GRID */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             
-            {/* LEFT: UP NEXT (Hero Card) */}
+            {/* LEFT: UP NEXT (Dynamic Hero Card) */}
             <div className="lg:col-span-2">
                 {nextAppointment ? (
-                    <div className="h-full bg-gradient-to-r from-blue-600 to-indigo-700 rounded-3xl p-8 text-white shadow-xl relative overflow-hidden group transition-all hover:shadow-2xl">
-                        {/* Background Decoration */}
+                    <div className={`h-full rounded-3xl p-8 text-white shadow-xl relative overflow-hidden group transition-all hover:shadow-2xl ${
+                        nextAppointment.status === 'confirmed' 
+                        ? "bg-gradient-to-r from-blue-600 to-indigo-700" // Blue for Confirmed
+                        : "bg-gradient-to-r from-amber-500 to-orange-600" // Amber for Pending
+                    }`}>
                         <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl group-hover:bg-white/20 transition-all duration-700"></div>
                         
                         <div className="relative z-10 flex flex-col h-full justify-between gap-6">
                             <div>
-                                <span className="inline-block px-3 py-1 bg-white/20 backdrop-blur-md rounded-full text-xs font-bold mb-4 border border-white/10">
-                                    UPCOMING APPOINTMENT
-                                </span>
+                                <div className="flex items-center gap-2 mb-4">
+                                    <span className="inline-block px-3 py-1 bg-white/20 backdrop-blur-md rounded-full text-xs font-bold border border-white/10 uppercase">
+                                        UPCOMING APPOINTMENT
+                                    </span>
+                                    {/* LIVE STATUS BADGE */}
+                                    {nextAppointment.status === 'confirmed' ? (
+                                        <span className="flex items-center gap-1 px-3 py-1 bg-emerald-500/20 backdrop-blur-md rounded-full text-xs font-bold border border-emerald-400/30 text-emerald-50 animate-in fade-in zoom-in">
+                                            <CheckCircle2 className="w-3 h-3" /> CONFIRMED
+                                        </span>
+                                    ) : (
+                                        <span className="flex items-center gap-1 px-3 py-1 bg-black/10 backdrop-blur-md rounded-full text-xs font-bold border border-white/10 animate-in fade-in zoom-in">
+                                            <Hourglass className="w-3 h-3" /> PENDING APPROVAL
+                                        </span>
+                                    )}
+                                </div>
+
                                 <h2 className="text-2xl md:text-3xl font-bold mb-2">Dr. {nextAppointment.doctor_name}</h2>
-                                <div className="flex flex-wrap gap-4 text-blue-100">
+                                <div className="flex flex-wrap gap-4 text-blue-50">
                                     <p className="flex items-center gap-2 bg-white/10 px-3 py-1 rounded-lg backdrop-blur-sm">
                                         <Calendar className="w-4 h-4" /> 
                                         {formatDate(nextAppointment.appointment_date)}
@@ -228,7 +264,6 @@ const PatientDashboard = () => {
                                 Find a Doctor
                             </button>
                         </div>
-                        {/* Illustration Placeholder */}
                         <div className="absolute right-[-20px] bottom-[-40px] opacity-5">
                             <Stethoscope className="w-80 h-80 text-blue-600" />
                         </div>
@@ -236,16 +271,14 @@ const PatientDashboard = () => {
                 )}
             </div>
 
-            {/* RIGHT: SMART HEALTH TIP (Backend Powered) */}
+            {/* RIGHT: SMART HEALTH TIP */}
             <div className="flex flex-col gap-6">
                 <div className={`rounded-3xl p-6 border relative overflow-hidden transition-all duration-500 group h-full flex flex-col justify-center ${
                     healthTip?.category === "Morning" ? "bg-amber-50 border-amber-100 text-amber-900" :
                     healthTip?.category === "Evening" ? "bg-indigo-50 border-indigo-100 text-indigo-900" :
-                    healthTip?.category === "Cardiology" ? "bg-rose-50 border-rose-100 text-rose-900" :
                     "bg-emerald-50 border-emerald-100 text-emerald-900"
                 }`}>
                     <Quote className={`absolute top-4 right-4 w-12 h-12 rotate-180 opacity-10`} />
-                    
                     <div className="relative z-10">
                         <div className="flex items-center gap-2 mb-4 opacity-80">
                             <Zap className="w-4 h-4 fill-current" />
@@ -253,11 +286,9 @@ const PatientDashboard = () => {
                                 {healthTip?.category || "Daily"} Insight
                             </span>
                         </div>
-                        
                         <p className="font-medium text-lg leading-relaxed mb-4">
-                            "{healthTip?.text || "Loading your daily health tip..."}"
+                            "{healthTip?.text || "Stay consistent with your health journey!"}"
                         </p>
-
                         <div className="text-xs font-semibold opacity-60">
                             — BukCare AI Companion
                         </div>
@@ -266,28 +297,34 @@ const PatientDashboard = () => {
             </div>
         </div>
 
-        {/* 3. CATEGORIES SHORTCUTS */}
+        {/* QUICK ACTIONS */}
+        <QuickActions />
+
+        {/* HEALTH VITALS */}
+        <HealthVitals />
+
+        {/* CATEGORIES */}
         <div>
             <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
                 <Activity className="w-5 h-5 text-blue-500" /> Browse Specialists
             </h3>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+            <div className="flex overflow-x-auto gap-4 pb-4 -mx-4 px-4 sm:mx-0 sm:px-0 scrollbar-hide lg:grid lg:grid-cols-6 lg:gap-4 lg:overflow-visible">
                 {categories.map((cat) => (
                     <button
                         key={cat.name}
                         onClick={() => navigate(`/patient/find-doctor?specialization=${encodeURIComponent(cat.specialization)}`)}
-                        className="flex flex-col items-center justify-center p-4 bg-white border border-slate-100 rounded-2xl hover:border-blue-200 hover:shadow-md transition-all group"
+                        className="min-w-[130px] flex-shrink-0 lg:min-w-0 lg:flex-shrink flex flex-col items-center justify-center p-4 bg-white border border-slate-100 rounded-2xl hover:border-blue-200 hover:shadow-md transition-all group"
                     >
                         <div className={`p-3 rounded-full mb-3 ${cat.color} group-hover:scale-110 transition-transform`}>
                             {cat.icon}
                         </div>
-                        <span className="font-medium text-slate-700 text-sm">{cat.name}</span>
+                        <span className="font-medium text-slate-700 text-sm whitespace-nowrap">{cat.name}</span>
                     </button>
                 ))}
             </div>
         </div>
 
-        {/* 4. TOP DOCTORS */}
+        {/* TOP DOCTORS */}
         <div>
             <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-bold text-slate-900">Recommended Doctors</h3>

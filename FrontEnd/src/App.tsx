@@ -5,7 +5,7 @@ import type { FC } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './context/AuthContext';
-import { WebSocketProvider } from './context/WebSocketContext'; // ✅ Imported
+import { WebSocketProvider } from './context/WebSocketContext';
 import { AdminRoute, DoctorRoute, PatientRoute } from './routes/ProtectedRoutes';
 import ErrorBoundary from './components/ErrorBoundary';
 import { CallProvider } from './context/CallContext';

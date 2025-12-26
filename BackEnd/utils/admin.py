@@ -26,8 +26,8 @@ def create_admin_if_not_exists():
             email=settings.ADMIN_EMAIL,
             password=hash_password(settings.ADMIN_PASSWORD),
             role=UserRole.ADMIN,
-            fname=settings.ADMIN_FIRST_NAME or "Admin",  # ✅ Changed from ADMIN_FNAME
-            lname=settings.ADMIN_LAST_NAME or "User",    # ✅ Changed from ADMIN_LNAME
+            fname=settings.ADMIN_FIRST_NAME or "Admin",  # Changed from ADMIN_FNAME
+            lname=settings.ADMIN_LAST_NAME or "User",    # Changed from ADMIN_LNAME
             is_active=True,
             is_verified=True,
             is_profile_complete=True,
@@ -36,10 +36,10 @@ def create_admin_if_not_exists():
         db.add(admin_user)
         db.commit()
         db.refresh(admin_user)
-        print(f"✅ Default admin created: {admin_user.email} (ID: {admin_user.id})")
+        print(f"Default admin created: {admin_user.email} (ID: {admin_user.id})")
 
     except Exception as e:
-        print(f"❌ Failed to create admin: {e}")
+        print(f"Failed to create admin: {e}")
         db.rollback()
     finally:
         db.close()

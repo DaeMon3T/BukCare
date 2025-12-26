@@ -130,3 +130,65 @@ def get_unread_count(
     ).count()
     
     return {"unread_count": unread_count}
+
+# =====================================
+# NEW NOTIF ENDPOINTS AS PER REQUEST
+# =====================================
+
+# 1. MARK ALL AS READ ENDPOINT
+@router.patch("/read/all")
+def mark_all_notifications_read(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Marks all unread notifications for the user as read."""
+    # Bulk update for efficiency
+    db.query(Notification).filter(
+        Notification.target_user_id == current_user.id,
+        Notification.is_read == False
+    ).update({Notification.is_read: True}, synchronize_session=False)
+    
+    db.commit()
+    return {"message": "All notifications marked as read"}
+
+# 2. DELETE NOTIFICATION ENDPOINT
+@router.delete("/{notification_id}")
+def delete_notification(
+    notification_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Permanently deletes a notification."""
+    notification = db.query(Notification).filter(
+        Notification.id == notification_id,
+        Notification.target_user_id == current_user.id
+    ).first()
+
+    if not notification:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, 
+            detail="Notification not found"
+        )
+
+    db.delete(notification)
+    db.commit()
+    return {"message": "Notification deleted"}
+
+# 3. MARK SINGLE AS READ (Ensure you have this too)
+@router.patch("/{notification_id}/read")
+def mark_notification_read(
+    notification_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    notification = db.query(Notification).filter(
+        Notification.id == notification_id,
+        Notification.target_user_id == current_user.id
+    ).first()
+
+    if not notification:
+        raise HTTPException(status_code=404, detail="Notification not found")
+
+    notification.is_read = True
+    db.commit()
+    return {"message": "Marked as read"}

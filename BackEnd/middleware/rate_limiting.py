@@ -119,7 +119,7 @@ ENDPOINT_RATE_LIMIT_EXEMPT = {
     "/docs",
     "/openapi.json",
     "/redoc",
-    "/v1/auth/google/callback",  # ✅ Google callbacks should not be rate limited
+    "/v1/auth/google/callback",  # Google callbacks should not be rate limited
     "/v1/auth/google/login",
 }
 

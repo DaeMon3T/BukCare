@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Bell,
@@ -15,13 +15,16 @@ import {
   Calendar,
   CheckCircle,
   Info,
-  MessageCircle
+  MessageCircle,
+  CheckCheck, // ✅ Icon for "Mark All Read"
+  Trash2 // ✅ Icon for "Delete"
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useWebSocket } from "../context/WebSocketContext";
-import notificationsAPI from "../services/notifications"; // Ensure path is correct
-
-interface NavbarProps {}
+import notificationsAPI from "../services/notifications"; 
+import bukcareLogo from "../assets/bukcare_logo.png";
+import defaultAvatar from "../assets/default_avatar.png";
+import toast from "react-hot-toast";
 
 interface NotificationItem {
   id: number;
@@ -33,9 +36,10 @@ interface NotificationItem {
   appointment_id?: number;
 }
 
-const Navbar: React.FC<NavbarProps> = () => {
+const Navbar: React.FC = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const { lastMessage } = useWebSocket();
 
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
@@ -44,12 +48,12 @@ const Navbar: React.FC<NavbarProps> = () => {
 
   const [notificationsList, setNotificationsList] = useState<NotificationItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
-  const [toast, setToast] = useState<NotificationItem | null>(null);
 
-  // 1. FETCH HISTORY ON MOUNT
+  // 1. FETCH HISTORY
   useEffect(() => {
     const fetchHistory = async () => {
       try {
+        if (!user) return;
         const history = await notificationsAPI.getAll();
         
         const formatted = history.map((n: any) => ({
@@ -63,47 +67,30 @@ const Navbar: React.FC<NavbarProps> = () => {
         }));
 
         setNotificationsList(formatted);
-        
-        const unread = formatted.filter((n: any) => !n.isRead).length;
-        setUnreadCount(unread);
-        
+        setUnreadCount(formatted.filter((n: any) => !n.isRead).length);
       } catch (error) {
         console.error("Failed to load notification history");
       }
     };
 
-    if (user) {
-      fetchHistory();
-    }
+    fetchHistory();
   }, [user]);
 
-  // 2. LISTEN FOR MESSAGES (FIXED - No Ghosts 👻)
+  // 2. WEBSOCKET LISTENER
   useEffect(() => {
     if (!lastMessage) return;
 
-    // 🔥 CHECK: Is this message old? (Older than 2 seconds)
-    // If we just navigated to this page, the message exists in context but is "old".
-    const isFresh = Date.now() - (lastMessage._receivedAt || 0) < 2000;
-
-    if (!isFresh) {
-        // Even if it's not fresh, we might want to update the notification list/badge count 
-        // silently, but we definitely DO NOT show the toast popup.
-        return; 
-    }
+    if (!lastMessage.notification && lastMessage.type !== "CHAT_MESSAGE") return;
 
     let title = "New Notification";
     let messageContent = "You have a new update.";
     let type = lastMessage.type || "info";
     let appointment_id = null;
 
-    // ... (Your existing logic for extracting CHAT vs SYSTEM content) ...
-    // [Keep your existing switch logic here for CHAT_MESSAGE vs notification object]
-    // ...
-
     if (type === "CHAT_MESSAGE") {
-        const senderName = lastMessage.message.sender_name || "User";
+        const senderName = lastMessage.message?.sender_name || "User";
         title = `Message from ${senderName}`;
-        messageContent = lastMessage.message.content || "Sent a message"; 
+        messageContent = lastMessage.message?.content || "Sent a message"; 
     } else if (lastMessage.notification) {
         title = lastMessage.notification.title;
         messageContent = lastMessage.notification.message;
@@ -121,35 +108,80 @@ const Navbar: React.FC<NavbarProps> = () => {
       appointment_id: appointment_id || undefined
     };
 
-    // Add to list & Increment badge
     setNotificationsList((prev) => [newNotification, ...prev]);
+    
     if (type !== "CHAT_MESSAGE") {
         setUnreadCount((prev) => prev + 1);
     }
 
-    // ✅ SHOW TOAST (Only because we passed the freshness check)
-    setToast(newNotification);
+    toast.custom((t) => (
+        <div className={`${t.visible ? 'animate-enter' : 'animate-leave'} max-w-md w-full bg-white shadow-xl rounded-2xl pointer-events-auto flex ring-1 ring-black ring-opacity-5 cursor-pointer`}
+             onClick={() => {
+                 toast.dismiss(t.id);
+                 handleNotificationClick(newNotification);
+             }}
+        >
+            <div className="flex-1 w-0 p-4">
+                <div className="flex items-start">
+                    <div className="flex-shrink-0 pt-0.5">
+                        <div className={`h-10 w-10 rounded-full flex items-center justify-center ${type === 'success' ? 'bg-green-100 text-green-600' : 'bg-blue-100 text-blue-600'}`}>
+                            {type === 'CHAT_MESSAGE' ? <MessageCircle className="w-6 h-6"/> : <Bell className="w-6 h-6"/>}
+                        </div>
+                    </div>
+                    <div className="ml-3 flex-1">
+                        <p className="text-sm font-medium text-gray-900">{title}</p>
+                        <p className="mt-1 text-sm text-gray-500">{messageContent}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    ), { duration: 4000 });
 
-    // Hide Toast after 5 seconds
-    const timer = setTimeout(() => setToast(null), 5000);
-    return () => clearTimeout(timer);
-  }, [lastMessage]); // Dependency on lastMessage ensures this runs when new data arrives
+  }, [lastMessage]);
 
-  // 3. HANDLE CLICKING A NOTIFICATION
+  // 3. ACTION HANDLERS
+
+  // ✅ Mark ALL as Read
+  const handleMarkAllRead = async () => {
+    if (unreadCount === 0) return;
+    try {
+        await notificationsAPI.markAllRead(); // Ensure API supports this!
+        
+        // Optimistic Update
+        setNotificationsList(prev => prev.map(n => ({ ...n, isRead: true })));
+        setUnreadCount(0);
+        toast.success("All marked as read");
+    } catch (error) {
+        console.error("Failed to mark all as read");
+    }
+  };
+
+  // ✅ Delete Notification
+  const handleDeleteNotification = async (e: React.MouseEvent, id: number, isRead: boolean) => {
+    e.stopPropagation(); // Stop click from navigating
+    try {
+        await notificationsAPI.delete(id); // Ensure API supports this!
+        
+        setNotificationsList(prev => prev.filter(n => n.id !== id));
+        if (!isRead) {
+            setUnreadCount(prev => Math.max(0, prev - 1));
+        }
+        toast.success("Notification removed");
+    } catch (error) {
+        console.error("Failed to delete notification");
+    }
+  };
+
   const handleNotificationClick = async (notif: NotificationItem) => {
-    // A. Navigate based on type
     if (notif.type === "CHAT_MESSAGE") {
         navigate(user?.role === 'doctor' ? '/doctor/messages' : '/patient/messages');
     } else if (notif.appointment_id) {
         navigate(user?.role === 'doctor' ? '/doctor/appointments' : '/patient/appointments');
     }
 
-    // B. Mark as read in Backend
     if (!notif.isRead && notif.type !== "CHAT_MESSAGE") {
         try {
             await notificationsAPI.markAsRead(notif.id);
-            
-            // C. Update Local State
             setNotificationsList(prev => prev.map(n => 
                 n.id === notif.id ? { ...n, isRead: true } : n
             ));
@@ -158,12 +190,9 @@ const Navbar: React.FC<NavbarProps> = () => {
             console.error("Failed to mark as read");
         }
     }
-
-    // D. Close Dropdown
     setShowNotifications(false);
   };
 
-  // Wait until user is loaded
   if (!user) return null;
 
   const userRole = user.role || "patient";
@@ -205,138 +234,137 @@ const Navbar: React.FC<NavbarProps> = () => {
 
   return (
     <>
-      {/* 🔔 TOAST NOTIFICATION POPUP */}
-      <AnimatePresence>
-        {toast && (
-          <motion.div
-            initial={{ opacity: 0, y: -20, x: 20 }}
-            animate={{ opacity: 1, y: 0, x: 0 }}
-            exit={{ opacity: 0, y: -20, x: 20 }}
-            className="fixed top-24 right-4 z-[100] bg-white border border-blue-100 shadow-xl rounded-xl p-4 w-80 flex items-start gap-3 pointer-events-auto cursor-pointer hover:bg-slate-50"
-            onClick={() => handleNotificationClick(toast)}
-          >
-            <div className="p-2 bg-blue-50 rounded-full text-blue-600">
-              {toast.type === "CHAT_MESSAGE" ? (
-                  <MessageCircle className="w-5 h-5" />
-              ) : (
-                  <Bell className="w-5 h-5" />
-              )}
-            </div>
-            <div className="flex-1">
-              <h4 className="font-semibold text-gray-800 text-sm">{toast.title}</h4>
-              <p className="text-gray-600 text-xs mt-1 line-clamp-2">{toast.message}</p>
-            </div>
-            <button 
-                onClick={(e) => {
-                    e.stopPropagation(); 
-                    setToast(null);
-                }} 
-                className="text-gray-400 hover:text-gray-600"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <header className="bg-white/70 backdrop-blur-xl shadow-sm border-b border-slate-200/50 sticky top-0 z-50">
-        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-2">
-          <div className="flex justify-between items-center h-20">
-            {/* Left - Logo */}
-            <div className="flex items-center space-x-3">
-              <button
-                onClick={() => setSidebarOpen(true)}
-                className="lg:hidden p-2 rounded-lg hover:bg-slate-100/80 transition-colors"
-              >
-                <Menu className="w-6 h-6 text-slate-700" />
+      <header className="bg-white/80 backdrop-blur-md shadow-sm border-b border-slate-100 sticky top-0 z-50 h-20">
+        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 h-full">
+          <div className="flex justify-between items-center h-full">
+            
+            {/* LEFT - Logo & Mobile Toggle */}
+            <div className="flex items-center gap-4">
+              <button onClick={() => setSidebarOpen(true)} className="lg:hidden p-2 rounded-xl hover:bg-slate-100 text-slate-600 transition-colors">
+                <Menu className="w-6 h-6" />
               </button>
 
-              <Link to={homeLink} className="flex items-center space-x-2">
-                <img
-                  src="/bukcare_logo.png"
-                  alt="BukCare Logo"
-                  className="w-20 h-15 object-cover rounded-sm"
-                />
-                <span className="text-xl font-semibold text-gray-800">BukCare</span>
+              <Link to={homeLink} className="flex items-center gap-3 group">
+                <div className="relative overflow-hidden rounded-xl shadow-sm transition-transform group-hover:scale-105">
+                    <img src={bukcareLogo} alt="BukCare" className="w-10 h-10 object-cover"/>
+                </div>
+                <span className="text-xl font-bold bg-gradient-to-r from-blue-700 to-cyan-600 bg-clip-text text-transparent hidden sm:block">
+                  BukCare
+                </span>
               </Link>
             </div>
 
-            {/* Center - Navigation Links */}
-            <nav className="hidden lg:flex items-center space-x-1 absolute left-1/2 transform -translate-x-1/2">
+            {/* CENTER - Desktop Nav */}
+            <nav className="hidden lg:flex items-center bg-slate-50/80 p-1.5 rounded-2xl border border-slate-200/60 shadow-inner">
               {navigationItems.map((item) => {
                 const Icon = item.icon;
-                const isActive = window.location.pathname === item.path;
+                const isActive = location.pathname === item.path;
                 return (
                   <Link
                     key={item.path}
                     to={item.path}
-                    className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all ${
-                      isActive
-                        ? "bg-blue-50/80 text-blue-900 font-bold"
-                        : "text-slate-600 hover:text-blue-600 hover:bg-slate-50/80"
+                    className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 ${
+                      isActive ? "bg-white text-blue-600 shadow-sm ring-1 ring-black/5" : "text-slate-500 hover:text-slate-900 hover:bg-white/50"
                     }`}
                   >
-                    <Icon className="w-6 h-6" />
-                    <span className="text-sm">{item.label}</span>
+                    <Icon className={`w-4 h-4 ${isActive ? "fill-current" : ""}`} />
+                    {item.label}
                   </Link>
                 );
               })}
             </nav>
 
-            {/* Right - Actions */}
-            <div className="flex items-center space-x-3">
-              {/* Notifications */}
+            {/* RIGHT - Actions */}
+            <div className="flex items-center gap-3 sm:gap-4">
+              {/* Notifications Bell */}
               <div className="relative">
                 <button
                   onClick={() => setShowNotifications(!showNotifications)}
-                  className="relative p-2 text-slate-600 hover:text-blue-600 hover:bg-blue-50/80 rounded-lg transition-all"
+                  className={`relative p-2.5 rounded-xl transition-all ${
+                    showNotifications || unreadCount > 0 ? "bg-blue-50 text-blue-600" : "text-slate-500 hover:bg-slate-100"
+                  }`}
                 >
                   <Bell className="w-5 h-5" />
                   {unreadCount > 0 && (
-                    <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-rose-500 border-2 border-white rounded-full animate-pulse"></span>
+                    <span className="absolute top-2 right-2.5 w-2.5 h-2.5 bg-rose-500 border-2 border-white rounded-full animate-bounce"></span>
                   )}
                 </button>
 
+                {/* Dropdown */}
                 <AnimatePresence>
                   {showNotifications && (
                     <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: 10 }}
-                      className="absolute right-0 mt-2 w-80 bg-white/95 backdrop-blur-xl rounded-xl shadow-xl border border-slate-200/50 overflow-hidden z-50"
+                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                      className="absolute right-0 mt-3 w-80 sm:w-96 bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden z-[60] origin-top-right"
                     >
-                      <div className="px-4 py-3 bg-gradient-to-r from-blue-50 to-cyan-50 border-b border-slate-200/50 flex justify-between">
-                        <h3 className="font-semibold text-slate-800">Notifications</h3>
-                        <span className="text-xs text-slate-500">{unreadCount} Unread</span>
+                      {/* HEADER: Added "Mark all read" button */}
+                      <div className="px-5 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                        <div className="flex items-center gap-2">
+                            <h3 className="font-bold text-slate-800">Notifications</h3>
+                            {unreadCount > 0 && (
+                                <span className="bg-blue-100 text-blue-700 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                                    {unreadCount} New
+                                </span>
+                            )}
+                        </div>
+                        
+                        {/* ✅ MARK ALL READ BUTTON */}
+                        <button 
+                            onClick={handleMarkAllRead}
+                            disabled={unreadCount === 0}
+                            className={`flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-md transition-colors ${
+                                unreadCount > 0 
+                                ? "text-blue-600 hover:bg-blue-100 cursor-pointer" 
+                                : "text-slate-400 cursor-not-allowed"
+                            }`}
+                            title="Mark all as read"
+                        >
+                            <CheckCheck className="w-4 h-4" />
+                            <span className="hidden sm:inline">Mark all read</span>
+                        </button>
                       </div>
-                      <div className="max-h-96 overflow-y-auto">
+
+                      <div className="max-h-[400px] overflow-y-auto scrollbar-thin">
                         {notificationsList.length === 0 ? (
-                          <div className="p-8 text-slate-500 text-sm text-center">No notifications yet</div>
+                          <div className="p-8 text-center flex flex-col items-center gap-3">
+                             <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center">
+                                 <Bell className="w-6 h-6 text-slate-300" />
+                             </div>
+                             <p className="text-slate-500 text-sm">No notifications yet</p>
+                          </div>
                         ) : (
-                          <div className="divide-y divide-slate-100">
+                          <div className="divide-y divide-slate-50">
                             {notificationsList.map((notif, index) => (
                               <div 
-                                key={index} 
+                                key={notif.id} // Better key than index
                                 onClick={() => handleNotificationClick(notif)}
-                                className={`p-4 hover:bg-slate-50 transition-colors cursor-pointer ${!notif.isRead ? 'bg-blue-50/30' : ''}`}
+                                className={`p-4 hover:bg-slate-50 transition-colors cursor-pointer flex gap-4 group ${!notif.isRead ? 'bg-blue-50/40' : ''}`}
                               >
-                                <div className="flex gap-3">
-                                   <div className="mt-1">
-                                    {notif.type === 'CHAT_MESSAGE' ? (
-                                      <MessageCircle className="w-4 h-4 text-purple-500" />
-                                    ) : notif.type?.includes('APPROVED') || notif.type === 'success' ? (
-                                      <CheckCircle className="w-4 h-4 text-green-500" /> 
-                                    ) : (
-                                      <Info className="w-4 h-4 text-blue-500" />
-                                    )}
-                                   </div>
-                                   <div>
-                                      <h5 className={`text-sm ${!notif.isRead ? 'font-semibold text-slate-900' : 'font-medium text-slate-700'}`}>
+                                <div className={`mt-1 w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+                                    notif.type === 'CHAT_MESSAGE' ? 'bg-purple-100 text-purple-600' : 
+                                    notif.type?.includes('success') ? 'bg-emerald-100 text-emerald-600' : 'bg-blue-100 text-blue-600'
+                                }`}>
+                                  {notif.type === 'CHAT_MESSAGE' ? <MessageCircle className="w-4 h-4"/> : 
+                                   notif.type?.includes('success') ? <CheckCircle className="w-4 h-4"/> : <Info className="w-4 h-4"/>}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex justify-between items-start mb-0.5">
+                                      <h5 className={`text-sm truncate pr-2 ${!notif.isRead ? 'font-bold text-slate-900' : 'font-medium text-slate-700'}`}>
                                         {notif.title}
                                       </h5>
-                                      <p className="text-xs text-slate-600 mt-1 line-clamp-1">{notif.message}</p>
-                                      <p className="text-[10px] text-slate-400 mt-2">{notif.timestamp.toLocaleTimeString()}</p>
-                                   </div>
+                                      {/* ✅ DELETE BUTTON (Visible on hover) */}
+                                      <button 
+                                        onClick={(e) => handleDeleteNotification(e, notif.id, notif.isRead)}
+                                        className="text-slate-300 hover:text-red-500 hover:bg-red-50 p-1 rounded transition-all opacity-0 group-hover:opacity-100"
+                                        title="Delete notification"
+                                      >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                      </button>
+                                  </div>
+                                  <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">{notif.message}</p>
+                                  <p className="text-[10px] text-slate-400 mt-2">{notif.timestamp.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
                                 </div>
                               </div>
                             ))}
@@ -348,137 +376,74 @@ const Navbar: React.FC<NavbarProps> = () => {
                 </AnimatePresence>
               </div>
 
-              {/* Profile */}
+              {/* Profile Menu (Unchanged) */}
               <div className="relative">
                 <button
                   onClick={() => setShowProfileDropdown(!showProfileDropdown)}
-                  className="flex items-center space-x-2 pl-2 pr-3 py-1.5 rounded-lg hover:bg-slate-50/80 transition-all"
+                  className="flex items-center gap-3 p-1.5 pr-3 rounded-full border border-slate-200 hover:border-blue-300 hover:bg-blue-50/50 transition-all bg-white"
                 >
-                  <div className="w-9 h-9 rounded-full overflow-hidden ring-2 ring-slate-200/50">
-                    <img
-                      src={user.picture || "/default-avatar.png"}
-                      alt="Profile"
-                      className="w-full h-full object-cover"
-                    />
+                  <img src={user.picture || defaultAvatar} alt="Profile" className="w-8 h-8 rounded-full object-cover ring-2 ring-white shadow-sm"/>
+                  <div className="hidden md:block text-left leading-tight">
+                    <p className="text-xs font-bold text-slate-800 max-w-[100px] truncate">{displayName}</p>
+                    <p className="text-[10px] text-slate-500 font-medium capitalize">{userRole}</p>
                   </div>
-                  <div className="hidden md:block text-left">
-                    <p className="text-sm font-medium text-slate-800">{displayName}</p>
-                    <p className="text-xs text-slate-500 capitalize">{userRole}</p>
-                  </div>
-                  <ChevronDown className="w-4 h-4 text-slate-500" />
+                  <ChevronDown className="w-3 h-3 text-slate-400" />
                 </button>
 
-                {/* ... Profile Dropdown & Mobile Sidebar (Code remains same as yours) ... */}
-                {/* [Keep your existing Profile Dropdown and Mobile Sidebar code here, it is correct] */}
-                {showProfileDropdown && (
-                  <div className="absolute right-0 mt-2 w-64 bg-white/95 backdrop-blur-xl rounded-xl shadow-xl border border-slate-200/50 overflow-hidden z-50">
-                    <div className="px-4 py-3 bg-gradient-to-r from-blue-50 to-cyan-50 border-b border-slate-200/50">
-                      <p className="font-semibold text-slate-800">{displayName}</p>
-                      <p className="text-sm text-slate-600">{user.email || "No email"}</p>
-                    </div>
-                    <div className="py-2">
-                      <Link
-                        to={profileLink}
-                        onClick={() => setShowProfileDropdown(false)}
-                        className="flex items-center space-x-2 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50/80 transition-colors"
-                      >
-                        <User className="w-4 h-4" />
-                        <span>My Profile</span>
-                      </Link>
-                    </div>
-                    <div className="border-t border-slate-200/50">
-                      <button
-                        onClick={handleLogout}
-                        className="w-full flex items-center space-x-2 px-4 py-2.5 text-sm text-rose-600 hover:bg-rose-50/80 transition-colors"
-                      >
-                        <LogOut className="w-4 h-4" />
-                        <span>Sign Out</span>
-                      </button>
-                    </div>
-                  </div>
-                )}
+                <AnimatePresence>
+                  {showProfileDropdown && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                      className="absolute right-0 mt-3 w-60 bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden z-[60] origin-top-right"
+                    >
+                      <div className="p-4 bg-slate-50/50 border-b border-slate-100">
+                        <p className="font-bold text-slate-800 truncate">{displayName}</p>
+                        <p className="text-xs text-slate-500 truncate">{user.email}</p>
+                      </div>
+                      <div className="p-2 space-y-1">
+                        <Link to={profileLink} onClick={() => setShowProfileDropdown(false)} className="flex items-center gap-3 px-3 py-2 text-sm font-medium text-slate-600 rounded-xl hover:bg-slate-50 hover:text-blue-600 transition-colors">
+                          <User className="w-4 h-4" /> My Profile
+                        </Link>
+                        <button onClick={handleLogout} className="w-full flex items-center gap-3 px-3 py-2 text-sm font-medium text-rose-600 rounded-xl hover:bg-rose-50 transition-colors">
+                          <LogOut className="w-4 h-4" /> Sign Out
+                        </button>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Mobile Sidebar */}
+        {/* MOBILE SIDEBAR (Unchanged structure) */}
         <AnimatePresence>
           {sidebarOpen && (
             <>
-              <motion.div
-                className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 lg:hidden"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                onClick={() => setSidebarOpen(false)}
-              />
-              <motion.div
-                initial={{ x: -300 }}
-                animate={{ x: 0 }}
-                exit={{ x: -300 }}
-                transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                className="fixed top-0 left-0 h-full w-72 bg-white/95 backdrop-blur-xl shadow-2xl z-50 lg:hidden"
-              >
-                <div className="p-6">
-                  {/* ... Same Mobile Menu Logic ... */}
-                  <div className="flex justify-between items-center mb-8">
-                    <Link to={homeLink} className="flex items-center space-x-2">
-                      <div className="w-9 h-9 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-lg flex items-center justify-center shadow-md">
-                        <span className="text-white font-bold text-lg">B</span>
-                      </div>
-                      <span className="text-xl font-bold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">
-                        BukCare
-                      </span>
-                    </Link>
-                    <button
-                      onClick={() => setSidebarOpen(false)}
-                      className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
-                    >
-                      <X className="w-5 h-5 text-slate-600" />
-                    </button>
-                  </div>
-                   <nav className="space-y-2">
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-slate-900/20 backdrop-blur-sm z-[90] lg:hidden" onClick={() => setSidebarOpen(false)} />
+              <motion.div initial={{ x: "-100%" }} animate={{ x: 0 }} exit={{ x: "-100%" }} transition={{ type: "spring", damping: 25, stiffness: 200 }} className="fixed top-0 left-0 h-full w-[280px] bg-white shadow-2xl z-[100] lg:hidden flex flex-col">
+                <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <img src={bukcareLogo} className="w-8 h-8 rounded-lg shadow-sm" alt="Logo" />
+                        <span className="font-bold text-lg text-slate-800">BukCare</span>
+                    </div>
+                    <button onClick={() => setSidebarOpen(false)} className="p-2 bg-slate-50 rounded-full text-slate-500 hover:text-slate-800"><X className="w-5 h-5" /></button>
+                </div>
+                <div className="flex-1 p-4 space-y-2 overflow-y-auto">
                     {navigationItems.map((item) => {
-                      const Icon = item.icon;
-                      const isActive = window.location.pathname === item.path;
-                      return (
-                        <Link
-                          key={item.path}
-                          to={item.path}
-                          onClick={() => setSidebarOpen(false)}
-                          className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-all ${
-                            isActive
-                              ? "bg-blue-50 text-blue-600 font-medium"
-                              : "text-slate-700 hover:bg-slate-50"
-                          }`}
-                        >
-                          <Icon className="w-5 h-5" />
-                          <span>{item.label}</span>
-                        </Link>
-                      );
+                        const Icon = item.icon;
+                        const isActive = location.pathname === item.path;
+                        return (
+                            <Link key={item.path} to={item.path} onClick={() => setSidebarOpen(false)} className={`flex items-center gap-4 px-4 py-3.5 rounded-xl text-sm font-semibold transition-all ${isActive ? "bg-blue-600 text-white shadow-lg shadow-blue-200" : "text-slate-600 hover:bg-slate-50"}`}>
+                                <Icon className="w-5 h-5" /> {item.label}
+                            </Link>
+                        )
                     })}
-                    <Link
-                      to={profileLink}
-                      onClick={() => setSidebarOpen(false)}
-                      className="flex items-center space-x-3 px-4 py-3 rounded-lg text-slate-700 hover:bg-slate-50 transition-all"
-                    >
-                      <User className="w-5 h-5" />
-                      <span>Profile</span>
-                    </Link>
-                  </nav>
-                   <div className="mt-6 pt-6 border-t border-slate-200">
-                    <button
-                      onClick={() => {
-                        handleLogout();
-                        setSidebarOpen(false);
-                      }}
-                      className="flex items-center space-x-3 px-4 py-3 rounded-lg text-rose-600 hover:bg-rose-50 transition-all w-full"
-                    >
-                      <LogOut className="w-5 h-5" />
-                      <span>Logout</span>
-                    </button>
-                  </div>
+                </div>
+                <div className="p-4 border-t border-slate-100 bg-slate-50">
+                    <button onClick={handleLogout} className="flex items-center justify-center gap-2 w-full py-3 bg-white border border-slate-200 rounded-xl text-sm font-bold text-rose-600 shadow-sm"><LogOut className="w-4 h-4" /> Sign Out</button>
                 </div>
               </motion.div>
             </>

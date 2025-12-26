@@ -4,7 +4,6 @@ import toast from "react-hot-toast";
 import api from "@/services/api";
 import Navbar from "@/components/Navbar";
 import { Calendar, Clock, User, CheckCircle, XCircle, AlertCircle, Trash2, History } from "lucide-react";
-// 1. IMPORT WEBSOCKET HOOK
 import { useWebSocket } from "@/context/WebSocketContext";
 
 interface Appointment {
@@ -22,7 +21,6 @@ interface Appointment {
 
 const DoctorAppointments = () => {
   const navigate = useNavigate();
-  // 2. GET LIVE DATA FROM SOCKET
   const { lastMessage } = useWebSocket();
   
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -30,33 +28,32 @@ const DoctorAppointments = () => {
   const [filter, setFilter] = useState<"all" | "pending" | "confirmed">("all");
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
 
-  // 3. UPDATED FETCH FUNCTION (Supports Silent Refresh)
-  // We use useCallback so we can call it safely inside useEffect
+  // 1. FETCH APPOINTMENTS
   const fetchAppointments = useCallback(async (isBackground = false) => {
     try {
       if (!isBackground) setLoading(true);
-      const response = await api.get("/appointments/");
+      const response = await api.get("/appointments/doctor");
       setAppointments(response.data);
     } catch (err: any) {
       console.error("Failed to load appointments:", err);
-      // Only show error toast on initial load to avoid spamming user
       if (!isBackground) toast.error("Failed to load appointments");
     } finally {
       if (!isBackground) setLoading(false);
     }
   }, []);
 
-  // 4. WEBSOCKET LISTENER (The Real-Time Logic) 🚀
+  // 2. WEBSOCKET LISTENER (Updates from Patients/Other Devices)
   useEffect(() => {
     if (!lastMessage) return;
 
     // SCENARIO A: A Patient booked a NEW appointment
     if (lastMessage.type === "NEW_APPOINTMENT") {
-      toast.success("New Appointment Request!");
-      fetchAppointments(true); // Silent refresh (updates list without loading spinner)
+      // We just want to refresh the data silently. The Navbar handles the notification.
+      console.log("Silent refresh triggered by socket");
+      fetchAppointments(true); 
     }
 
-    // SCENARIO B: Status was updated (e.g., from another device/tab)
+    // SCENARIO B: Status was updated
     if (lastMessage.type === "APPOINTMENT_UPDATE") {
       setAppointments((prev) => 
         prev.map((appt) => 
@@ -67,7 +64,7 @@ const DoctorAppointments = () => {
       );
     }
 
-    // SCENARIO C: Appointment was deleted
+    // SCENARIO C: Appointment was deleted (System Signal)
     if (lastMessage.type === "APPOINTMENT_DELETED") {
       setAppointments((prev) => 
         prev.filter((appt) => appt.id !== lastMessage.appointment_id)
@@ -80,24 +77,36 @@ const DoctorAppointments = () => {
     fetchAppointments();
   }, [fetchAppointments]);
 
+  // 3. ⚡ UPDATE STATUS (Local Update + API)
   const updateStatus = async (id: number, newStatus: "confirmed" | "completed") => {
     try {
-      await api.put(`/appointments/${id}/status?status=${newStatus}`);
+      // 1. Call API
+      await api.put(`/appointments/${id}/status`, { status: newStatus });
       toast.success(`Appointment ${newStatus}`);
-      // No need to fetchAppointments() manually here because 
-      // the backend sends an APPOINTMENT_UPDATE signal that handles the UI update!
+
+      // 2. ✅ MANUAL UPDATE: Update local state instantly (Don't wait for socket)
+      setAppointments((prev) => 
+        prev.map((appt) => 
+          appt.id === id 
+            ? { ...appt, status: newStatus } 
+            : appt
+        )
+      );
     } catch (err: any) {
       console.error("Action failed:", err);
       toast.error(err?.response?.data?.detail || "Action failed");
     }
   };
 
+  // 4. ⚡ DELETE (Local Update + API)
   const deleteAppointment = async (id: number) => {
     try {
       await api.delete(`/appointments/${id}/permanent`);
       toast.success("Appointment permanently deleted");
       setDeleteConfirm(null);
-      // Backend sends APPOINTMENT_DELETED signal -> UI updates automatically
+
+      // ✅ MANUAL UPDATE: Remove from list instantly
+      setAppointments((prev) => prev.filter((a) => a.id !== id));
     } catch (err: any) {
       console.error("Delete failed:", err);
       toast.error(err?.response?.data?.detail || "Failed to delete appointment");

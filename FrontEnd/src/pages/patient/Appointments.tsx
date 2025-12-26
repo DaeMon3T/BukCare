@@ -2,7 +2,16 @@ import { useEffect, useState, useCallback, useMemo } from "react";
 import toast from "react-hot-toast";
 import api from "@/services/api";
 import Navbar from "@/components/Navbar";
-import { Calendar, Clock, User, CheckCircle, XCircle, AlertCircle, Trash2, Filter } from "lucide-react";
+import { 
+  Calendar, 
+  Clock, 
+  User, 
+  CheckCircle, 
+  XCircle, 
+  AlertCircle, 
+  Search, 
+  Filter 
+} from "lucide-react";
 import { useWebSocket } from "@/context/WebSocketContext";
 
 interface Appointment {
@@ -12,18 +21,18 @@ interface Appointment {
   doctor_name?: string;
   appointment_date: string;
   reason: string | null;
-  status: "pending" | "confirmed" | "completed" | "cancelled";
+  status: string; // "pending" | "confirmed" | "completed" | "cancelled"
   notes: string | null;
   created_at: string;
   updated_at: string;
 }
 
 const PatientAppointments = () => {
-  const { lastMessage } = useWebSocket();
+  const { lastMessage } = useWebSocket(); // Hook into live stream
   
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<"all" | "pending" | "confirmed" | "completed" | "cancelled">("all");
+  const [filter, setFilter] = useState<string>("all");
 
   // 1. FETCH APPOINTMENTS
   const fetchAppointments = useCallback(async (isBackground = false) => {
@@ -39,23 +48,30 @@ const PatientAppointments = () => {
     }
   }, []);
 
-  // 2. WEBSOCKET LISTENER
+  // 2. ⚡ REAL-TIME LISTENER
   useEffect(() => {
     if (!lastMessage) return;
 
+    // Case A: Status Update (Doctor Confirms/Cancels/Completes)
     if (lastMessage.type === "APPOINTMENT_UPDATE") {
-      setAppointments((prev) => 
-        prev.map((appt) => 
-          appt.id === lastMessage.appointment_id 
-            ? { ...appt, status: lastMessage.status } 
-            : appt
-        )
-      );
-      toast.success(`Appointment status updated to ${lastMessage.status}`);
+      const { appointment_id, status } = lastMessage;
+      
+      if (appointment_id && status) {
+          // Update only the specific item in the list (Instant UI update)
+          setAppointments((prev) => 
+            prev.map((appt) => 
+              appt.id === appointment_id 
+                ? { ...appt, status: status } 
+                : appt
+            )
+          );
+          toast.success(`Appointment marked as ${status}`);
+      }
     }
 
+    // Case B: New Appointment Created (e.g. from another device)
     if (lastMessage.type === "NEW_APPOINTMENT") {
-      fetchAppointments(true);
+      fetchAppointments(true); // Silent re-fetch to add the new item
       toast.success("New appointment received!");
     }
   }, [lastMessage, fetchAppointments]);
@@ -73,11 +89,9 @@ const PatientAppointments = () => {
         filtered = appointments.filter((appt) => appt.status === filter);
     }
 
-    // Sort: Upcoming (Pending/Confirmed) first, then by Date descending
+    // Sort: Future dates first, then past dates descending
     return filtered.sort((a, b) => {
-        const dateA = new Date(a.appointment_date).getTime();
-        const dateB = new Date(b.appointment_date).getTime();
-        return dateB - dateA; // Newest first
+        return new Date(b.appointment_date).getTime() - new Date(a.appointment_date).getTime();
     });
   }, [appointments, filter]);
 
@@ -116,27 +130,25 @@ const PatientAppointments = () => {
                 <h1 className="text-2xl font-bold text-slate-900">My Appointments</h1>
                 <p className="text-slate-500 mt-1">Track your health journey and upcoming visits.</p>
             </div>
-            
-            {/* Quick Stats or Action could go here */}
         </div>
 
         {/* Filters */}
-        <div className="flex overflow-x-auto pb-4 gap-2 mb-4 no-scrollbar">
+        <div className="flex overflow-x-auto pb-4 gap-2 mb-4 scrollbar-hide">
             {["all", "pending", "confirmed", "completed", "cancelled"].map((f) => {
                 const count = f === "all" ? appointments.length : appointments.filter(a => a.status === f).length;
                 const isActive = filter === f;
                 return (
                     <button
                         key={f}
-                        onClick={() => setFilter(f as any)}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap ${
+                        onClick={() => setFilter(f)}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap flex-shrink-0 ${
                             isActive 
                                 ? "bg-blue-600 text-white shadow-md shadow-blue-200" 
                                 : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
                         }`}
                     >
                         {f.charAt(0).toUpperCase() + f.slice(1)}
-                        <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${isActive ? "bg-white/20" : "bg-slate-100"}`}>
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] ${isActive ? "bg-white/20" : "bg-slate-100"}`}>
                             {count}
                         </span>
                     </button>
@@ -151,7 +163,7 @@ const PatientAppointments = () => {
             ) : filteredAppointments.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-20">
                     <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mb-4">
-                        <Calendar className="w-10 h-10 text-slate-300" />
+                        <Search className="w-10 h-10 text-slate-300" />
                     </div>
                     <h3 className="text-lg font-semibold text-slate-900">No appointments found</h3>
                     <p className="text-slate-500 max-w-sm text-center mt-1">
@@ -201,7 +213,7 @@ const PatientAppointments = () => {
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4">
-                                                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${statusMeta.style}`}>
+                                                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${statusMeta.style} transition-colors duration-300`}>
                                                     <StatusIcon className="w-3.5 h-3.5" />
                                                     {appt.status.charAt(0).toUpperCase() + appt.status.slice(1)}
                                                 </span>
@@ -241,7 +253,7 @@ const PatientAppointments = () => {
                                                 <p className="text-xs text-slate-500">{date} at {time}</p>
                                             </div>
                                         </div>
-                                        <span className={`px-2.5 py-1 rounded-full text-xs font-medium border ${statusMeta.style}`}>
+                                        <span className={`px-2.5 py-1 rounded-full text-xs font-medium border ${statusMeta.style} transition-colors duration-300`}>
                                             {appt.status}
                                         </span>
                                     </div>
@@ -262,14 +274,12 @@ const PatientAppointments = () => {
   );
 };
 
-// 5. SKELETON COMPONENT
+// Skeleton Component
 const AppointmentsSkeleton = () => (
     <div className="animate-pulse">
-        {/* Header Skeleton */}
         <div className="hidden md:flex border-b border-slate-100 bg-slate-50/50 px-6 py-4 gap-4">
-            {[1, 2, 3, 4, 5].map(i => <div key={i} className="h-4 bg-slate-200 rounded w-24"></div>)}
+            {[1, 2, 3, 4].map(i => <div key={i} className="h-4 bg-slate-200 rounded w-24"></div>)}
         </div>
-        {/* Rows Skeleton */}
         {[1, 2, 3, 4, 5].map(i => (
             <div key={i} className="px-6 py-4 flex items-center gap-6 border-b border-slate-50">
                 <div className="flex items-center gap-3 w-1/4">

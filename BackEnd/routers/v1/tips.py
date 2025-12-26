@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 from datetime import datetime
 
-# ✅ NEW LIBRARY IMPORT
+# NEW LIBRARY IMPORT
 from google import genai
 
 # Database Imports

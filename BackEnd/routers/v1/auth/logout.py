@@ -15,9 +15,9 @@ def logout(authorization: Optional[str] = Header(None), db: Session = Depends(ge
         token = authorization.replace("Bearer ", "")
         try:
             payload = jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
-            user_id = payload.get("id")  # ✅ match this with how you encode JWT
+            user_id = payload.get("id")  # match this with how you encode JWT
             if user_id:
-                user = db.query(User).filter(User.id == user_id).first()  # ✅ fixed field name
+                user = db.query(User).filter(User.id == user_id).first()  # fixed field name
                 if user:
                     user.refresh_token = None
                     db.commit()

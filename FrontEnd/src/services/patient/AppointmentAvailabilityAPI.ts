@@ -33,7 +33,7 @@ const AppointmentAvailabilityAPI = {
       );
       return response.data;
     } catch (error) {
-      console.error("❌ Error fetching available slots:", error);
+      console.error("Error fetching available slots:", error);
       throw error;
     }
   },
@@ -49,7 +49,7 @@ const AppointmentAvailabilityAPI = {
       );
       return response.data;
     } catch (error) {
-      console.error("❌ Error checking availability:", error);
+      console.error("Error checking availability:", error);
       throw error;
     }
   },

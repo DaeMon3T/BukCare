@@ -41,7 +41,7 @@ const GetDoctorAPI = {
       const response = await BaseAPI.get<Doctor[]>("/doctors/");
       return response.data;
     } catch (error) {
-      console.error("❌ Error fetching doctors:", error);
+      console.error("Error fetching doctors:", error);
       throw error;
     }
   },
@@ -52,7 +52,7 @@ const GetDoctorAPI = {
       const response = await BaseAPI.get<Doctor>(`/doctors/${doctorId}`);
       return response.data;
     } catch (error) {
-      console.error(`❌ Error fetching doctor with ID ${doctorId}:`, error);
+      console.error(`Error fetching doctor with ID ${doctorId}:`, error);
       throw error;
     }
   },

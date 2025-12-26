@@ -16,7 +16,7 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 # -----------------------------
-# ✅ Schemas
+# Schemas
 # -----------------------------
 class PasswordResetRequest(BaseModel):
     email: EmailStr
@@ -33,7 +33,7 @@ class PasswordResetConfirm(BaseModel):
 
 
 # -----------------------------
-# ✅ Step 1: Request OTP
+# Step 1: Request OTP
 # -----------------------------
 @router.post("/request", summary="Request a password reset OTP")
 def request_password_reset(
@@ -68,7 +68,7 @@ def request_password_reset(
 
 
 # -----------------------------
-# ✅ Step 2: Verify OTP
+# Step 2: Verify OTP
 # -----------------------------
 @router.post("/verify", summary="Verify the OTP sent to your email")
 def verify_otp(
@@ -92,7 +92,7 @@ def verify_otp(
 
 
 # -----------------------------
-# ✅ Step 3: Confirm New Password
+# Step 3: Confirm New Password
 # -----------------------------
 @router.post("/confirm", summary="Confirm new password after OTP verification")
 def confirm_password_reset(

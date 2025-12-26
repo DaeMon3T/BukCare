@@ -1,4 +1,4 @@
-import { useState, FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { Mail, KeyRound, Lock } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import {
@@ -245,7 +245,7 @@ export default function ForgotPassword() {
   );
 }
 
-// ✅ Reusable components
+// Reusable components
 function InputField({ icon, label, ...props }: any) {
   return (
     <div>

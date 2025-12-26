@@ -13,18 +13,18 @@ const GoogleCallbackHandler: React.FC = () => {
   useEffect(() => {
     // Prevent double execution in React StrictMode
     if (hasProcessed.current) {
-      console.log('⚠️ Callback already processed, skipping...');
+      console.log('Callback already processed, skipping...');
       return;
     }
     hasProcessed.current = true;
 
     const handleGoogleCallback = async () => {
       console.log('========================================');
-      console.log('🔐 Google OAuth Callback Handler Started');
+      console.log('Google OAuth Callback Handler Started');
       console.log('========================================');
-      console.log('📍 Current URL:', window.location.href);
-      console.log('📍 Pathname:', location.pathname);
-      console.log('📍 Search:', location.search);
+      console.log('Current URL:', window.location.href);
+      console.log('Pathname:', location.pathname);
+      console.log('Search:', location.search);
       
       const searchParams = new URLSearchParams(location.search);
       const hashParams = new URLSearchParams(location.hash.substring(1));
@@ -50,7 +50,7 @@ const GoogleCallbackHandler: React.FC = () => {
 
       // Handle OAuth error
       if (error) {
-        console.error('❌ OAuth Error Detected:', error);
+        console.error('OAuth Error Detected:', error);
         const errorDescription = getParam('error_description') || error;
         toast.error(`Google Sign-In failed: ${decodeURIComponent(errorDescription)}`);
         
@@ -62,7 +62,7 @@ const GoogleCallbackHandler: React.FC = () => {
 
       // Validate required tokens
       if (!token || !refresh) {
-        console.error('❌ Missing Authentication Tokens');
+        console.error('Missing Authentication Tokens');
         toast.error('Authentication failed: Missing tokens');
         
         setTimeout(() => {
@@ -154,25 +154,25 @@ const GoogleCallbackHandler: React.FC = () => {
         }
 
         // Profile is complete - route by role
-        console.log('✅ Profile is complete');
+        console.log('Profile is complete');
         const userRole = (user.role || '').toLowerCase();
         
         switch (userRole) {
           case 'admin':
             redirectPath = '/admin/dashboard';
-            console.log('👔 User is Admin');
+            console.log('User is Admin');
             break;
           case 'doctor':
             redirectPath = '/doctor/dashboard';
-            console.log('⚕️ User is Doctor');
+            console.log('User is Doctor');
             break;
           case 'patient':
             redirectPath = '/patient/home';
-            console.log('🧑‍⚕️ User is Patient');
+            console.log('User is Patient');
             break;
           default:
             redirectPath = '/';
-            console.warn('⚠️ Unknown or missing role:', userRole);
+            console.warn('Unknown or missing role:', userRole);
             toast.error('Unknown user role. Please contact support.', {
               duration: 5000
             });
@@ -188,7 +188,7 @@ const GoogleCallbackHandler: React.FC = () => {
 
       } catch (err: any) {
         console.error('========================================');
-        console.error('❌ Error Processing Google Callback');
+        console.error('Error Processing Google Callback');
         console.error('========================================');
         console.error('Error:', err);
         console.error('Message:', err.message);

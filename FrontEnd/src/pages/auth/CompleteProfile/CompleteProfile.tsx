@@ -22,7 +22,7 @@ const CompleteProfile: React.FC = () => {
   const locationState = location.state || {};
 
   // --------------------------------------------
-  // ✅ Extract query parameters
+  // Extract query parameters
   // --------------------------------------------
   const searchParams = new URLSearchParams(location.search);
   const queryUserId = searchParams.get("user_id");
@@ -35,7 +35,7 @@ const CompleteProfile: React.FC = () => {
   const userId = queryUserId || locationState.user_id || user?.user_id;
 
   // --------------------------------------------
-  // ✅ Merge data from query, state, or auth user
+  // Merge data from query, state, or auth user
   // --------------------------------------------
   const googleData: GoogleData = {
     email: queryEmail || locationState.email || user?.email || "",
@@ -45,7 +45,7 @@ const CompleteProfile: React.FC = () => {
   };
 
   // --------------------------------------------
-  // ✅ State - Added barangay_id field
+  // State - Added barangay_id field
   // --------------------------------------------
   const [role, setRole] = useState<"doctor" | "patient" | null>(null);
   const [formData, setFormData] = useState<ProfileFormData>({
@@ -55,10 +55,10 @@ const CompleteProfile: React.FC = () => {
     password: "",
     confirmPassword: "",
     barangay: "",
-    barangay_id: "", // ✅ Added for PSGC code
+    barangay_id: "", // Added for PSGC code
     city_id: "",
     province_id: "",
-    zip_code: "", // ✅ Added to satisfy type requirement
+    zip_code: "", // Added to satisfy type requirement
     license_number: "",
     years_of_experience: "",
     prc_license_front: null,
@@ -71,7 +71,7 @@ const CompleteProfile: React.FC = () => {
   const [loading, setLoading] = useState(false);
 
   // --------------------------------------------
-  // ✅ Province/City/Barangay data
+  // Province/City/Barangay data
   // --------------------------------------------
   const { provincesData, citiesData, barangaysData, loading: loadingProvinces } = useLocationData(
     formData.province_id,
@@ -79,7 +79,7 @@ const CompleteProfile: React.FC = () => {
   );
 
   // --------------------------------------------
-  // ✅ Handlers
+  // Handlers
   // --------------------------------------------
   const handleChange = (e: ReactChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -94,7 +94,7 @@ const CompleteProfile: React.FC = () => {
         zip_code: "",
       });
     } else if (name === "city_id") {
-      // ✅ Also extract and save zip_code when city changes
+      // Also extract and save zip_code when city changes
       const selectedCity = citiesData?.find((c: any) => String(c.city_id) === String(value));
       setFormData({
         ...formData,
@@ -104,7 +104,7 @@ const CompleteProfile: React.FC = () => {
         zip_code: selectedCity?.zip_code || "",
       });
     } else if (name === "barangay_id") {
-      // ✅ When barangay changes, save both ID and name
+      // When barangay changes, save both ID and name
       const selectedBarangay = barangaysData?.find((b: any) => String(b.barangay_id) === String(value));
       setFormData({
         ...formData,
@@ -166,7 +166,7 @@ const CompleteProfile: React.FC = () => {
   };
 
   // --------------------------------------------
-  // ✅ Submit Handler - FIXED
+  // Submit Handler - FIXED
   // --------------------------------------------
   const handleSubmit = async (e: ReactFormEvent) => {
     e.preventDefault();
@@ -185,7 +185,7 @@ const CompleteProfile: React.FC = () => {
     }
 
     try {
-      // ✅ Use browser's FormData (not your custom type)
+      // Use browser's FormData (not your custom type)
       const payload = new FormData();
       
       payload.append("user_id", String(userId));
@@ -195,7 +195,7 @@ const CompleteProfile: React.FC = () => {
       payload.append("contact_number", formData.contact_number);
       payload.append("password", formData.password);
 
-      // ✅ Send BOTH IDs and Names for location data
+      // Send BOTH IDs and Names for location data
       payload.append("province_id", formData.province_id);
       payload.append("city_id", formData.city_id);
       payload.append("barangay_id", formData.barangay_id || formData.barangay); // Fallback to name if ID missing
@@ -244,7 +244,7 @@ const CompleteProfile: React.FC = () => {
   };
 
   // --------------------------------------------
-  // ✅ Render
+  // Render
   // --------------------------------------------
   return (
     <ErrorBoundary>

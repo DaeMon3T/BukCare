@@ -53,7 +53,7 @@ const BookAppointment: React.FC = () => {
         const validAvailabilities = (doctorData.availabilities || []).filter((slot) => {
             if (!slot.date || !slot.start_time) return false;
 
-            // ✅ FIX APPLIED HERE: Added '?? ""' to handle possible undefined
+            // FIX APPLIED HERE: Added '?? ""' to handle possible undefined
             const slotDate = slot.date.split("T")[0] ?? "";
 
             // 1. If date is in the past -> REMOVE
@@ -216,10 +216,10 @@ const BookAppointment: React.FC = () => {
 
       await api.post("/appointments/", payload);
 
-      toast.success("Appointment booked successfully! 🎉");
+      toast.success("Appointment booked successfully!");
       navigate("/patient/appointments");
     } catch (err: any) {
-      console.error("❌ Booking failed:", err?.response?.data || err);
+      console.error("Booking failed:", err?.response?.data || err);
       if (err?.response?.status === 409) {
         toast.error("This time slot is no longer available.");
         if (bookingMode === "custom" && selectedDate) {
