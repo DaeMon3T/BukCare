@@ -12,33 +12,28 @@ export interface Notification {
 
 const notificationsAPI = {
   // Get all notifications
-  // URL: /v1/notifications/
   getAll: async () => {
     const response = await api.get("/notifications/");
     return response.data;
   },
 
-  // Get Unread Count (For the Red Badge)
+  // Get Unread Count
   getUnreadCount: async () => {
     const response = await api.get("/notifications/unread-count");
     return response.data;
   },
 
   // Mark specific notification as read
-  // URL: /v1/notifications/{id}/read (PATCH)
   markAsRead: async (id: number) => {
-    // FIXED: Changed PUT to PATCH
     await api.patch(`/notifications/${id}/read`);
   },
 
-  // Mark all as read
-  // URL: /v1/notifications/mark-all-read (PATCH)
-  markAllAsRead: async () => {
-    // FIXED: Changed URL to match backend and PUT to PATCH
-    await api.patch("/notifications/mark-all-read");
+  // RENAMED to match Navbar: markAllRead
+  markAllRead: async () => {
+    await api.patch("/notifications/read/all"); 
   },
   
-  // Delete notification
+  // DELETE Function
   delete: async (id: number) => {
       await api.delete(`/notifications/${id}`);
   }

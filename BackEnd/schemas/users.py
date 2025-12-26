@@ -25,7 +25,7 @@ class UserCreate(UserBase):
     role: UserRole = UserRole.PENDING
 
 
-# ✅ Define Address first
+# Define Address first
 class Address(BaseModel):
     province: Optional[str]
     city: Optional[str]

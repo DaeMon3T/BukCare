@@ -1,7 +1,7 @@
 // src/services/BaseAPI.ts
 import axios from "axios";
 
-// ✅ FIXED: Use HTTPS and correct env variable name
+// FIXED: Use HTTPS and correct env variable name
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 
   (import.meta.env.PROD 
     ? "https://api.bukcare.com/v1" 
@@ -74,12 +74,12 @@ BaseAPI.interceptors.response.use(
 
 export default BaseAPI;
 
-// ✅ FIXED: API Interceptor class with HTTPS
+// FIXED: API Interceptor class with HTTPS
 class APIInterceptor {
   private baseURL: string;
 
   constructor() {
-    // ✅ FIXED: Use correct env var and HTTPS for production
+    // FIXED: Use correct env var and HTTPS for production
     this.baseURL = import.meta.env.VITE_API_BASE_URL || 
       (import.meta.env.PROD 
         ? 'https://api.bukcare.com/v1' 

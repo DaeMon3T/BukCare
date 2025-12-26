@@ -92,14 +92,14 @@ def handle_google_auth(idinfo: dict, db: Session, redirect_flow: bool = False):
         db.refresh(user)
 
     # -----------------------------
-    # 🔐 UNIVERSAL LOGIN PROTECTION
+    # UNIVERSAL LOGIN PROTECTION
     # -----------------------------
 
-    # ❌ Block inactive accounts
+    # Block inactive accounts
     if not user.is_active:
         raise HTTPException(status_code=403, detail="Your account is inactive. Please contact support.")
 
-    # ❌ Block doctors who are not approved yet
+    # Block doctors who are not approved yet
     if user.role == UserRole.DOCTOR and not user.is_doctor_approved:
         raise HTTPException(status_code=403, detail="Your doctor account is pending approval.")
 
@@ -154,11 +154,11 @@ def login(data: LoginRequest, db: Session = Depends(get_db)):
     if not user or not user.password or not verify_password(data.password, user.password):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password")
 
-    # ❌ Block ALL inactive accounts
+    # Block ALL inactive accounts
     if not user.is_active:
         raise HTTPException(status_code=403, detail="Your account is inactive. Please contact support.")
 
-    # ❌ Block unapproved doctors
+    # Block unapproved doctors
     if user.role == UserRole.DOCTOR and not user.is_doctor_approved:
         raise HTTPException(status_code=403, detail="Your doctor account is pending approval.")
 

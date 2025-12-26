@@ -21,9 +21,9 @@ def get_doctors(
     query = (
         db.query(Doctor)
         .options(
-            joinedload(Doctor.user).joinedload(User.province),  # ✅ Load via User
-            joinedload(Doctor.user).joinedload(User.city),      # ✅ Load via User
-            joinedload(Doctor.user).joinedload(User.barangay),  # ✅ Load via User
+            joinedload(Doctor.user).joinedload(User.province),  #  Load via User
+            joinedload(Doctor.user).joinedload(User.city),      #  Load via User
+            joinedload(Doctor.user).joinedload(User.barangay),  #  Load via User
             joinedload(Doctor.specializations),
         )
     )
@@ -39,7 +39,7 @@ def get_doctors(
 
     results = []
     for doc in doctors:
-        # ✅ Access location data from user, not doctor
+        #  Access location data from user, not doctor
         address = ", ".join(
             filter(
                 None,
@@ -78,9 +78,9 @@ def get_doctor_by_id(doctor_id: int, db: Session = Depends(get_db)):
     doctor = (
         db.query(Doctor)
         .options(
-            joinedload(Doctor.user).joinedload(User.province),  # ✅ Load via User
-            joinedload(Doctor.user).joinedload(User.city),      # ✅ Load via User
-            joinedload(Doctor.user).joinedload(User.barangay),  # ✅ Load via User
+            joinedload(Doctor.user).joinedload(User.province),  #  Load via User
+            joinedload(Doctor.user).joinedload(User.city),      #  Load via User
+            joinedload(Doctor.user).joinedload(User.barangay),  #  Load via User
             joinedload(Doctor.specializations),
             joinedload(Doctor.availabilities),
         )
@@ -93,7 +93,7 @@ def get_doctor_by_id(doctor_id: int, db: Session = Depends(get_db)):
 
     user = doctor.user
 
-    # ✅ Build safe address from user's location data
+    #  Build safe address from user's location data
     address = ", ".join(
         filter(
             None,

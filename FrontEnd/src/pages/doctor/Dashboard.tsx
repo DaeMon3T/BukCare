@@ -62,6 +62,7 @@ interface Appointment {
   updated_at: string;
 }
 
+// 📊 Dashboard Statistics
 interface DashboardStats {
   totalAppointments: number;
   todayAppointments: number;
@@ -88,6 +89,17 @@ const CHART_COLORS = {
   completed: "#3B82F6",
   cancelled: "#EF4444",
 };
+
+
+const toDateString = (dateInput: string | Date): string => {
+    const d = new Date(dateInput);
+    // Use local year/month/day to match user's perspective (Philippines Time)
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
+
 
 const DoctorDashboard: FC = () => {
   const navigate = useNavigate();
@@ -118,11 +130,8 @@ const DoctorDashboard: FC = () => {
     try {
       setLoading(true);
       const [appointmentsRes, schedulesRes] = await Promise.all([
-        // UPDATED: Use the specific doctor endpoint
-        api.get<Appointment[]>("/appointments/doctor"), 
-        
-        // This remains the same if you have a schedules endpoint
-        api.get<Schedule[]>("/schedules"), 
+        api.get<Appointment[]>("/appointments/doctor"),
+        api.get<Schedule[]>("/schedules"),
       ]);
       
       setAppointments(appointmentsRes.data);
@@ -130,7 +139,6 @@ const DoctorDashboard: FC = () => {
       calculateStats(appointmentsRes.data);
     } catch (error: any) {
       console.error("Failed to load data:", error);
-      // Optional: Check if error is 403 (Forbidden) -> Redirect to login
       toast.error("Failed to load dashboard data");
     } finally {
       setLoading(false);
@@ -138,21 +146,23 @@ const DoctorDashboard: FC = () => {
   };
 
   const calculateStats = (appointmentsData: Appointment[]) => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    // FIX: Get "Today" as a clean string using your new helper
+    const todayStr = toDateString(new Date()); 
 
     const stats: DashboardStats = {
       totalAppointments: appointmentsData.length,
+      
+      // FIX: Compare Strings directly to ignore timezone shifts
       todayAppointments: appointmentsData.filter((apt) => {
-        const aptDate = new Date(apt.appointment_date);
-        return aptDate >= today && aptDate < tomorrow;
+        const aptDateStr = apt.appointment_date.split('T')[0] ?? "";
+        return aptDateStr === todayStr && apt.status !== 'cancelled';
       }).length,
+
       upcomingAppointments: appointmentsData.filter((apt) => {
-        const aptDate = new Date(apt.appointment_date);
-        return aptDate > today && apt.status !== "cancelled";
+        const aptDateStr = apt.appointment_date.split('T')[0] ?? "";
+        return aptDateStr > todayStr && apt.status !== "cancelled";
       }).length,
+
       pendingAppointments: appointmentsData.filter((apt) => apt.status === "pending").length,
       confirmedAppointments: appointmentsData.filter((apt) => apt.status === "confirmed").length,
       completedAppointments: appointmentsData.filter((apt) => apt.status === "completed").length,
@@ -295,26 +305,12 @@ const DoctorDashboard: FC = () => {
 
   const handleUpdateStatus = async (appointmentId: number, newStatus: string) => {
     try {
-      // UPDATED: Send as JSON body { "status": newStatus }
       await api.put(`/appointments/${appointmentId}/status`, { 
         status: newStatus 
       });
-      
       toast.success(`Appointment ${newStatus}`);
-      
-      // OPTIMISTIC UPDATE: Update UI immediately without waiting for re-fetch
-      // This makes the app feel faster
-      setAppointments(prev => prev.map(appt => 
-        appt.id === appointmentId ? { ...appt, status: newStatus } : appt
-      ));
-      
-      // Close modal if open
+      fetchData();
       setShowAppointmentDetails(false);
-      
-      // Recalculate stats immediately with the new local state
-      // (Or just call fetchData() if you prefer absolute accuracy)
-      fetchData(); 
-      
     } catch (error: any) {
       console.error("Failed to update status:", error);
       toast.error("Failed to update appointment status");
@@ -345,8 +341,8 @@ const DoctorDashboard: FC = () => {
   };
 
   const getSchedulesForDate = (date: Date) => {
-    const dateStr = date.toISOString().split('T')[0];
-    return schedules.filter((sch) => sch.date === dateStr && sch.is_available);
+  const dateStr = toDateString(date); // Fixed: Uses your new helper
+  return schedules.filter((sch) => sch.date === dateStr && sch.is_available);
   };
 
   const renderCalendar = () => {
@@ -410,7 +406,7 @@ const DoctorDashboard: FC = () => {
   // Appointment Details Modal
   const AppointmentDetailsModal: FC = () =>
   selectedAppointment ? (
-    <div className="fixed font-display inset-0 bg-gradient-to-br from-black/70 via-slate-900/60 to-black/70 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-in fade-in duration-300">
+    <div className="fixed inset-0 bg-gradient-to-br from-black/70 via-slate-900/60 to-black/70 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-in fade-in duration-300">
       <div className="bg-white rounded-3xl max-w-2xl w-full shadow-2xl max-h-[95vh] overflow-hidden transform animate-in zoom-in-95 duration-300 border border-white/20">
         {/* Premium Header with Glass Effect */}
         <div className="relative bg-gradient-to-r from-blue-600 via-cyan-600 to-blue-500 p-4 overflow-hidden">
@@ -422,6 +418,7 @@ const DoctorDashboard: FC = () => {
           </div>
           <div className="relative z-10 flex justify-between items-start">
             <div className="flex items-center gap-4">
+              {/* Icon placeholder - replace with your image */}
               <div className="w-16 h-16 bg-white backdrop-blur-lg rounded-2xl flex items-center justify-center border border-white/30 shadow-xl">
                 <img 
                   src={bukcarelogo} 
@@ -495,6 +492,7 @@ const DoctorDashboard: FC = () => {
               <div className="absolute top-0 right-0 w-20 h-20 bg-purple-400/10 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-500"></div>
               <div className="relative z-10">
                 <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-4 shadow-lg group-hover:scale-110 transition-transform">
+                  {/* Icon placeholder */}
                   <img 
                     src={pendingpic}
                     alt="Time" 
@@ -513,6 +511,7 @@ const DoctorDashboard: FC = () => {
               <div className="absolute top-0 right-0 w-20 h-20 bg-emerald-400/10 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-500"></div>
               <div className="relative z-10">
                 <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-4 shadow-lg group-hover:scale-110 transition-transform">
+                  {/* Icon placeholder */}
                   <img 
                     src={confirmedpic}
                     alt="Status" 
@@ -562,6 +561,7 @@ const DoctorDashboard: FC = () => {
               <div className="absolute top-0 right-0 w-32 h-32 bg-purple-400/10 rounded-full blur-3xl"></div>
               <div className="relative z-10 flex items-start gap-4">
                 <div className="w-14 h-14 bg-gradient-to-br from-purple-500 to-fuchsia-600 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg group-hover:scale-110 transition-transform">
+                  {/* Icon placeholder */}
                   <img 
                     src="/path-to-your-notes-icon.png" 
                     alt="Notes" 
@@ -670,7 +670,7 @@ const DoctorDashboard: FC = () => {
             <div className="absolute inset-0 opacity-0 group-hover:opacity-100 bg-gradient-to-br from-white/20 to-transparent transition duration-500 pointer-events-none" />
             <div className="relative z-10">
               <div className="flex items-center justify-between mb-5">
-                <div className="w-8 h-8 bg-white/30 backdrop-blur-lg border border-white/40 rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 group-hover:bg-white/40 transition-all duration-300">
+                <div className="w-6 h-6 bg-white/30 backdrop-blur-lg border border-white/40 rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 group-hover:bg-white/40 transition-all duration-300">
                   <img src={appointmentpic} alt="Icon" className="w-7 h-7 object-contain" />
                 </div>
                 <div className="w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center border border-white/30">
@@ -1052,7 +1052,7 @@ const DoctorDashboard: FC = () => {
                     />
                   </div>
                   <div>
-                    <h3 className="font-bold text-slate-800 text-lg">Set Availability</h3>
+                    <h3 className="font-semibold text-slate-800 text-lg">Set Availability</h3>
                     <p className="text-sm text-slate-600 mt-1">Manage your schedule</p>
                   </div>
                 </div>

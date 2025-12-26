@@ -14,7 +14,7 @@ from schemas.schedules import ScheduleCreate, ScheduleResponse
 router = APIRouter()
 
 
-# --- ✅ Create Pydantic model for request body ---
+# ---  Create Pydantic model for request body ---
 class ScheduleCreate(BaseModel):
     doctor_id: int
     date: date
@@ -69,7 +69,7 @@ def create_schedule(
         )
 
     schedule = DoctorAvailability(
-        doctor_id=doctor.doctor_id,  # ✅ automatically use linked doctor_id
+        doctor_id=doctor.doctor_id,  #  automatically use linked doctor_id
         date=schedule_data.date,
         start_time=schedule_data.start_time,
         end_time=schedule_data.end_time,

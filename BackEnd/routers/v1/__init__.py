@@ -7,6 +7,7 @@ from .schedules import router as schedules_router
 from .patient.patient import router as patient_router
 from .admin import router as admin_router 
 from .messages import router as messages_router
+from .vitals import router as vitals_router
 
 router = APIRouter()
 
@@ -18,3 +19,4 @@ router.include_router(schedules_router, prefix="/schedules", tags=["Schedules"])
 router.include_router(patient_router, prefix="/patient", tags=["Patient"])
 router.include_router(admin_router, prefix="/admin", tags=["Admin"])
 router.include_router(messages_router, prefix="/messages", tags=["Messages"])
+router.include_router(vitals_router, prefix="/vitals", tags=["Patient Vitals"])

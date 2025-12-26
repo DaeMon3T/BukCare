@@ -94,7 +94,7 @@ async def create_appointment(
             detail="Doctor not found"
         )
     
-    # ✅ CHECK FOR CONFLICTS
+    #  CHECK FOR CONFLICTS
     has_conflict = check_appointment_conflict(
         db=db,
         doctor_id=doctor.user_id,
@@ -174,7 +174,7 @@ async def create_appointment(
     }
 
 
-# ✅ NEW ENDPOINT: Check available slots
+#  NEW ENDPOINT: Check available slots
 @router.get("/available-slots/{doctor_id}")
 def get_doctor_available_slots(
     doctor_id: int,
@@ -209,7 +209,7 @@ def get_doctor_available_slots(
     }
 
 
-# ✅ NEW ENDPOINT: Check if specific time is available
+#  NEW ENDPOINT: Check if specific time is available
 @router.get("/check-availability/{doctor_id}")
 def check_time_availability(
     doctor_id: int,
@@ -241,131 +241,6 @@ def check_time_availability(
         "message": "Time slot is available" if not has_conflict else "Time slot is already booked"
     }
 
-@router.put("/{appointment_id}/status", response_model=dict)
-async def update_appointment_status(
-    appointment_id: int,
-    status: str,
-    notes: Optional[str] = None,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """Update appointment status (doctors and admins only)"""
-    if current_user.role.value not in ["doctor", "admin"]:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only doctors and admins can update appointment status"
-        )
-    
-    appointment = db.query(Appointment).filter(
-        Appointment.id == appointment_id
-    ).first()
-    
-    if not appointment:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Appointment not found"
-        )
-    
-    # ✅ FIXED: doctor_id is already the user's id
-    if current_user.role.value == "doctor" and appointment.doctor_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You can only update your own appointments"
-        )
-    
-    # Validate status
-    valid_statuses = [s.value for s in AppointmentStatus]
-    if status not in valid_statuses:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid status. Must be one of: {', '.join(valid_statuses)}"
-        )
-    
-    # Update Database Record
-    appointment.status = AppointmentStatus(status)
-    if notes:
-        appointment.notes = notes
-    
-    db.commit()
-    db.refresh(appointment)
-
-    # ==========================================================
-    # 🚀 REAL-TIME + PERSISTENT NOTIFICATION
-    # ==========================================================
-    try:
-        if status in ["confirmed", "cancelled", "completed"]:
-            # Determine Message Content
-            title_map = {
-                "confirmed": "Appointment Confirmed ✅",
-                "cancelled": "Appointment Cancelled ❌",
-                "completed": "Appointment Completed 🎉"
-            }
-            type_map = {
-                "confirmed": "success",
-                "cancelled": "error", # or warning
-                "completed": "info"
-            }
-            
-            doctor_name = f"Dr. {current_user.lname}" if current_user.role.value == "doctor" else "Admin"
-            
-            # Safe date formatting
-            date_str = appointment.appointment_date.strftime('%b %d') if appointment.appointment_date else "Unknown Date"
-            notif_msg = f"{doctor_name} has marked your appointment as {status}."
-            notif_title = title_map.get(status, "Appointment Update")
-
-            # 1. ✅ UNCOMMENTED: Save to Database (Patient History)
-            notification = Notification(
-                source_user_id=current_user.id,
-                target_user_id=appointment.patient_id, # Target is the patient
-                title=notif_title, 
-                message=notif_msg, 
-                type=type_map.get(status, "info"), 
-                appointment_id=appointment.id
-            )
-            db.add(notification)
-            db.commit()
-            db.refresh(notification)
-
-            # 2. Send via WebSocket (Live Alert to Patient)
-            await manager.send_personal_message(
-                {
-                    "type": "APPOINTMENT_UPDATE",
-                    "notification": {
-                        "id": notification.id,
-                        "title": notification.title,
-                        "message": notification.message,
-                        "type": notification.type,
-                        "is_read": False,
-                        "created_at": notification.created_at.isoformat(),
-                        "appointment_id": appointment.id
-                    }
-                },
-                user_id=str(appointment.patient_id) 
-            )
-            
-            # 3. Notify DOCTOR (Optional: updates other tabs/devices)
-            # We don't save a notification for the doctor about their own action, just a socket update
-            await manager.send_personal_message(
-                {
-                    "type": "APPOINTMENT_UPDATE",
-                    "title": "Schedule Updated",
-                    "message": f"You updated appointment status to {status}",
-                    "status": status,
-                    "appointment_id": appointment.id
-                },
-                user_id=str(appointment.doctor_id)
-            )
-
-    except Exception as e:
-        print(f"Error sending notification: {e}")
-
-    # Return Response
-    return {
-        "id": appointment.id,
-        "status": appointment.status.value,
-        "notes": appointment.notes,
-        "updated_at": appointment.updated_at
-    }
 
 @router.delete("/{appointment_id}/permanent")
 async def delete_appointment_permanently(
@@ -601,68 +476,127 @@ def get_doctor_appointments(
     """
     Fetch all appointments for the currently logged-in DOCTOR.
     """
-    # 1. Security Check: Are they actually a doctor?
+    # 1. Security Check
     if current_user.role != UserRole.DOCTOR:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, 
             detail="Only doctors can access this dashboard."
         )
 
-    # 2. Find the Doctor profile associated with this User
-    doctor_profile = db.query(Doctor).filter(Doctor.user_id == current_user.id).first()
-    if not doctor_profile:
-        raise HTTPException(status_code=404, detail="Doctor profile not found.")
-
-    # 3. Fetch Appointments
+    # 2. Fetch Appointments directly using current_user.id
+    # We use joinedload to prevent "Lazy Loading" errors when accessing patient data
     appointments = db.query(Appointment)\
-        .filter(Appointment.doctor_id == doctor_profile.doctor_id)\
+        .options(joinedload(Appointment.patient))\
+        .filter(Appointment.doctor_id == current_user.id)\
         .order_by(Appointment.appointment_date.asc())\
         .all()
 
-    # 4. Format the data for the frontend
+    # 3. Format the data
     return [
         {
             "id": appt.id,
-            "patient_name": appt.patient.fname + " " + appt.patient.lname if appt.patient else "Unknown",
+            # Handle case where patient relationship might be missing (safety check)
+            "patient_name": f"{appt.patient.fname} {appt.patient.lname}" if appt.patient else "Unknown",
             "appointment_date": appt.appointment_date,
             "reason": appt.reason,
-            "status": appt.status,
-            "patient_id": appt.patient_id
+            "status": appt.status.value, # IMPORTANT: Use .value for Enums
+            "patient_id": appt.patient_id,
+            "notes": appt.notes
         }
         for appt in appointments
     ]
 
-# ✅ ADD THIS TO HANDLE STATUS UPDATES (Accept/Decline)
-@router.put("/{appointment_id}/status", status_code=status.HTTP_200_OK)
-def update_appointment_status(
+
+
+
+#  ADD THIS TO HANDLE STATUS UPDATES (Accept/Decline)
+@router.put("/{appointment_id}/status", response_model=dict)
+async def update_appointment_status(
     appointment_id: int,
-    status_update: dict, # Expects {"status": "confirmed"}
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    status_update: dict, # Expects JSON body: {"status": "confirmed"}
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
 ):
-    # 1. Find the appointment
+    # 1. Get and Validate Status
+    new_status_str = status_update.get("status")
+    if not new_status_str:
+         raise HTTPException(status_code=400, detail="Status field is required")
+    
+    # Validate against Enum
+    valid_statuses = [s.value for s in AppointmentStatus]
+    if new_status_str not in valid_statuses:
+        raise HTTPException(status_code=400, detail=f"Invalid status. Must be: {', '.join(valid_statuses)}")
+
+    # 2. Find the appointment
     appointment = db.query(Appointment).filter(Appointment.id == appointment_id).first()
     if not appointment:
         raise HTTPException(status_code=404, detail="Appointment not found")
-
-    # 2. Verify ownership (Doctor can only update their own, Patient can cancel their own)
-    doctor_profile = db.query(Doctor).filter(Doctor.user_id == current_user.id).first()
     
+    # 3. Security & Ownership Check
     is_authorized = False
-    if current_user.role == UserRole.DOCTOR and doctor_profile and appointment.doctor_id == doctor_profile.doctor_id:
+    
+    # Doctor Check: matches if the appointment's doctor_id is the current user's ID
+    if current_user.role == UserRole.DOCTOR and appointment.doctor_id == current_user.id:
         is_authorized = True
-    elif current_user.role == UserRole.PATIENT and appointment.patient_id == current_user.id and status_update['status'] == 'cancelled':
-        is_authorized = True # Patients can only cancel
+    # Patient Check: can only cancel their own
+    elif current_user.role == UserRole.PATIENT and appointment.patient_id == current_user.id:
+        if new_status_str == 'cancelled':
+            is_authorized = True
+        else:
+             raise HTTPException(status_code=403, detail="Patients can only cancel appointments")
+    # Admin Check
+    elif current_user.role == UserRole.ADMIN:
+        is_authorized = True
         
     if not is_authorized:
-         raise HTTPException(status_code=403, detail="Not authorized to update this appointment")
+         raise HTTPException(status_code=403, detail="Not authorized")
 
-    # 3. Update
-    new_status = status_update.get("status")
-    if new_status not in ["pending", "confirmed", "cancelled", "completed"]:
-        raise HTTPException(status_code=400, detail="Invalid status")
-        
-    appointment.status = new_status
+    # 4. Update Database
+    appointment.status = AppointmentStatus(new_status_str)
     db.commit()
+    db.refresh(appointment)
     
-    return {"message": "Status updated successfully", "status": new_status}
+    # ==========================================================
+    # 🔔 REAL-TIME NOTIFICATION LOGIC
+    # ==========================================================
+    try:
+        # Determine who to notify (The "Other" person)
+        target_user_id = appointment.patient_id if current_user.role == UserRole.DOCTOR else appointment.doctor_id
+        
+        # Create a friendly message
+        action_taker = f"Dr. {current_user.lname}" if current_user.role == UserRole.DOCTOR else "The patient"
+        notif_msg = f"{action_taker} has updated the appointment status to {new_status_str}."
+
+        # 1. Save to DB History
+        notification = Notification(
+            source_user_id=current_user.id,
+            target_user_id=target_user_id,
+            title=f"Appointment {new_status_str.title()}",
+            message=notif_msg,
+            type="info",
+            appointment_id=appointment.id
+        )
+        db.add(notification)
+        db.commit()
+        db.refresh(notification)
+        
+        # 2. SEND SOCKET MESSAGE (This fixes the frontend update!)
+        await manager.send_personal_message({
+            "type": "APPOINTMENT_UPDATE",
+            
+            # 👇 THESE ARE THE MISSING KEYS YOUR FRONTEND NEEDS 👇
+            "appointment_id": appointment.id,   
+            "status": new_status_str,           
+            
+            "notification": {
+                "id": notification.id,
+                "title": notification.title,
+                "message": notification.message,
+                "created_at": notification.created_at.isoformat()
+            }
+        }, user_id=str(target_user_id))
+
+    except Exception as e:
+        print(f"Socket error: {e}")
+
+    return {"message": "Status updated", "status": new_status_str}

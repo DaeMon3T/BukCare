@@ -153,7 +153,7 @@ try:
         level=settings.LOG_LEVEL,
         format="%(asctime)s [%(levelname)s] %(message)s",
     )
-    logging.info(f"✅ Loaded settings for environment: {ENV}")
+    logging.info(f"Loaded settings for environment: {ENV}")
 except Exception as e:
-    logging.error(f"⚠️ Failed to initialize settings: {e}")
+    logging.error(f"Failed to initialize settings: {e}")
     raise e

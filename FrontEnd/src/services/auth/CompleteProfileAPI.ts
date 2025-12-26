@@ -114,10 +114,10 @@ export const completeProfile = async (
       );
     }
 
-    console.log("✅ Success:", response.data);
+    console.log("Success:", response.data);
     return response.data;
   } catch (error: any) {
-    console.error("❌ Error:", error);
+    console.error("Error:", error);
     console.error("Response status:", error.response?.status);
     console.error("Full response data:", JSON.stringify(error.response?.data, null, 2));
     
@@ -125,7 +125,7 @@ export const completeProfile = async (
     if (error.response?.data?.detail) {
       const detail = error.response.data.detail;
       if (Array.isArray(detail)) {
-        console.error("❌ Validation errors:");
+        console.error("Validation errors:");
         detail.forEach((err: any) => {
           console.error(`  Field: ${JSON.stringify(err.loc)}`);
           console.error(`  Message: ${err.msg}`);
@@ -133,7 +133,7 @@ export const completeProfile = async (
           console.error("---");
         });
       } else {
-        console.error("❌ Error detail:", detail);
+        console.error("Error detail:", detail);
       }
     }
 

@@ -62,7 +62,7 @@ const BookingModal: React.FC<BookingModalProps> = ({
       
       const rawSlots: AvailableSlot[] = res.data.available_slots || [];
 
-      // 🔥 LOGIC PATCH: Filter out Past Times
+      // LOGIC PATCH: Filter out Past Times
       const validSlots = filterPastSlots(rawSlots, date);
 
       setSlots(validSlots);
@@ -76,14 +76,14 @@ const BookingModal: React.FC<BookingModalProps> = ({
         }
       }
     } catch (err: any) {
-      console.error("❌ Failed to fetch slots:", err);
+      console.error("Failed to fetch slots:", err);
       toast.error("Could not load doctor's schedules");
     } finally {
       setLoadingSlots(false);
     }
   };
 
-  // 🛡️ HELPER: Filter Logic
+  // HELPER: Filter Logic
   const filterPastSlots = (slots: AvailableSlot[], selectedDate: string) => {
     const now = new Date();
     const isToday = selectedDate === todayStr;
@@ -167,7 +167,7 @@ const BookingModal: React.FC<BookingModalProps> = ({
               </label>
               <input
                 type="date"
-                min={todayStr} // 🔥 PREVENTS PAST DATES
+                min={todayStr} // PREVENTS PAST DATES
                 value={date}
                 onChange={(e) => {
                   setDate(e.target.value);

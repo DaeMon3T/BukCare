@@ -62,7 +62,7 @@ const AddressSection: React.FC<AddressSectionProps> = ({
         </select>
       </div>
 
-      {/* ✅ FIXED: Changed to use barangay_id instead of barangay name */}
+      {/* FIXED: Changed to use barangay_id instead of barangay name */}
       <div className="relative z-30">
         <label className="block text-sm font-medium mb-2 text-white/90">Barangay</label>
         <select

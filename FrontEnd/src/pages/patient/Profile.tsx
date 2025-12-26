@@ -661,7 +661,7 @@ export default function Profile() {
                     </div>
                     {!formData.contact_number && (
                       <div className="text-xs text-orange-600 mt-2 font-medium">
-                        ⚠️ Add phone for emergency contact
+                        Add phone for emergency contact
                       </div>
                     )}
                     {formData.contact_number && (
