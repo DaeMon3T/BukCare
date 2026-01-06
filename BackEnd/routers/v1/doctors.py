@@ -6,6 +6,8 @@ from core.database import get_db
 from models.doctor import Doctor, DoctorAvailability
 from models.users import User
 from schemas.doctor import Doctor as DoctorSchema, DoctorResponse
+from datetime import date
+from routers.v1.dependencies import get_current_user
 
 router = APIRouter(prefix="/doctors", tags=["Doctors"])
 
@@ -131,3 +133,42 @@ def get_doctor_by_id(doctor_id: int, db: Session = Depends(get_db)):
         avatar=user.picture or "/default-avatar.png",
         availabilities=availabilities,
     )
+
+@router.delete("/availabilities/{availability_id}")
+def delete_availability(
+    availability_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    slot = db.query(DoctorAvailability).filter(
+        DoctorAvailability.id == availability_id,
+        DoctorAvailability.doctor_id == current_user.id
+    ).first()
+
+    if not slot:
+        raise HTTPException(status_code=404, detail="Slot not found")
+
+    db.delete(slot)
+    db.commit()
+    return {"message": "Slot deleted"}
+
+
+
+@router.delete("/availabilities/date/{target_date}")
+def delete_day_availability(
+    target_date: date,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    # Delete all slots for this doctor on this specific date
+    deleted_count = db.query(DoctorAvailability).filter(
+        DoctorAvailability.doctor_id == current_user.id,
+        DoctorAvailability.date == target_date
+    ).delete()
+
+    db.commit()
+    
+    if deleted_count == 0:
+        return {"message": "No slots found for this date"}
+        
+    return {"message": f"Deleted {deleted_count} slots"}

@@ -1,203 +1,228 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useState, useRef, useLayoutEffect } from "react";
+import { Link, useLocation } from "react-router-dom";
 import { 
-  MapPin, 
-  Clock, 
-  Phone, 
-  Stethoscope,
-  Ambulance,
+  Menu, 
+  X,
+  CheckCircle2,
+  Lock,
+  ArrowRight
 } from "lucide-react";
-import LoadingGear from "@/components/common/LoadingGear"; 
+import gsap from "gsap";
+import Lenis from "@studio-freight/lenis";
 import Footer from "@/components/Footer";
+import logo from "@/assets/images/bukcare_logo.png"
+
 
 export default function SignUp() {
+  const containerRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(false);
   const BACKEND_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+  
+  // Navigation State
+  const location = useLocation();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const handleScrollTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setMobileMenuOpen(false);
+  };
+
+  const navLinks = [
+    { name: "Home", path: "/" },
+    { name: "About", path: "/about" },
+    { name: "Services", path: "/services" },
+    { name: "Contact", path: "/contact" },
+    { name: "Terms of Services & Privacy Policy", path: "/Terms" },
+  ];
 
   const handleGoogleRedirect = () => {
     setLoading(true);
-    // Preserving original logic
+    // Preserving your logic
     window.location.href = `${BACKEND_URL}/auth/google/login`;
   };
 
+  // Standard Animations (Matches About.tsx)
+  useLayoutEffect(() => {
+    const lenis = new Lenis({
+        duration: 1.2,
+        easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+        smoothWheel: true,
+    });
+
+    function raf(time: number) {
+        lenis.raf(time);
+        requestAnimationFrame(raf);
+    }
+    requestAnimationFrame(raf);
+
+    const ctx = gsap.context(() => {
+        // Hero/Form Reveal
+        gsap.fromTo(".hero-reveal", 
+            { y: 30, opacity: 0 },
+            { y: 0, opacity: 1, duration: 1, stagger: 0.15, ease: "power3.out", delay: 0.2 }
+        );
+
+        // Image Slide In
+        gsap.fromTo(".image-reveal",
+            { x: 30, opacity: 0 },
+            { x: 0, opacity: 1, duration: 1.2, ease: "power3.out", delay: 0.4 }
+        );
+
+    }, containerRef);
+
+    return () => {
+        ctx.revert();
+        lenis.destroy();
+    };
+  }, []);
+
   return (
-    <div className="min-h-screen bg-white font-sans text-gray-700">
-      {/* --- HEADER SECTION --- */}
+    <div ref={containerRef} className="bg-white min-h-screen font-sans text-slate-600 selection:bg-[#00aeef] selection:text-white overflow-x-hidden">
       
-      {/* Top Contact Bar */}
-      <div className="bg-white border-b border-gray-100 py-4 px-4 md:px-12 lg:px-24 hidden md:flex justify-between items-center">
-        {/* Contact Info */}
-        <div className="flex gap-10 text-xs ml-290 ">
-          <div className="flex items-start gap-3">
-            <div className="bg-cyan-500 p-1 rounded text-white">
-              <MapPin size={18} />
-            </div>
-            <div>
-              <p className="font-semibold text-gray-800 pt-1">Maramag, Bukidnon, Philippines</p>
-              <p className="text-gray-500"></p>
-            </div>
-          </div>
-          <div className="flex items-start gap-3">
-            <div className="bg-cyan-500 p-1 rounded text-white">
-              <Clock size={18} />
-            </div>
-            <div>
-              <p className="font-semibold text-gray-800 pt-1">24/7</p>
-              <p className="text-gray-500"></p>
-            </div>
-          </div>
-          <div className="flex items-start gap-3">
-            <div className="bg-cyan-500 p-1 rounded text-white">
-              <Phone size={18} />
-            </div>
-            <div>
-              <p className="font-semibold text-gray-800 pt-1">bukcare.app@gmail.com</p>
-              <p className="text-gray-500"></p>
-            </div>
-          </div>
-        </div>
-      </div>
+      {/* --- 1. NAVIGATION BAR (Standardized) --- */}
+      <nav className="fixed w-full bg-white/80 backdrop-blur-xl border-b border-slate-100 z-50 transition-all">
+        <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+          <Link to="/" className="flex items-center gap-2 group" onClick={handleScrollTop}>
+              <div className="w-15 h-15 rounded-xl flex items-center justify-center text-white shadow-lg shadow-blue-500/20 group-hover:scale-105 transition-transform">
+                <img src={logo} className="w-20 h-20"/>
+              </div>
+              <span className="text-xl font-bold text-slate-900 tracking-tight">
+                 Buk<span className="text-[#00aeef]">Care</span>
+              </span>
+          </Link>
 
-      {/* Navigation Bar */}
-      <div className="border-b border-gray-100 py-4 px-4 md:px-12 lg:px-24 flex flex-col md:flex-row justify-between items-center sticky top-0 bg-white/95 backdrop-blur-sm z-50 shadow-sm">
-        <ul className="flex flex-wrap justify-center gap-20 text-sm font-bold text-gray-600 uppercase tracking-wide ml-120">
-          <li><Link to="/home" className="text-cyan-500 hover:text-cyan-600">Home</Link></li>
-          <li><Link to="/about" className="hover:text-cyan-500 transition-colors">About</Link></li>
-          <li><Link to="/services" className="hover:text-cyan-500 transition-colors">Services</Link></li>
-          <li><Link to="/contact" className="hover:text-cyan-500 transition-colors">Contact</Link></li>
-          <li><Link to="/terms" className="hover:text-cyan-500 transition-colors">Terms of Services & Privacy Policy</Link></li>
-        </ul>
-      </div>
-
-      {/* --- HERO / SIGN UP SECTION --- */}
-      <div className="relative w-full bg-[#EBF8FC] overflow-hidden min-h-[600px] flex items-center">
-        
-        {/* Loading Overlay */}
-        {loading && (
-          <div className="absolute inset-0 flex items-center justify-center z-50 bg-white/50 backdrop-blur-sm">
-             {/* Fallback text if LoadingGear isn't available, or use the component if it is */}
-             <div className="text-cyan-600 font-bold">Redirecting to Google...</div>
-          </div>
-        )}
-
-        <div className="container mx-auto px-4 md:px-12 lg:px-24 flex flex-col-reverse lg:flex-row items-center h-full py-12">
-          
-          {/* Left Side: Sign Up Content */}
-          <div className="w-full lg:w-1/2 z-10 pr-0 lg:pr-12">
-             <div className="mb-2">
-                <span className="text-cyan-500 font-bold text-lg">Sign Up</span>
-             </div>
-             <h1 className="text-4xl md:text-5xl font-bold text-gray-800 mb-6 leading-tight">
-                Create Your <br />
-                <span className="text-gray-600">Account</span>
-             </h1>
-             
-             <p className="text-gray-500 mb-8 max-w-lg">
-                Sign up to start managing your healthcare appointments, view medical history, and connect with your doctors.
-             </p>
-
-             {/* Form Container */}
-             <div className="bg-white p-8 rounded-lg shadow-xl border border-gray-100 max-w-md">
-                
-                {/* Google Sign-Up Button */}
-                <button
-                  onClick={handleGoogleRedirect}
-                  disabled={loading}
-                  className="flex items-center justify-center w-full py-3 bg-white border border-gray-300 text-gray-700 font-semibold rounded hover:bg-gray-50 transition shadow-sm gap-3 disabled:opacity-50"
+          <div className="hidden md:flex items-center gap-8">
+             {navLinks.map((link) => (
+                <Link 
+                    key={link.name}
+                    to={link.path} 
+                    onClick={handleScrollTop}
+                    className={`text-sm font-bold uppercase tracking-wider transition-colors ${
+                        location.pathname === link.path 
+                        ? "text-[#00aeef]" 
+                        : "text-slate-500 hover:text-[#00aeef]"
+                    }`}
                 >
-                  {loading ? (
-                    <span className="text-sm">Redirecting...</span>
-                  ) : (
-                    <>
-                      <img
-                        src="https://developers.google.com/identity/images/g-logo.png"
-                        alt="Google"
-                        className="w-5 h-5"
-                      />
-                      <span className="text-sm">Sign up with Google</span>
-                    </>
-                  )}
-                </button>
+                    {link.name}
+                </Link>
+             ))}
+          </div>
+          <button className="md:hidden text-slate-600 p-2" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
+             {mobileMenuOpen ? <X /> : <Menu />}
+          </button>
+        </div>
+        
+        {/* Mobile Menu */}
+        <div className={`md:hidden absolute top-20 left-0 w-full bg-white border-b border-slate-100 shadow-xl overflow-hidden transition-all duration-300 ${mobileMenuOpen ? "max-h-96 opacity-100" : "max-h-0 opacity-0"}`}>
+            <div className="flex flex-col p-6 gap-4">
+                {navLinks.map((link) => (
+                    <Link 
+                        key={link.name} 
+                        to={link.path} 
+                        onClick={handleScrollTop}
+                        className="text-lg font-medium text-slate-700 hover:text-[#00aeef]"
+                    >
+                        {link.name}
+                    </Link>
+                ))}
+            </div>
+        </div>
+      </nav>
 
-                <div className="text-center mt-6 pt-6 border-t border-gray-100">
-                   <span className="text-sm text-gray-500">
-                      Already have an account?{" "}
-                      <Link to="/signin" className="text-cyan-500 font-semibold hover:underline">
-                        Sign in here
-                      </Link>
-                   </span>
+      {/* --- 2. SIGN UP SECTION --- */}
+      <section className="relative pt-32 pb-20 lg:pt-48 lg:pb-32 px-6 overflow-hidden bg-gradient-to-b from-blue-50/50 to-white min-h-screen flex flex-col justify-center">
+         
+         {/* Abstract Background Shapes (Same as About.tsx) */}
+         <div className="absolute top-0 right-0 -mr-20 -mt-20 w-[600px] h-[600px] bg-blue-100/40 rounded-full blur-[100px] z-0 pointer-events-none"></div>
+         <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-[400px] h-[400px] bg-cyan-100/40 rounded-full blur-[80px] z-0 pointer-events-none"></div>
+
+         <div className="max-w-7xl mx-auto w-full grid lg:grid-cols-2 gap-16 items-center relative z-10">
+            
+            {/* Left: Form Content */}
+            <div className="hero-reveal">
+                <h1 className="text-4xl lg:text-6xl font-extrabold text-slate-900 mb-6 tracking-tight leading-tight">
+                    Create your <br/>
+                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#00aeef] to-[#0077a3]">Healthcare ID.</span>
+                </h1>
+                
+                <p className="text-xl text-slate-500 mb-10 leading-relaxed max-w-lg">
+                    One account to schedule appointments, view medical history, and connect with doctors across Bukidnon.
+                </p>
+
+                {/* Google Sign In Card */}
+                <div className="bg-white p-8 rounded-[2rem] shadow-xl shadow-slate-200/50 border border-slate-100 max-w-md">
+                    <div className="mb-6 text-center">
+                        <p className="text-slate-900 font-bold text-lg">Get Started</p>
+                        <p className="text-slate-400 text-sm">Secure access via Google</p>
+                    </div>
+
+                    <button
+                        onClick={handleGoogleRedirect}
+                        disabled={loading}
+                        className="w-full flex items-center justify-center gap-3 py-4 bg-white border-2 border-slate-100 text-slate-700 font-bold rounded-xl hover:border-[#00aeef] hover:shadow-lg hover:shadow-blue-500/10 transition-all duration-300 disabled:opacity-70 group"
+                    >
+                        {loading ? (
+                            <div className="w-5 h-5 border-2 border-slate-300 border-t-[#00aeef] rounded-full animate-spin"></div>
+                        ) : (
+                            <>
+                                <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" className="w-6 h-6 group-hover:scale-110 transition-transform"/>
+                                <span>Continue with Google</span>
+                            </>
+                        )}
+                    </button>
+
+                    <div className="mt-6 pt-6 border-t border-slate-50">
+                        <div className="space-y-3">
+                            {[
+                                "HIPAA Compliant Security",
+                                "Instant Account Activation",
+                                "24/7 Access to Records"
+                            ].map((item, i) => (
+                                <div key={i} className="flex items-center gap-3 text-sm text-slate-500">
+                                    <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0" />
+                                    {item}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
                 </div>
 
-                {/* Additional Info / Terms */}
-                <div className="text-center mt-4">
-                    <p className="text-xs text-gray-400">
-                      By signing up, you agree to our{" "}
-                      <Link to="/terms" className="text-cyan-500 hover:underline">
-                        Terms of Service
-                      </Link>{" "}
-                      and{" "}
-                      <Link to="/terms" className="text-cyan-500 hover:underline">
-                        Privacy Policy
-                      </Link>
-                    </p>
+                <div className="mt-8 flex items-center gap-2 text-sm text-slate-500 ml-4">
+                    <span>Already have an account?</span>
+                    <Link to="/signin" className="text-[#00aeef] font-bold hover:underline flex items-center gap-1">
+                        Sign In <ArrowRight className="w-4 h-4" />
+                    </Link>
                 </div>
-             </div>
-          </div>
+            </div>
 
-          {/* Right Side: Image */}
-          <div className="hidden lg:block w-1/2 relative h-full min-h-[500px]">
-             {/* Abstract Blue Shape Background */}
-             <div className="absolute top-0 right-0 w-[120%] h-full bg-gradient-to-l from-white/30 to-transparent z-0"></div>
-             
-             {/* Image Container */}
-             <div className="absolute bottom-0 right-0 lg:-right-12 xl:right-0 z-10">
-                <img 
-                  src="./bukcare_logo.png" 
-                  alt="Doctor" 
-                  className="h-[600px] object-contain object-bottom drop-shadow-2xl mask-image-b"
-                  style={{ maskImage: 'linear-gradient(to bottom, black 80%, transparent 100%)' }}
-                />
-             </div>
-          </div>
-        </div>
-      </div>
+            {/* Right: Visual (Matching About.tsx Style) */}
+            <div className="image-reveal relative lg:translate-x-10 hidden lg:block">
+                <div className="aspect-[4/5] rounded-[2.5rem] overflow-hidden shadow-2xl shadow-blue-100 border border-slate-100 transform rotate-2 hover:rotate-0 transition-transform duration-700">
+                    <img 
+                        src="https://images.unsplash.com/photo-1579684385127-1ef15d508118?ixlib=rb-1.2.1&auto=format&fit=crop&w=1950&q=80" 
+                        alt="Medical Professional" 
+                        className="w-full h-full object-cover scale-105 hover:scale-110 transition-transform duration-1000"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-900/20 to-transparent"></div>
+                </div>
+                
+                {/* Floating Badge */}
+                <div className="absolute top-10 -left-10 bg-white p-5 rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-50 animate-bounce-slow">
+                    <div className="flex items-center gap-3">
+                         <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-[#00aeef]">
+                             <Lock className="w-5 h-5" />
+                         </div>
+                         <div>
+                             <p className="text-slate-900 font-bold text-sm">Secure Portal</p>
+                             <p className="text-green-500 text-xs font-bold">Encrypted Connection</p>
+                         </div>
+                    </div>
+                </div>
+            </div>
 
-      {/* --- INFO BOXES SECTION --- */}
-      <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 text-white">
-        {/* Box 1 */}
-        <div className="bg-[#0092BA] p-8 flex flex-col items-center text-center group hover:bg-[#0081a3] transition cursor-pointer">
-          <div className="mb-4">
-             <Stethoscope size={40} className="text-white opacity-90" />
-          </div>
-          <h3 className="text-lg font-bold mb-2">Qualified Doctors</h3>
-          <p className="text-sm text-white/80 leading-relaxed mb-4">
-             Browse our directory of qualified doctors in Bukidnon and view their availability schedules instantly.
-          </p>
-        </div>
+         </div>
+      </section>
 
-        {/* Box 2 */}
-        <div className="bg-[#5BC0DE] p-8 flex flex-col items-center text-center group hover:bg-[#4ab0ce] transition cursor-pointer">
-          <div className="mb-4">
-             <Ambulance size={40} className="text-white opacity-90" />
-          </div>
-          <h3 className="text-lg font-bold mb-2">Emergency Services</h3>
-          <p className="text-sm text-white/80 leading-relaxed mb-4">
-             Need urgent care? Find the nearest doctor available 24/7 in your area. 
-          </p>
-        </div>
-
-        {/* Box 3 */}
-        <div className="bg-[#0092BA] p-8 flex flex-col items-center text-center group hover:bg-[#0081a3] transition cursor-pointer">
-           <div className="mb-4">
-             <Clock size={40} className="text-white opacity-90" />
-          </div>
-          <h3 className="text-lg font-bold mb-2">24/7 Services</h3>
-          <p className="text-sm text-white/80 leading-relaxed mb-4">
-             Book appointment with your preferred specialists anytime, anywhere, without visiting the clinic.
-          </p>
-        </div>
-      </div>
-      
       <Footer />
     </div>
   );

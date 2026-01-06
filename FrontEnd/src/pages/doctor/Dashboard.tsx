@@ -36,16 +36,16 @@ import {
 
 import Navbar from "@/components/Navbar";
 import api from "@/services/api";
-import appointmentpic from "@/assets/appointment.png";
-import pendingpic from "@/assets/pending.png";
-import confirmedpic from "@/assets/confirmed.png";
-import patientpic from "@/assets/patient.png";
-import availability from "@/assets/set_availability.png";
-import history from "@/assets/history.png";
-import bukcarelogo from "@/assets/bukcare_logo.png";
-import clockpic from "@/assets/clock.png";
-import completepic from "@/assets/complete.png";
-import cancelpic from "@/assets/cancel.png";
+import appointmentpic from "@/assets/images/appointment.png";
+import pendingpic from "@/assets/images/pending.png";
+import confirmedpic from "@/assets/images/confirmed.png";
+import patientpic from "@/assets/images/patient.png";
+import availability from "@/assets/images/set_availability.png";
+import history from "@/assets/images/history.png";
+import bukcarelogo from "@/assets/images/bukcare_logo.png";
+import clockpic from "@/assets/images/clock.png";
+import completepic from "@/assets/images/complete.png";
+import cancelpic from "@/assets/images/cancel.png";
 
 // 🩺 Appointment type definition
 interface Appointment {
@@ -1036,68 +1036,7 @@ const DoctorDashboard: FC = () => {
               </div>
             </div>
 
-            {/* Quick Actions */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <button
-                onClick={() => navigate('/doctor/set-availability')}
-                className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 hover:shadow-md hover:border-blue-300 transition-all duration-300 group text-left"
-              >
-                <div className="flex items-center space-x-4">
-                  <div className="w-14 h-14 bg-blue-100 rounded-2xl flex items-center justify-center group-hover:bg-blue-200 transition-colors">
-                    {/* Placeholder for icon */}
-                    <img
-                      src={availability}
-                      alt="Set Availability"
-                      className="w-6 h-6 object-contain rounded"
-                    />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-slate-800 text-lg">Set Availability</h3>
-                    <p className="text-sm text-slate-600 mt-1">Manage your schedule</p>
-                  </div>
-                </div>
-              </button>
-
-              <button
-                onClick={() => navigate('/doctor/appointments')}
-                className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 hover:shadow-md hover:border-emerald-300 transition-all duration-300 group text-left"
-              >
-                <div className="flex items-center space-x-4">
-                  <div className="w-14 h-14 bg-blue-100 rounded-2xl flex items-center justify-center group-hover:bg-emerald-200 transition-colors">
-                    {/* Placeholder for icon */}
-                    <img
-                      src={appointmentpic}
-                      alt="All Appointments"
-                      className="w-6 h-6 object-contain rounded"
-                    />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-slate-800 text-lg">All Appointments</h3>
-                    <p className="text-sm text-slate-600 mt-1">View all details</p>
-                  </div>
-                </div>
-              </button>
-
-              <button
-                onClick={() => navigate('/doctor/appointment-history')}
-                className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 hover:shadow-md hover:border-purple-300 transition-all duration-300 group text-left"
-              >
-                <div className="flex items-center space-x-4">
-                  <div className="w-14 h-14 bg-blue-100 rounded-2xl flex items-center justify-center group-hover:bg-purple-200 transition-colors">
-                    {/* Placeholder for icon */}
-                    <img
-                      src={history}
-                      alt="Appointment History"
-                      className="w-7 h-7 object-contain rounded"
-                    />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-slate-800 text-lg">History</h3>
-                    <p className="text-sm text-slate-600 mt-1">Past appointments</p>
-                  </div>
-                </div>
-              </button>
-            </div>
+            
 
             {/* Appointments List */}
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200">

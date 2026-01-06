@@ -50,6 +50,7 @@ import FindDoctor from './pages/patient/FindDoctor';
 import BookAppointment from './pages/patient/BookAppointment';
 import PatientAppointmentHistory from './pages/patient/AppointmentHistory';
 import PatientMessages from './pages/patient/Messages';
+import ViewDoctorProfile from "./pages/patient/ViewDoctorProfile";
 
 // --------------------
 // App Component
@@ -142,6 +143,11 @@ const App: FC = () => {
                   path="/patient/messages"
                   element={<PatientRoute><PatientMessages /></PatientRoute>}
                 />
+                <Route
+                  path="/patient/doctor/:id"
+                  element={<PatientRoute><ViewDoctorProfile /></PatientRoute>}
+                />
+                
 
                 {/* -------------------- Catch-All -------------------- */}
                 <Route path="*" element={<Navigate to="/" replace />} />

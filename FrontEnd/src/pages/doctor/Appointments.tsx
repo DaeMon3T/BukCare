@@ -77,14 +77,14 @@ const DoctorAppointments = () => {
     fetchAppointments();
   }, [fetchAppointments]);
 
-  // 3. ⚡ UPDATE STATUS (Local Update + API)
+  // 3. UPDATE STATUS (Local Update + API)
   const updateStatus = async (id: number, newStatus: "confirmed" | "completed") => {
     try {
       // 1. Call API
       await api.put(`/appointments/${id}/status`, { status: newStatus });
       toast.success(`Appointment ${newStatus}`);
 
-      // 2. ✅ MANUAL UPDATE: Update local state instantly (Don't wait for socket)
+      // 2. MANUAL UPDATE: Update local state instantly (Don't wait for socket)
       setAppointments((prev) => 
         prev.map((appt) => 
           appt.id === id 
@@ -98,14 +98,14 @@ const DoctorAppointments = () => {
     }
   };
 
-  // 4. ⚡ DELETE (Local Update + API)
+  // 4. DELETE (Local Update + API)
   const deleteAppointment = async (id: number) => {
     try {
       await api.delete(`/appointments/${id}/permanent`);
       toast.success("Appointment permanently deleted");
       setDeleteConfirm(null);
 
-      // ✅ MANUAL UPDATE: Remove from list instantly
+      // MANUAL UPDATE: Remove from list instantly
       setAppointments((prev) => prev.filter((a) => a.id !== id));
     } catch (err: any) {
       console.error("Delete failed:", err);

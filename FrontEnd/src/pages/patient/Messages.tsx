@@ -186,7 +186,7 @@ const PatientMessages: React.FC = () => {
 
   // 6. Send Message Helper
   const sendMessageInternal = async (text: string) => {
-    // 🛡️ Safety Check: Ensure user ID exists before using it
+    // Safety Check: Ensure user ID exists before using it
     if (!text.trim() || !activeChat || !user?.id) return;
     
     const currentUserId = Number(user.id);
@@ -493,7 +493,7 @@ const PatientMessages: React.FC = () => {
                         onContextMenu={(e) => e.preventDefault()} 
                       >
                          <div className="text-sm">
-                            {/* 📞 SPECIAL VIDEO CALL RENDERING (NEW TAB) */}
+                            {/* SPECIAL VIDEO CALL RENDERING (NEW TAB) */}
                             {msg.content.includes("📞 Started a Video Call. Join here:") ? (
                                 <div className="flex flex-col gap-3 my-1">
                                     <span className="font-medium opacity-90">{msg.content.split("Join here:")[0]}</span>

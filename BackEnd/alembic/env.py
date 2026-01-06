@@ -4,6 +4,9 @@ from alembic import context
 import os
 import sys
 from dotenv import load_dotenv
+# You can keep or remove the top-level imports, but the manual load below is what matters for Alembic here
+# from models.users import User 
+# from models.review import Review 
 
 # Load .env
 load_dotenv()
@@ -11,8 +14,6 @@ load_dotenv()
 # Import Base first
 from core.database import Base
 
-# Load model files directly WITHOUT going through models/__init__.py
-# Use spec_from_file_location to bypass __init__.py entirely
 import importlib.util
 
 def load_module_directly(module_name, file_path):
@@ -26,30 +27,29 @@ def load_module_directly(module_name, file_path):
 # Get the models directory
 models_path = os.path.join(os.path.dirname(__file__), '..', 'models')
 
-# Load models in dependency order, directly from files
-# This completely bypasses models/__init__.py
+# Load models in dependency order
 location_mod = load_module_directly('location', os.path.join(models_path, 'location.py'))
 users_mod = load_module_directly('users', os.path.join(models_path, 'users.py'))
 doctor_mod = load_module_directly('doctor', os.path.join(models_path, 'doctor.py'))
 appointment_mod = load_module_directly('appointment', os.path.join(models_path, 'appointment.py'))
 notification_mod = load_module_directly('notification', os.path.join(models_path, 'notification.py'))
 
+# ADDED THIS LINE
+review_mod = load_module_directly('review', os.path.join(models_path, 'review.py'))
+
 target_metadata = Base.metadata
 
-# this is the Alembic Config object
+# ... rest of your config ...
 config = context.config
 
-# Override sqlalchemy.url from .env
 config.set_main_option(
     "sqlalchemy.url",
     os.getenv("DATABASE_URL").replace("postgresql://", "postgresql+psycopg2://")
 )
 
-# Interpret the config file for Python logging
 fileConfig(config.config_file_name)
 
 def run_migrations_offline():
-    """Run migrations in 'offline' mode."""
     url = config.get_main_option("sqlalchemy.url")
     context.configure(
         url=url,
@@ -63,7 +63,6 @@ def run_migrations_offline():
 
 
 def run_migrations_online():
-    """Run migrations in 'online' mode."""
     connectable = engine_from_config(
         config.get_section(config.config_ini_section),
         prefix="sqlalchemy.",

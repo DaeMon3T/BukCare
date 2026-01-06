@@ -1,21 +1,24 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useRef, useLayoutEffect, useEffect } from "react";
 import type { ChangeEvent, FormEvent } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { 
   Eye, 
   EyeOff,
-  MapPin, 
-  Clock, 
-  Phone, 
+  ShieldCheck, 
+  Menu, 
+  X,
   Stethoscope,
-  Ambulance,
-  Shield,
+  Activity,
+  Lock,
+  ArrowRight,
+  Shield
 } from "lucide-react";
-import LoadingGear from "@/components/common/LoadingGear";
 import toast from "react-hot-toast";
-import Footer from "@/components/Footer";
+import gsap from "gsap";
+import Lenis from "@studio-freight/lenis";
 import { signIn } from "@/services/auth/SignInAPI";
 import { useAuth } from "@/context/AuthContext";
+import logo from "@/assets/images/bukcare_logo.png"
 
 interface FormData {
   email: string;
@@ -23,20 +26,69 @@ interface FormData {
 }
 
 const SignIn: React.FC = () => {
+  const containerRef = useRef<HTMLDivElement>(null);
   const [formData, setFormData] = useState<FormData>({ email: "", password: "" });
   const [error, setError] = useState<string>("");
   const [emailLoading, setEmailLoading] = useState<boolean>(false);
   const [googleLoading, setGoogleLoading] = useState<boolean>(false);
   const [showPassword, setShowPassword] = useState<boolean>(false);
-
-  const { login, isAuthenticated } = useAuth();
+  
+  // Navigation State
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
+  // Carousel State
+  const [activeFeature, setActiveFeature] = useState(0);
+  const features = [
+    { icon: Lock, title: "Bank-Grade Security", desc: "Your health records are encrypted and HIPAA compliant." },
+    { icon: Stethoscope, title: "Verified Specialists", desc: "Connect with the top doctors in Bukidnon instantly." },
+    { icon: Activity, title: "Real-Time Tracking", desc: "Monitor queue status and get live updates." },
+  ];
+
+  // Carousel Logic
   useEffect(() => {
-    console.log("SignIn component - isAuthenticated:", isAuthenticated);
-    console.log("SignIn component - current location:", location.pathname);
-  }, [isAuthenticated, location.pathname]);
+    const interval = setInterval(() => {
+        setActiveFeature((prev) => (prev + 1) % features.length);
+    }, 4000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleScrollTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setMobileMenuOpen(false);
+  };
+
+  const navLinks = [
+    { name: "Home", path: "/" },
+    { name: "About", path: "/about" },
+    { name: "Services", path: "/services" },
+    { name: "Contact", path: "/contact" },
+    { name: "Terms of Services & Privacy Policy", path: "/Terms" },
+  ];
+
+  // Animations
+  useLayoutEffect(() => {
+    const lenis = new Lenis({ duration: 1.2, easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)), smoothWheel: true });
+    function raf(time: number) { lenis.raf(time); requestAnimationFrame(raf); }
+    requestAnimationFrame(raf);
+
+    const ctx = gsap.context(() => {
+        // Form Stagger
+        gsap.fromTo(".form-element", 
+            { y: 20, opacity: 0 },
+            { y: 0, opacity: 1, duration: 0.8, stagger: 0.1, ease: "power3.out", delay: 0.2 }
+        );
+        // Right Panel Reveal
+        gsap.fromTo(".panel-reveal",
+            { x: 20, opacity: 0 },
+            { x: 0, opacity: 1, duration: 1, ease: "power3.out", delay: 0.4 }
+        );
+    }, containerRef);
+
+    return () => { ctx.revert(); lenis.destroy(); };
+  }, []);
 
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -45,360 +97,261 @@ const SignIn: React.FC = () => {
 
   const getRoleRedirect = (role?: string) => {
     switch (role?.toLowerCase()) {
-      case "admin":
-        return "/admin/dashboard";
-      case "doctor":
-        return "/doctor/dashboard";
-      case "patient":
-        return "/patient/home";
-      default:
-        return "/";
+      case "admin": return "/admin/dashboard";
+      case "doctor": return "/doctor/dashboard";
+      case "patient": return "/patient/home";
+      default: return "/";
     }
   };
 
   const handleLoginSuccess = (result: any) => {
-    if (!result.user || !result.tokens) {
-      setError("Invalid login response from server.");
-      toast.error("Invalid login response from server.");
-      return;
-    }
-
+    if (!result.user || !result.tokens) { setError("Invalid login response."); return; }
     login(result.tokens, result.user);
     const userRole = (result.user.role || result.user.user_type || "").toLowerCase();
     toast.success(`Welcome back, ${result.user.fname || "User"}!`);
-
-    if (!result.user.is_profile_complete) {
-      toast("Please complete your profile before continuing.", { icon: "📝" });
-      navigate("/complete-profile", {
-        replace: true,
-        state: {
-          user_id: result.user.user_id,
-          email: result.user.email,
-          fname: result.user.fname,
-          lname: result.user.lname,
-          picture: result.user.picture,
-        },
-      });
-      return;
-    }
-
-    const redirectPath =
-      (location.state as { from?: { pathname: string } })?.from?.pathname ||
-      getRoleRedirect(userRole);
+    if (!result.user.is_profile_complete) { navigate("/complete-profile", { replace: true, state: { ...result.user } }); return; }
+    const redirectPath = (location.state as { from?: { pathname: string } })?.from?.pathname || getRoleRedirect(userRole);
     navigate(redirectPath, { replace: true });
   };
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    e.stopPropagation();
     setEmailLoading(true);
     setError("");
-
     try {
       const result = await signIn(formData);
       handleLoginSuccess(result);
     } catch (err: any) {
-      const errMsg =
-        err?.response?.data?.detail ||
-        err?.response?.data?.message ||
-        err?.message ||
-        "Sign-in failed. Please try again.";
-
+      const errMsg = err?.response?.data?.detail || "Sign-in failed. Please try again.";
       setError(errMsg);
       toast.error(errMsg);
-    } finally {
-      setEmailLoading(false);
-    }
+    } finally { setEmailLoading(false); }
   };
 
   const handleGoogleRedirect = (e: React.MouseEvent) => {
     e.preventDefault();
     setGoogleLoading(true);
-    toast.loading("Redirecting to Google...", { id: "google-redirect" });
     window.location.href = `${import.meta.env.VITE_API_URL}/auth/google/login`;
   };
 
-  const isLoading = emailLoading || googleLoading;
-
   return (
-    <div className="min-h-screen bg-white font-sans text-gray-700">
-      {/* --- HEADER SECTION --- */}
+    <div ref={containerRef} className="bg-white min-h-screen font-sans text-slate-600 selection:bg-[#00aeef] selection:text-white overflow-x-hidden flex flex-col">
       
-      {/* Top Contact Bar */}
-      <div className="bg-white border-b border-gray-100 py-4 px-4 md:px-12 lg:px-24 hidden md:flex justify-between items-center">
-        <div className="flex gap-10 text-xs ml-290">
-          <div className="flex items-start gap-3">
-            <div className="bg-cyan-500 p-1 rounded text-white">
-              <MapPin size={18} />
-            </div>
-            <div>
-              <p className="font-semibold text-gray-800 pt-1">Maramag, Bukidnon, Philippines</p>
-            </div>
+      {/* --- 1. NAVIGATION BAR --- */}
+      <nav className="fixed w-full bg-white/90 backdrop-blur-xl border-b border-slate-100 z-50 transition-all">
+        <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+          <Link to="/" className="flex items-center gap-2 group" onClick={handleScrollTop}>
+              <div className="w-15 h-15 rounded-xl flex items-center justify-center text-white shadow-lg shadow-blue-500/20 group-hover:scale-105 transition-transform">
+                <img src={logo} className="w-20 h-20"/>
+              </div>
+              <span className="text-xl font-bold text-slate-900 tracking-tight">
+                 Buk<span className="text-[#00aeef]">Care</span>
+              </span>
+          </Link>
+
+          <div className="hidden md:flex items-center gap-8">
+             {navLinks.map((link) => (
+                <Link 
+                    key={link.name}
+                    to={link.path} 
+                    onClick={handleScrollTop}
+                    className={`text-sm font-bold uppercase tracking-wider transition-colors ${
+                        location.pathname === link.path ? "text-[#00aeef]" : "text-slate-500 hover:text-[#00aeef]"
+                    }`}
+                >
+                    {link.name}
+                </Link>
+             ))}
           </div>
-          <div className="flex items-start gap-3">
-            <div className="bg-cyan-500 p-1 rounded text-white">
-              <Clock size={18} />
-            </div>
-            <div>
-              <p className="font-semibold text-gray-800 pt-1">24/7</p>
-            </div>
-          </div>
-          <div className="flex items-start gap-3">
-            <div className="bg-cyan-500 p-1 rounded text-white">
-              <Phone size={18} />
-            </div>
-            <div>
-              <p className="font-semibold text-gray-800 pt-1">bukcare.app@gmail.com</p>
-            </div>
-          </div>
+
+          <button className="md:hidden text-slate-600 p-2" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
+             {mobileMenuOpen ? <X /> : <Menu />}
+          </button>
         </div>
-      </div>
-
-      {/* Navigation Bar */}
-      <div className="border-b border-gray-100 py-4 px-4 md:px-12 lg:px-24 flex flex-col md:flex-row justify-between items-center sticky top-0 bg-white/95 backdrop-blur-sm z-50 shadow-sm">
-        <ul className="flex flex-wrap justify-center gap-20 text-sm font-bold text-gray-600 uppercase tracking-wide ml-120">
-          <li><Link to="/home" className="text-cyan-500 hover:text-cyan-600">Home</Link></li>
-          <li><Link to="/about" className="hover:text-cyan-500 transition-colors">About</Link></li>
-          <li><Link to="/services" className="hover:text-cyan-500 transition-colors">Services</Link></li>
-          <li><Link to="/contact" className="hover:text-cyan-500 transition-colors">Contact</Link></li>
-          <li><Link to="/terms" className="hover:text-cyan-500 transition-colors">Terms of Services & Privacy Policy</Link></li>
-        </ul>
-      </div>
-
-      {/* --- HERO / SIGN IN SECTION --- */}
-      <div className="relative w-full bg-gradient-to-br from-[#EBF8FC] to-[#D5F2F9] overflow-hidden min-h-[700px] flex items-center">
         
-        {/* Loading Overlay */}
-        {isLoading && (
-          <div className="absolute inset-0 flex items-center justify-center z-50 bg-white/50 backdrop-blur-sm">
-            <LoadingGear
-              text={emailLoading ? "Signing you in..." : "Redirecting to Google..."}
-              color="#0891b2"
-              showOverlay={false}
-            />
-          </div>
-        )}
+        {/* Mobile Menu */}
+        <div className={`md:hidden absolute top-20 left-0 w-full bg-white border-b border-slate-100 shadow-xl overflow-hidden transition-all duration-300 ${mobileMenuOpen ? "max-h-96 opacity-100" : "max-h-0 opacity-0"}`}>
+            <div className="flex flex-col p-6 gap-4">
+                {navLinks.map((link) => (
+                    <Link key={link.name} to={link.path} onClick={handleScrollTop} className="text-lg font-medium text-slate-700 hover:text-[#00aeef]">
+                        {link.name}
+                    </Link>
+                ))}
+            </div>
+        </div>
+      </nav>
 
-        <div className="container mx-auto px-4 md:px-12 lg:px-24 flex flex-col-reverse lg:flex-row items-center h-full py-12">
-          
-          {/* Left Side: Sign In Content */}
-          <div className="w-full lg:w-1/2 z-10 pr-0 lg:pr-12">
-             <div className="mb-2">
-                <span className="text-cyan-500 font-bold text-lg">Welcome Back</span>
-             </div>
-             <h1 className="text-4xl md:text-5xl font-bold text-gray-800 mb-6 leading-tight">
-                Sign In to Your <br />
-                <span className="text-cyan-600">Healthcare Account</span>
-             </h1>
+      {/* --- 2. SPLIT SCREEN LAYOUT --- */}
+      <div className="flex-1 flex flex-col lg:flex-row pt-20 h-[calc(100vh-80px)] min-h-[700px]">
+        
+        {/* LEFT: FORM SIDE (Clean & Modern) */}
+        <div className="w-full lg:w-1/2 flex flex-col justify-center px-8 sm:px-12 lg:px-24 xl:px-32 bg-white relative z-10">
              
-             <p className="text-gray-600 mb-8 max-w-lg leading-relaxed">
-                Access your medical appointments, view your health records, and stay connected with your healthcare providers.
-             </p>
-
-             {/* Form Container */}
-             <div className="bg-white p-8 rounded-xl shadow-2xl border border-gray-100 max-w-md">
+             <div className="max-w-md w-full mx-auto">
                 
-                {/* Welcome Message */}
-                <div className="mb-6 text-center">
-                  <h2 className="text-xl font-bold text-gray-800 mb-2">Sign In</h2>
-                  <p className="text-sm text-gray-500">Enter your credentials to continue</p>
+                <div className="mb-10 form-element">
+                    <h1 className="text-3xl md:text-4xl font-extrabold text-slate-900 mb-2 tracking-tight">Welcome Back.</h1>
+                    <p className="text-slate-500 text-lg">Please enter your details to sign in.</p>
                 </div>
 
-                {/* Error Message */}
                 {error && (
-                  <div className="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
-                    {error}
+                  <div className="mb-6 bg-red-50 border border-red-100 text-red-600 px-4 py-3 rounded-xl text-sm font-medium flex items-center gap-2 form-element animate-pulse">
+                    <Shield className="w-4 h-4"/> {error}
                   </div>
                 )}
 
-                {/* Email/Password Form */}
-                <form className="space-y-5" onSubmit={handleSubmit}>
-                  {/* Email Field */}
-                  <div>
-                    <label htmlFor="email" className="block text-sm font-semibold text-gray-700 mb-2">
-                      Email Address
-                    </label>
+                <form className="space-y-6" onSubmit={handleSubmit}>
+                  
+                  {/* Email */}
+                  <div className="form-element group">
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 ml-1">Email Address</label>
                     <input
-                      id="email"
                       name="email"
                       type="email"
                       required
-                      placeholder="Enter your email"
+                      placeholder="name@example.com"
                       value={formData.email}
                       onChange={handleChange}
-                      className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition"
+                      className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#00aeef] focus:border-transparent transition-all"
                     />
                   </div>
 
-                  {/* Password Field */}
-                  <div>
-                    <label htmlFor="password" className="block text-sm font-semibold text-gray-700 mb-2">
-                      Password
-                    </label>
+                  {/* Password */}
+                  <div className="form-element">
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 ml-1">Password</label>
                     <div className="relative">
                       <input
-                        id="password"
                         name="password"
                         type={showPassword ? "text" : "password"}
                         required
-                        placeholder="Enter your password"
+                        placeholder="••••••••"
                         value={formData.password}
                         onChange={handleChange}
-                        className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition pr-12"
+                        className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#00aeef] focus:border-transparent transition-all pr-12"
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute inset-y-0 right-3 flex items-center text-gray-500 hover:text-cyan-600 transition"
+                        className="absolute inset-y-0 right-4 flex items-center text-slate-400 hover:text-[#00aeef] transition-colors"
                       >
                         {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                       </button>
                     </div>
+                    <div className="flex justify-end mt-2">
+                        <Link to="/forgot-password" className="text-xs font-bold text-[#00aeef] hover:text-slate-600 transition-colors">
+                        Forgot Password?
+                        </Link>
+                    </div>
                   </div>
 
-                  {/* Forgot Password Link */}
-                  <div className="flex justify-end">
-                    <Link
-                      to="/forgot-password"
-                      className="text-sm text-cyan-500 hover:text-cyan-600 transition font-medium hover:underline"
-                    >
-                      Forgot your password?
-                    </Link>
-                  </div>
-
-                  {/* Sign In Button */}
+                  {/* Primary Button */}
                   <button
                     type="submit"
-                    disabled={isLoading}
-                    className="w-full bg-cyan-500 text-white font-semibold py-3 px-6 rounded-lg shadow-md hover:bg-cyan-600 transition transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                    disabled={emailLoading || googleLoading}
+                    className="form-element w-full bg-slate-900 text-white font-bold py-4 rounded-xl shadow-lg hover:bg-[#00aeef] hover:shadow-[#00aeef]/30 transition-all transform hover:-translate-y-1 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
                     {emailLoading ? (
-                      <span className="text-sm">Signing In...</span>
+                        <>
+                            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                            <span>Signing In...</span>
+                        </>
                     ) : (
-                      <span>Sign In</span>
+                        <>Sign In <ArrowRight className="w-4 h-4" /></>
                     )}
                   </button>
                 </form>
 
-                {/* Divider */}
-                <div className="flex items-center my-6">
-                  <hr className="flex-grow border-gray-200" />
-                  <span className="px-4 text-gray-400 text-sm font-medium">OR</span>
-                  <hr className="flex-grow border-gray-200" />
+                <div className="relative my-8 form-element">
+                    <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-100"></div></div>
+                    <div className="relative flex justify-center text-xs uppercase font-bold text-slate-400 bg-white px-4">Or continue with</div>
                 </div>
 
-                {/* Google Sign-In Button */}
+                {/* Google Button */}
                 <button
                   type="button"
                   onClick={handleGoogleRedirect}
-                  disabled={isLoading}
-                  className="flex items-center justify-center w-full py-3 bg-white border-2 border-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-50 hover:border-cyan-400 transition-all shadow-sm gap-3 disabled:opacity-50 disabled:cursor-not-allowed group"
+                  disabled={emailLoading || googleLoading}
+                  className="form-element flex items-center justify-center w-full py-4 bg-white border-2 border-slate-100 text-slate-700 font-bold rounded-xl hover:border-slate-300 hover:bg-slate-50 transition-all gap-3 disabled:opacity-70 group"
                 >
                   {googleLoading ? (
-                    <span className="text-sm">Redirecting...</span>
+                      <div className="w-5 h-5 border-2 border-slate-300 border-t-[#00aeef] rounded-full animate-spin"></div>
                   ) : (
-                    <>
-                      <img
-                        src="https://developers.google.com/identity/images/g-logo.png"
-                        alt="Google"
-                        className="w-5 h-5"
-                      />
-                      <span className="text-sm group-hover:text-cyan-600 transition-colors">Sign in with Google</span>
-                    </>
+                      <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" className="w-5 h-5 group-hover:scale-110 transition-transform"/>
                   )}
+                  <span>Google Account</span>
                 </button>
 
-                {/* Security Badge */}
-                <div className="mt-6 flex items-center justify-center gap-2 text-xs text-gray-500">
-                  <Shield size={14} className="text-cyan-500" />
-                  <span>Your data is secure and encrypted</span>
-                </div>
+                <p className="form-element text-center mt-8 text-sm text-slate-500">
+                   Don't have an account? <Link to="/signup" className="text-[#00aeef] font-bold hover:underline">Create free account</Link>
+                </p>
+             </div>
+        </div>
 
-                {/* Sign Up Link */}
-                <div className="text-center mt-6 pt-6 border-t border-gray-100">
-                   <span className="text-sm text-gray-600">
-                      Don't have an account?{" "}
-                      <Link to="/signup" className="text-cyan-500 font-semibold hover:text-cyan-600 hover:underline transition-colors">
-                        Sign up here
-                      </Link>
-                   </span>
-                </div>
+        {/* RIGHT: VISUAL SIDE (The "Modern" Touch) */}
+        <div className="hidden lg:flex w-1/2 bg-[#F0F9FF] relative items-center justify-center overflow-hidden">
+            
+            {/* Background Image with Overlay */}
+            <div className="absolute inset-0 z-0">
+                <img 
+                    src="https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?ixlib=rb-1.2.1&auto=format&fit=crop&w=1950&q=80" 
+                    alt="Medical Background" 
+                    className="w-full h-full object-cover opacity-80"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#00aeef]/90 to-slate-900/60 mix-blend-multiply"></div>
+                <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20"></div>
+            </div>
 
-                {/* Terms */}
-                <div className="text-center mt-4">
-                    <p className="text-xs text-gray-400">
-                      By signing in, you agree to our{" "}
-                      <Link to="/terms" className="text-cyan-500 hover:underline">
-                        Terms of Service
-                      </Link>{" "}
-                      and{" "}
-                      <Link to="/terms" className="text-cyan-500 hover:underline">
-                        Privacy Policy
-                      </Link>
+            {/* Content Content - Feature Carousel */}
+            <div className="panel-reveal relative z-10 w-full max-w-lg px-12 text-white">
+                <div className="mb-12">
+                    <div className="w-16 h-16 bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center border border-white/20 shadow-2xl mb-8">
+                        <ShieldCheck className="w-8 h-8 text-white" />
+                    </div>
+                    <h2 className="text-5xl font-extrabold leading-[1.1] mb-6">
+                        Secure Access to <br/> Better Health.
+                    </h2>
+                    <p className="text-blue-100 text-lg leading-relaxed font-light">
+                        Manage your entire family's health journey from one secure dashboard.
                     </p>
                 </div>
-             </div>
-          </div>
 
-          {/* Right Side: Image */}
-          <div className="hidden lg:block w-1/2 relative h-full min-h-[600px]">
-             {/* Abstract Shape Background */}
-             <div className="absolute top-0 right-0 w-[120%] h-full bg-gradient-to-l from-white/30 to-transparent z-0"></div>
-             
-             {/* Decorative Circles */}
-             <div className="absolute top-20 right-40 w-32 h-32 bg-cyan-200/30 rounded-full blur-3xl"></div>
-             <div className="absolute bottom-40 right-20 w-40 h-40 bg-blue-300/20 rounded-full blur-3xl"></div>
-             
-             {/* Image Container */}
-             <div className="absolute bottom-0 right-0 lg:-right-12 xl:right-0 z-10">
-                <img 
-                  src="./bukcare_logo.png" 
-                  alt="Healthcare Professional" 
-                  className="h-[700px] object-contain object-bottom drop-shadow-2xl"
-                  style={{ maskImage: 'linear-gradient(to bottom, black 80%, transparent 100%)' }}
-                />
-             </div>
-          </div>
+                {/* Animated Feature Card */}
+                <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-3xl p-6 shadow-2xl relative overflow-hidden">
+                    <div className="absolute top-0 left-0 w-1 h-full bg-[#00aeef]"></div>
+                    <div className="transition-all duration-500 ease-in-out transform">
+                        {features.map((feature, idx) => (
+                            <div 
+                                key={idx} 
+                                className={`flex items-start gap-4 transition-opacity duration-500 ${idx === activeFeature ? "block opacity-100" : "hidden opacity-0 absolute"}`}
+                            >
+                                <div className="p-3 bg-white rounded-xl shadow-sm text-[#00aeef]">
+                                    <feature.icon className="w-6 h-6" />
+                                </div>
+                                <div>
+                                    <h4 className="font-bold text-lg mb-1">{feature.title}</h4>
+                                    <p className="text-sm text-blue-100 leading-relaxed">{feature.desc}</p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                    
+                    {/* Pagination Dots */}
+                    <div className="flex gap-2 mt-6">
+                        {features.map((_, idx) => (
+                            <div 
+                                key={idx} 
+                                className={`h-1 rounded-full transition-all duration-300 ${idx === activeFeature ? "w-8 bg-white" : "w-2 bg-white/30"}`}
+                            />
+                        ))}
+                    </div>
+                </div>
+            </div>
+
         </div>
       </div>
 
-      {/* --- INFO BOXES SECTION --- */}
-      <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 text-white">
-        {/* Box 1 */}
-        <div className="bg-[#0092BA] p-8 flex flex-col items-center text-center group hover:bg-[#0081a3] transition-all cursor-pointer">
-          <div className="mb-4 transform group-hover:scale-110 transition-transform">
-             <Stethoscope size={40} className="text-white opacity-90" />
-          </div>
-          <h3 className="text-lg font-bold mb-2">Access Your Records</h3>
-          <p className="text-sm text-white/80 leading-relaxed mb-4">
-             View your complete medical history, prescriptions, and test results in one secure place.
-          </p>
-        </div>
-
-        {/* Box 2 */}
-        <div className="bg-[#5BC0DE] p-8 flex flex-col items-center text-center group hover:bg-[#4ab0ce] transition-all cursor-pointer">
-          <div className="mb-4 transform group-hover:scale-110 transition-transform">
-             <Ambulance size={40} className="text-white opacity-90" />
-          </div>
-          <h3 className="text-lg font-bold mb-2">Manage Appointments</h3>
-          <p className="text-sm text-white/80 leading-relaxed mb-4">
-             Book, reschedule, or cancel appointments with your healthcare providers easily.
-          </p>
-        </div>
-
-        {/* Box 3 */}
-        <div className="bg-[#0092BA] p-8 flex flex-col items-center text-center group hover:bg-[#0081a3] transition-all cursor-pointer">
-           <div className="mb-4 transform group-hover:scale-110 transition-transform">
-             <Clock size={40} className="text-white opacity-90" />
-          </div>
-          <h3 className="text-lg font-bold mb-2">24/7 Access</h3>
-          <p className="text-sm text-white/80 leading-relaxed mb-4">
-             Your health information is available anytime, anywhere you need it.
-          </p>
-        </div>
-      </div>
-      
-      <Footer />
+      {/* Optional: Minimal Footer Strip if needed, or rely on main Footer */}
+      {/* <Footer /> can be placed here if you want it below the fold */}
     </div>
   );
 };

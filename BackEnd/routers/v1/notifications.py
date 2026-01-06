@@ -12,7 +12,7 @@ from core.socket_manager import manager
 
 router = APIRouter()
 
-# --- Pydantic Schema for Response ---
+# --- Pydantic Schema ---
 class NotificationResponse(BaseModel):
     id: int
     title: str
@@ -29,17 +29,11 @@ class NotificationResponse(BaseModel):
 
 @router.websocket("/ws/{user_id}")
 async def websocket_endpoint(websocket: WebSocket, user_id: int):
-    """
-    The single connection point for ALL real-time events 
-    (Chat messages + Bell notifications).
-    """
     await manager.connect(websocket, str(user_id))
     try:
         while True:
-            # Keep the connection open to receive messages (if needed)
-            # or just to keep the heartbeat alive.
-            data = await websocket.receive_text()
-            # Optional: You can handle incoming socket messages here if needed
+            # Keep connection alive
+            await websocket.receive_text()
     except WebSocketDisconnect:
         manager.disconnect(str(user_id))
 
@@ -47,83 +41,20 @@ async def websocket_endpoint(websocket: WebSocket, user_id: int):
 def get_notifications(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-    limit: int = Query(20, le=100), # Pagination limit
+    limit: int = Query(20, le=100),
     skip: int = 0
 ):
-    """Get all notifications for the current user"""
     notifications = db.query(Notification).filter(
         Notification.target_user_id == current_user.id
     ).order_by(Notification.created_at.desc()).offset(skip).limit(limit).all()
     
     return notifications
 
-@router.patch("/{notification_id}/read")
-def mark_notification_read(
-    notification_id: int,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """Mark a notification as read"""
-    notification = db.query(Notification).filter(
-        Notification.id == notification_id,
-        Notification.target_user_id == current_user.id
-    ).first()
-    
-    if not notification:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Notification not found"
-        )
-    
-    notification.is_read = True
-    db.commit()
-    
-    return {"message": "Notification marked as read"}
-
-@router.delete("/{notification_id}")
-def delete_notification(
-    notification_id: int,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """Delete a notification"""
-    notification = db.query(Notification).filter(
-        Notification.id == notification_id,
-        Notification.target_user_id == current_user.id
-    ).first()
-    
-    if not notification:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Notification not found"
-        )
-    
-    db.delete(notification)
-    db.commit()
-    
-    return {"message": "Notification deleted"}
-
-@router.patch("/mark-all-read")
-def mark_all_notifications_read(
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """Mark all notifications as read for the current user"""
-    db.query(Notification).filter(
-        Notification.target_user_id == current_user.id,
-        Notification.is_read == False
-    ).update({"is_read": True})
-    
-    db.commit()
-    
-    return {"message": "All notifications marked as read"}
-
 @router.get("/unread-count")
 def get_unread_count(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Get count of unread notifications"""
     unread_count = db.query(Notification).filter(
         Notification.target_user_id == current_user.id,
         Notification.is_read == False
@@ -131,18 +62,12 @@ def get_unread_count(
     
     return {"unread_count": unread_count}
 
-# =====================================
-# NEW NOTIF ENDPOINTS AS PER REQUEST
-# =====================================
-
-# 1. MARK ALL AS READ ENDPOINT
-@router.patch("/read/all")
+@router.patch("/mark-all-read")
 def mark_all_notifications_read(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Marks all unread notifications for the user as read."""
-    # Bulk update for efficiency
+    # Bulk update all unread notifications for this user
     db.query(Notification).filter(
         Notification.target_user_id == current_user.id,
         Notification.is_read == False
@@ -151,30 +76,6 @@ def mark_all_notifications_read(
     db.commit()
     return {"message": "All notifications marked as read"}
 
-# 2. DELETE NOTIFICATION ENDPOINT
-@router.delete("/{notification_id}")
-def delete_notification(
-    notification_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    """Permanently deletes a notification."""
-    notification = db.query(Notification).filter(
-        Notification.id == notification_id,
-        Notification.target_user_id == current_user.id
-    ).first()
-
-    if not notification:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, 
-            detail="Notification not found"
-        )
-
-    db.delete(notification)
-    db.commit()
-    return {"message": "Notification deleted"}
-
-# 3. MARK SINGLE AS READ (Ensure you have this too)
 @router.patch("/{notification_id}/read")
 def mark_notification_read(
     notification_id: int,
@@ -185,10 +86,28 @@ def mark_notification_read(
         Notification.id == notification_id,
         Notification.target_user_id == current_user.id
     ).first()
-
+    
     if not notification:
         raise HTTPException(status_code=404, detail="Notification not found")
-
+    
     notification.is_read = True
     db.commit()
-    return {"message": "Marked as read"}
+    return {"message": "Notification marked as read"}
+
+@router.delete("/{notification_id}")
+def delete_notification(
+    notification_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    notification = db.query(Notification).filter(
+        Notification.id == notification_id,
+        Notification.target_user_id == current_user.id
+    ).first()
+    
+    if not notification:
+        raise HTTPException(status_code=404, detail="Notification not found")
+    
+    db.delete(notification)
+    db.commit()
+    return {"message": "Notification deleted"}

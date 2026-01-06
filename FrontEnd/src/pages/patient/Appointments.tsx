@@ -3,14 +3,12 @@ import toast from "react-hot-toast";
 import api from "@/services/api";
 import Navbar from "@/components/Navbar";
 import { 
-  Calendar, 
   Clock, 
   User, 
   CheckCircle, 
   XCircle, 
   AlertCircle, 
   Search, 
-  Filter 
 } from "lucide-react";
 import { useWebSocket } from "@/context/WebSocketContext";
 
@@ -48,7 +46,7 @@ const PatientAppointments = () => {
     }
   }, []);
 
-  // 2. ⚡ REAL-TIME LISTENER
+  // 2. REAL-TIME LISTENER
   useEffect(() => {
     if (!lastMessage) return;
 

@@ -10,8 +10,6 @@ import {
   Users,
   UserCog,
   Shield,
-  Search,
-  Filter,
 } from "lucide-react";
 import {
   BarChart,
@@ -35,12 +33,12 @@ import type { DashboardStats, SystemHealth } from "@/services/admin/AdminAPI";
 import { useAuth } from "@/context/AuthContext";
 
 // Import Assets
-import totalPatientIcon from "@/assets/total_users.png";
-import patientIcon from "@/assets/patient.png";
-import doctorIcon from "@/assets/doctor.png";
-import appointmentIcon from "@/assets/appointment.png";
-import backendIcon from "@/assets/backend.png";
-import databaseIcon from "@/assets/database.png";
+import totalPatientIcon from "@/assets/images/total_users.png";
+import patientIcon from "@/assets/images/patient.png";
+import doctorIcon from "@/assets/images/doctor.png";
+import appointmentIcon from "@/assets/images/appointment.png";
+import backendIcon from "@/assets/images/backend.png";
+import databaseIcon from "@/assets/images/database.png";
 
 interface NotificationData {
   type: "success" | "error" | "warning" | "info";

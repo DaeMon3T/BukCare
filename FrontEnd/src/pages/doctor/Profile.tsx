@@ -6,6 +6,7 @@ import {
   updateUserProfile,
   updateProfilePicture,
 } from "@/services/users/UsersAPI";
+import { BookUser, Mail, Phone } from "lucide-react";
 
 interface UserProfile {
   fname: string;
@@ -262,7 +263,7 @@ const EditProfileModal = ({
 };
 
 export default function Profile() {
-  const { user, setUser } = useAuth();
+  const { setUser } = useAuth();
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   const [formData, setFormData] = useState<UserProfile>({
@@ -539,13 +540,13 @@ export default function Profile() {
                   <div className="text-xs text-gray-500 mt-1">Age</div>
                 </div>
                 <div className="p-4 text-center hover:bg-gray-50 transition">
-                  <div className="text-xl font-bold text-emerald-600">
+                  <div className="text-xl font-bold text-blue-600">
                     {formData.sex === true ? 'M' : formData.sex === false ? 'F' : '—'}
                   </div>
                   <div className="text-xs text-gray-500 mt-1">Gender</div>
                 </div>
                 <div className="p-4 text-center hover:bg-gray-50 transition">
-                  <div className="text-xl font-bold text-purple-600">
+                  <div className="text-xl font-bold text-emerald-600">
                     {formData.contact_number ? '✓' : '—'}
                   </div>
                   <div className="text-xs text-gray-500 mt-1">Contact</div>
@@ -557,17 +558,14 @@ export default function Profile() {
             <div className="bg-white rounded-3xl shadow-lg border border-gray-100 p-6">
               <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
                 <span className="bg-blue-100 text-blue-600 p-2 rounded-lg">
-                  📞
+                  <BookUser />
                 </span>
                 Contact Details
               </h3>
               <div className="space-y-4">
                 <div className="flex items-start gap-3">
-                  <div className="bg-gray-100 p-2 rounded-lg">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-600" viewBox="0 0 20 20" fill="currentColor">
-                      <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
-                      <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
-                    </svg>
+                  <div className="bg-blue-100 text-blue-600 p-2 rounded-lg">
+                    <Mail />
                   </div>
                   <div>
                     <div className="text-sm text-gray-500">Email</div>
@@ -577,10 +575,8 @@ export default function Profile() {
                 
                 {formData.contact_number && (
                   <div className="flex items-start gap-3">
-                    <div className="bg-gray-100 p-2 rounded-lg">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-600" viewBox="0 0 20 20" fill="currentColor">
-                        <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" />
-                      </svg>
+                    <div className="bg-blue-100 text-blue-600 p-2 rounded-lg">
+                      <Phone />
                     </div>
                     <div>
                       <div className="text-sm text-gray-500">Phone</div>
@@ -689,15 +685,15 @@ export default function Profile() {
                   </div>
                 </div>
                 
-                <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-2xl p-5">
-                  <div className="text-sm text-emerald-600 mb-2">City</div>
+                <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl p-5">
+                  <div className="text-sm text-blue-600 mb-2">City</div>
                   <div className="text-lg font-semibold text-gray-800">
                     {formData.address?.city || 'Not specified'}
                   </div>
                 </div>
                 
-                <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-2xl p-5">
-                  <div className="text-sm text-purple-600 mb-2">Province</div>
+                <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl p-5">
+                  <div className="text-sm text-blue-600 mb-2">Province</div>
                   <div className="text-lg font-semibold text-gray-800">
                     {formData.address?.province || 'Not specified'}
                   </div>

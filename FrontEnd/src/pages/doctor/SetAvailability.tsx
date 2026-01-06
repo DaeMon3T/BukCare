@@ -5,14 +5,14 @@ import { useAuth } from "@/context/AuthContext";
 import Navbar from "@/components/Navbar";
 import { 
   Calendar,
-  Clock, 
   Plus, 
   Trash2, 
   RefreshCw,
-  CalendarDays
+  CalendarDays,
+  X
 } from "lucide-react";
 
-// ✅ 1. Strict Interface
+// 1. Strict Interface
 interface Schedule {
   id: number;
   doctor_id: number;
@@ -61,11 +61,16 @@ const DoctorSetAvailability = () => {
       
       const data = res.data as Schedule[];
       
-      // Handle sorting safely
+      // SORTING FIX: Sort by Date first, THEN by Start Time
       const sorted = data.sort((a, b) => {
+        // 1. Compare Dates
         const dateA = new Date(a.date || "").getTime();
         const dateB = new Date(b.date || "").getTime();
-        return dateA - dateB;
+        if (dateA !== dateB) return dateA - dateB;
+
+        // 2. If dates are equal, compare Start Times
+        // "09:00" comes before "10:00" string-wise, so localeCompare works perfectly
+        return a.start_time.localeCompare(b.start_time);
       });
       
       setSchedules(sorted);
@@ -113,7 +118,7 @@ const DoctorSetAvailability = () => {
 
             if (currentSlot > endSlot && slotEnd !== "00:00" && slotEnd > timeRange.end) break;
 
-            // ✅ KEY FIX HERE: Use .substring(0, 10) instead of .split('T')[0]
+            // KEY FIX HERE: Use .substring(0, 10) instead of .split('T')[0]
             // This guarantees a string and satisfies TypeScript
             slotsToCreate.push({
               doctor_id: Number(user.id),
@@ -177,6 +182,24 @@ const DoctorSetAvailability = () => {
     acc[dateKey].push(curr);
     return acc;
   }, {} as Record<string, Schedule[]>);
+
+  const handleDeleteDay = async (date: string, slots: any[]) => {
+    if (!window.confirm(`Delete all ${slots.length} slots for ${new Date(date).toLocaleDateString()}?`)) return;
+    
+    // UI: Optimistic update (remove them from screen immediately)
+    const slotIdsToRemove = new Set(slots.map(s => s.id));
+    setSchedules(prev => prev.filter(s => !slotIdsToRemove.has(s.id)));
+
+    try {
+        // Loop through and delete each slot using the endpoint WE KNOW works
+        await Promise.all(slots.map(slot => api.delete(`/schedules/${slot.id}`)));
+        toast.success("Day schedule cleared");
+    } catch (err) {
+        console.error(err);
+        toast.error("Failed to clear some slots");
+        fetchSchedules(); // Re-fetch if something failed, just to be safe
+    }
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 pb-20">
@@ -304,72 +327,101 @@ const DoctorSetAvailability = () => {
             </div>
 
             {/* RIGHT: CURRENT SCHEDULE LIST (Grouped) */}
-            <div className="lg:col-span-2 space-y-6">
-                <div className="flex items-center justify-between">
-                    <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                        <CalendarDays className="w-5 h-5 text-purple-600" />
-                        Upcoming Schedule
-                    </h2>
-                    <span className="text-sm font-medium text-slate-500 bg-slate-100 px-3 py-1 rounded-full">
-                        {schedules.length} Slots
-                    </span>
-                </div>
+            <div className="lg:col-span-2 space-y-4">
+    
+              {/* Header: Compact & Clean */}
+              <div className="flex items-center justify-between bg-white px-5 py-4 rounded-xl border border-slate-200 shadow-sm">
+                  <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                      <CalendarDays className="w-5 h-5 text-purple-600" />
+                      Upcoming Schedule
+                  </h2>
+                  <span className="text-xs font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-md">
+                      {schedules.length} Slots Total
+                  </span>
+              </div>
 
-                {loading ? (
-                    <div className="space-y-4 animate-pulse">
-                        {[1,2,3].map(i => <div key={i} className="h-24 bg-slate-200 rounded-xl"></div>)}
-                    </div>
-                ) : Object.keys(groupedSchedules).length === 0 ? (
-                    <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center">
-                        <Calendar className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-                        <h3 className="text-lg font-bold text-slate-700">No availability set</h3>
-                        <p className="text-slate-500">Use the generator to set your hours.</p>
-                    </div>
-                ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {Object.entries(groupedSchedules).map(([date, daySlots]) => (
-                            <div key={date} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden hover:shadow-md transition-shadow">
-                                {/* Card Header */}
-                                <div className="bg-slate-50 px-5 py-3 border-b border-slate-100 flex justify-between items-center">
-                                    <h3 className="font-bold text-slate-800">
-                                        {new Date(date).toLocaleDateString("en-US", { weekday: 'short', month: 'short', day: 'numeric' })}
-                                    </h3>
-                                    <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded-md">
-                                        {daySlots.length} Slots
-                                    </span>
-                                </div>
-                                
-                                {/* Slots List */}
-                                <div className="p-2 max-h-[200px] overflow-y-auto custom-scrollbar">
-                                    {daySlots.map(slot => (
-                                        <div key={slot.id} className="flex items-center justify-between p-2 hover:bg-slate-50 rounded-lg group transition-colors">
-                                            <div className="flex items-center gap-3">
-                                                <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg">
-                                                    <Clock className="w-4 h-4" />
-                                                </div>
-                                                <div>
-                                                    <p className="text-sm font-bold text-slate-700">
-                                                        {slot.start_time.slice(0,5)} - {slot.end_time.slice(0,5)}
-                                                    </p>
-                                                    {slot.notes && <p className="text-xs text-slate-400">{slot.notes}</p>}
-                                                </div>
-                                            </div>
-                                            
-                                            <button 
-                                                onClick={() => handleDelete(slot.id)}
-                                                className="opacity-0 group-hover:opacity-100 p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
-                                                title="Remove slot"
-                                            >
-                                                <Trash2 className="w-4 h-4" />
-                                            </button>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                )}
-            </div>
+              {/* Content */}
+              {loading ? (
+                  <div className="space-y-3 animate-pulse">
+                      {[1, 2, 3].map(i => <div key={i} className="h-24 bg-slate-200 rounded-xl"></div>)}
+                  </div>
+              ) : Object.keys(groupedSchedules).length === 0 ? (
+                  <div className="bg-slate-50 rounded-xl border border-dashed border-slate-300 p-8 text-center">
+                      <Calendar className="w-8 h-8 text-slate-400 mx-auto mb-2" />
+                      <p className="text-sm text-slate-500 font-medium">No schedule set.</p>
+                  </div>
+              ) : (
+                  <div className="space-y-3">
+                      {Object.entries(groupedSchedules).map(([date, daySlots]) => {
+                          const dateObj = new Date(date);
+                          const isToday = new Date().toDateString() === dateObj.toDateString();
+
+                          return (
+                              <div key={date} className={`group bg-white rounded-xl border transition-all hover:shadow-md ${isToday ? 'border-blue-300 shadow-blue-100' : 'border-slate-200'}`}>
+                                  
+                                  {/* Compact Row Header */}
+                                  <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-slate-50/50 rounded-t-xl">
+                                      <div className="flex items-center gap-3">
+                                          {/* Date Badge */}
+                                          <div className={`flex flex-col items-center justify-center w-10 h-10 rounded-lg border ${isToday ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-700 border-slate-200'}`}>
+                                              <span className="text-[9px] uppercase font-bold leading-none">{dateObj.toLocaleDateString("en-US", { month: 'short' })}</span>
+                                              <span className="text-base font-bold leading-none mt-0.5">{dateObj.getDate()}</span>
+                                          </div>
+                                          
+                                          {/* Day Name */}
+                                          <div>
+                                              <h3 className={`text-sm font-bold ${isToday ? 'text-blue-700' : 'text-slate-800'}`}>
+                                                  {isToday ? "Today" : dateObj.toLocaleDateString("en-US", { weekday: 'long' })}
+                                              </h3>
+                                              <p className="text-[11px] font-medium text-slate-400">
+                                                  {daySlots.length} slots
+                                              </p>
+                                          </div>
+                                      </div>
+
+                                      {/* DELETE DAY BUTTON */}
+                                      <button 
+                                          onClick={() => handleDeleteDay(date, daySlots)}
+                                          className="text-slate-400 hover:text-red-600 hover:bg-red-50 p-2 rounded-lg transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
+                                          title="Clear entire day"
+                                      >
+                                          <Trash2 className="w-4 h-4" />
+                                      </button>
+                                  </div>
+                                  
+                                  {/* PILL LAYOUT (Saves Space!) */}
+                                  <div className="p-3 flex flex-wrap gap-2">
+                                      {daySlots.map(slot => (
+                                          <div 
+                                              key={slot.id} 
+                                              className="relative group/slot flex items-center gap-2 bg-white border border-slate-200 hover:border-red-200 hover:bg-red-50 text-slate-600 hover:text-red-600 text-xs font-semibold px-2.5 py-1.5 rounded-lg transition-all cursor-default"
+                                          >
+                                              {/* Time */}
+                                              <span>
+                                                  {slot.start_time.slice(0, 5)} - {slot.end_time.slice(0, 5)}
+                                              </span>
+                                              
+                                              {/* Notes Indicator (if any) */}
+                                              {slot.notes && (
+                                                  <span className="w-1.5 h-1.5 rounded-full bg-blue-400 group-hover/slot:bg-red-400" title={slot.notes}></span>
+                                              )}
+
+                                              {/* Delete 'x' (appears on hover) */}
+                                              <button 
+                                                  onClick={(e) => { e.stopPropagation(); handleDelete(slot.id); }}
+                                                  className="ml-1 -mr-1 p-0.5 rounded-md hover:bg-red-200 text-red-400 hover:text-red-700 opacity-0 group-hover/slot:opacity-100 transition-opacity"
+                                              >
+                                                  <X className="w-3 h-3" />
+                                              </button>
+                                          </div>
+                                      ))}
+                                  </div>
+                              </div>
+                          );
+                      })}
+                  </div>
+              )}
+          </div>
         </div>
       </div>
     </div>
