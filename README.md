@@ -3,7 +3,6 @@
 BukCare is an **online hospital appointment system** with multiple user interfaces:
 - **Patient** – Book and manage appointments online
 - **Doctor** – View and manage appointments, check schedules
-- **Staff** – Handle walk-in appointments and assist patients
 - **Admin** – Manage users, Invite doctor and overall system settings
 
 The system is built with:
