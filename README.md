@@ -15,7 +15,7 @@ The system is built with:
 
 ---
 
-## 🚀 Features
+## Features
 
 ### Authentication & Authorization
 - User registration and login (email/password)
@@ -49,5 +49,5 @@ The system is built with:
 
 ---
 
-## 🏗 Project Structure
+## Project Structure
 
