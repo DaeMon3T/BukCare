@@ -6,6 +6,7 @@ import {
   updateUserProfile,
   updateProfilePicture,
 } from "@/services/users/UsersAPI";
+import { CalendarRange, Hospital, MapPin, User } from "lucide-react";
 
 interface UserProfile {
   fname: string;
@@ -68,7 +69,7 @@ const EditProfileModal = ({
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
                   <span className="bg-blue-100 text-blue-600 p-1.5 rounded-lg">
-                    👤
+                    <User />
                   </span>
                   Personal Information
                 </label>
@@ -128,7 +129,7 @@ const EditProfileModal = ({
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
                   <span className="bg-cyan-100 text-cyan-600 p-1.5 rounded-lg">
-                    📅
+                    <CalendarRange />
                   </span>
                   Date of Birth
                 </label>
@@ -262,7 +263,7 @@ const EditProfileModal = ({
 };
 
 export default function Profile() {
-  const { user, setUser } = useAuth();
+  const { setUser } = useAuth();
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   const [formData, setFormData] = useState<UserProfile>({
@@ -557,7 +558,7 @@ export default function Profile() {
             <div className="bg-white rounded-3xl shadow-lg border border-gray-100 p-6">
               <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
                 <span className="bg-cyan-100 text-cyan-600 p-2 rounded-lg">
-                  🏥
+                  <Hospital />
                 </span>
                 Medical Contact
               </h3>
@@ -725,7 +726,9 @@ export default function Profile() {
               
               <div className="bg-gradient-to-r from-blue-50/80 to-cyan-50/80 rounded-2xl p-6 border border-blue-100">
                 <div className="text-sm text-gray-600 mb-3 flex items-center gap-2">
-                  <span className="text-blue-600">📍</span>
+                  <span className="text-blue-600">
+                    <MapPin className="w-5 h-5 text-slate-400 mt-0.5 shrink-0" />
+                  </span>
                   Complete Residential Address
                 </div>
                 <div className="text-lg font-semibold text-gray-800">

@@ -12,10 +12,13 @@ from middleware.request_logging import request_logging_middleware
 import logging
 import traceback
 from routers.v1 import router as v1_router
+from routers.v1 import doctors
 from utils.admin import create_admin_if_not_exists
 from models.message import Message
 from routers.v1 import notifications
 from routers.v1 import tips
+from models.review import Review
+from routers.v1 import reviews
 
 def create_app() -> FastAPI:
     setup_logging()
@@ -69,6 +72,11 @@ def create_app() -> FastAPI:
     # DB initialization
     Base.metadata.create_all(bind=engine)
     logger.info("Database tables created successfully")
+
+    # Doctor Review
+    app.include_router(reviews.router, prefix="/v1/reviews", tags=["Reviews"])
+
+    app.include_router(doctors.router, prefix="/v1/doctor", tags=["Doctor"])
 
     # ============================================================
     # MAIN V1 ROUTER (Appointments, Auth, etc.)

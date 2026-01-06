@@ -73,7 +73,7 @@ class LineLimitedRotatingFileHandler(logging.Handler):
             dfn = self.filename.with_suffix(f".{i + 1}") # Dest:   app.log.2
             
             if sfn.exists():
-                # 🔥 WINDOWS FIX: Force delete destination if it exists
+                # WINDOWS FIX: Force delete destination if it exists
                 if dfn.exists():
                     try:
                         dfn.unlink()

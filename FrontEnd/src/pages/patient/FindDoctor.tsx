@@ -1,12 +1,10 @@
 import React, { useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, Link } from "react-router-dom";
 import toast from "react-hot-toast";
 import { Search, Filter, X, Stethoscope } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import DoctorCard from "@/components/DoctorCard";
 import GetDoctorAPI from "@/services/patient/GetDoctorAPI";
-// I import the API type, but we'll cast it safely in the map function
-import type { Doctor as APIDoctor } from "@/services/patient/GetDoctorAPI";
 
 // The UI Card expects this structure
 interface UICardDoctor {
@@ -167,17 +165,23 @@ const FindDoctor: React.FC = () => {
 
           {/* RESULTS GRID */}
           {loading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-               {[1, 2, 3, 4, 5, 6].map((n) => (
-                  <DoctorCardSkeleton key={n} />
-               ))}
-            </div>
-          ) : filteredDoctors.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredDoctors.map((doc) => (
-                <DoctorCard key={doc.doctor_id} doctor={doc} />
-              ))}
-            </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[1, 2, 3, 4, 5, 6].map((n) => (
+              <DoctorCardSkeleton key={n} />
+            ))}
+          </div>
+        ) : filteredDoctors.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredDoctors.map((doc) => (
+              <Link 
+                to={`/patient/doctor/${doc.doctor_id}`} 
+                key={doc.doctor_id}
+                className="block transition-transform hover:-translate-y-1"
+              >
+                <DoctorCard doctor={doc} />
+              </Link>
+            ))}
+          </div>
           ) : (
             <div className="flex flex-col items-center justify-center py-20 bg-white rounded-2xl border border-dashed border-slate-300">
                 <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mb-4">

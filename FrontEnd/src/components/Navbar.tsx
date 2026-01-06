@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -16,181 +16,54 @@ import {
   CheckCircle,
   Info,
   MessageCircle,
-  CheckCheck, // ✅ Icon for "Mark All Read"
-  Trash2 // ✅ Icon for "Delete"
+  CheckCheck, 
+  Trash2
 } from "lucide-react";
-import { useAuth } from "../context/AuthContext";
-import { useWebSocket } from "../context/WebSocketContext";
-import notificationsAPI from "../services/notifications"; 
-import bukcareLogo from "../assets/bukcare_logo.png";
-import defaultAvatar from "../assets/default_avatar.png";
-import toast from "react-hot-toast";
-
-interface NotificationItem {
-  id: number;
-  title: string;
-  message: string;
-  type?: string;
-  timestamp: Date;
-  isRead: boolean;
-  appointment_id?: number;
-}
+import { useAuth } from "@/context/AuthContext";
+import { useNotifications } from "@/hooks/useNotifications"; 
+import bukcareLogo from "@/assets/images/bukcare_logo.png";
+import defaultAvatar from "@/assets/images/default_avatar.png";
 
 const Navbar: React.FC = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const { lastMessage } = useWebSocket();
+
+  // 👇 FIX APPLIED HERE: Convert ID to Number
+  const { 
+    notifications, 
+    unreadCount, 
+    markAllAsRead, 
+    markAsRead, 
+    deleteNotification 
+  } = useNotifications(user?.id ? Number(user.id) : undefined);
 
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  const [notificationsList, setNotificationsList] = useState<NotificationItem[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
-
-  // 1. FETCH HISTORY
-  useEffect(() => {
-    const fetchHistory = async () => {
-      try {
-        if (!user) return;
-        const history = await notificationsAPI.getAll();
-        
-        const formatted = history.map((n: any) => ({
-          id: n.id,
-          title: n.title,
-          message: n.message,
-          type: n.type,
-          timestamp: new Date(n.created_at),
-          isRead: n.is_read,
-          appointment_id: n.appointment_id
-        }));
-
-        setNotificationsList(formatted);
-        setUnreadCount(formatted.filter((n: any) => !n.isRead).length);
-      } catch (error) {
-        console.error("Failed to load notification history");
-      }
-    };
-
-    fetchHistory();
-  }, [user]);
-
-  // 2. WEBSOCKET LISTENER
-  useEffect(() => {
-    if (!lastMessage) return;
-
-    if (!lastMessage.notification && lastMessage.type !== "CHAT_MESSAGE") return;
-
-    let title = "New Notification";
-    let messageContent = "You have a new update.";
-    let type = lastMessage.type || "info";
-    let appointment_id = null;
-
-    if (type === "CHAT_MESSAGE") {
-        const senderName = lastMessage.message?.sender_name || "User";
-        title = `Message from ${senderName}`;
-        messageContent = lastMessage.message?.content || "Sent a message"; 
-    } else if (lastMessage.notification) {
-        title = lastMessage.notification.title;
-        messageContent = lastMessage.notification.message;
-        type = lastMessage.notification.type;
-        appointment_id = lastMessage.notification.appointment_id;
+  // --- ACTION HANDLERS ---
+  
+  const handleNotificationClick = async (notif: any) => {
+    // 1. Mark as read immediately
+    if (!notif.is_read) {
+        markAsRead(Number(notif.id));
     }
 
-    const newNotification: NotificationItem = {
-      id: Date.now(),
-      title,
-      message: messageContent,
-      type,
-      timestamp: new Date(),
-      isRead: false,
-      appointment_id: appointment_id || undefined
-    };
-
-    setNotificationsList((prev) => [newNotification, ...prev]);
-    
-    if (type !== "CHAT_MESSAGE") {
-        setUnreadCount((prev) => prev + 1);
-    }
-
-    toast.custom((t) => (
-        <div className={`${t.visible ? 'animate-enter' : 'animate-leave'} max-w-md w-full bg-white shadow-xl rounded-2xl pointer-events-auto flex ring-1 ring-black ring-opacity-5 cursor-pointer`}
-             onClick={() => {
-                 toast.dismiss(t.id);
-                 handleNotificationClick(newNotification);
-             }}
-        >
-            <div className="flex-1 w-0 p-4">
-                <div className="flex items-start">
-                    <div className="flex-shrink-0 pt-0.5">
-                        <div className={`h-10 w-10 rounded-full flex items-center justify-center ${type === 'success' ? 'bg-green-100 text-green-600' : 'bg-blue-100 text-blue-600'}`}>
-                            {type === 'CHAT_MESSAGE' ? <MessageCircle className="w-6 h-6"/> : <Bell className="w-6 h-6"/>}
-                        </div>
-                    </div>
-                    <div className="ml-3 flex-1">
-                        <p className="text-sm font-medium text-gray-900">{title}</p>
-                        <p className="mt-1 text-sm text-gray-500">{messageContent}</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    ), { duration: 4000 });
-
-  }, [lastMessage]);
-
-  // 3. ACTION HANDLERS
-
-  // ✅ Mark ALL as Read
-  const handleMarkAllRead = async () => {
-    if (unreadCount === 0) return;
-    try {
-        await notificationsAPI.markAllRead(); // Ensure API supports this!
-        
-        // Optimistic Update
-        setNotificationsList(prev => prev.map(n => ({ ...n, isRead: true })));
-        setUnreadCount(0);
-        toast.success("All marked as read");
-    } catch (error) {
-        console.error("Failed to mark all as read");
-    }
-  };
-
-  // ✅ Delete Notification
-  const handleDeleteNotification = async (e: React.MouseEvent, id: number, isRead: boolean) => {
-    e.stopPropagation(); // Stop click from navigating
-    try {
-        await notificationsAPI.delete(id); // Ensure API supports this!
-        
-        setNotificationsList(prev => prev.filter(n => n.id !== id));
-        if (!isRead) {
-            setUnreadCount(prev => Math.max(0, prev - 1));
-        }
-        toast.success("Notification removed");
-    } catch (error) {
-        console.error("Failed to delete notification");
-    }
-  };
-
-  const handleNotificationClick = async (notif: NotificationItem) => {
+    // 2. Navigate based on type
     if (notif.type === "CHAT_MESSAGE") {
         navigate(user?.role === 'doctor' ? '/doctor/messages' : '/patient/messages');
     } else if (notif.appointment_id) {
         navigate(user?.role === 'doctor' ? '/doctor/appointments' : '/patient/appointments');
     }
 
-    if (!notif.isRead && notif.type !== "CHAT_MESSAGE") {
-        try {
-            await notificationsAPI.markAsRead(notif.id);
-            setNotificationsList(prev => prev.map(n => 
-                n.id === notif.id ? { ...n, isRead: true } : n
-            ));
-            setUnreadCount(prev => Math.max(0, prev - 1));
-        } catch (error) {
-            console.error("Failed to mark as read");
-        }
-    }
+    // 3. Close dropdown
     setShowNotifications(false);
+  };
+
+  const handleLogout = async () => {
+    await logout();
+    navigate("/");
   };
 
   if (!user) return null;
@@ -226,11 +99,6 @@ const Navbar: React.FC = () => {
   const navigationItems = getNavigationItems();
   const homeLink = `/${userRole === 'patient' ? 'patient/home' : userRole + '/dashboard'}`;
   const profileLink = `/${userRole}/profile`;
-
-  const handleLogout = async () => {
-    await logout();
-    navigate("/");
-  };
 
   return (
     <>
@@ -276,7 +144,8 @@ const Navbar: React.FC = () => {
 
             {/* RIGHT - Actions */}
             <div className="flex items-center gap-3 sm:gap-4">
-              {/* Notifications Bell */}
+              
+              {/* --- NOTIFICATIONS BELL --- */}
               <div className="relative">
                 <button
                   onClick={() => setShowNotifications(!showNotifications)}
@@ -299,7 +168,7 @@ const Navbar: React.FC = () => {
                       exit={{ opacity: 0, y: 10, scale: 0.95 }}
                       className="absolute right-0 mt-3 w-80 sm:w-96 bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden z-[60] origin-top-right"
                     >
-                      {/* HEADER: Added "Mark all read" button */}
+                      {/* HEADER */}
                       <div className="px-5 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
                         <div className="flex items-center gap-2">
                             <h3 className="font-bold text-slate-800">Notifications</h3>
@@ -310,24 +179,24 @@ const Navbar: React.FC = () => {
                             )}
                         </div>
                         
-                        {/* ✅ MARK ALL READ BUTTON */}
+                        {/* MARK ALL READ BUTTON */}
                         <button 
-                            onClick={handleMarkAllRead}
+                            onClick={markAllAsRead}
                             disabled={unreadCount === 0}
                             className={`flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-md transition-colors ${
                                 unreadCount > 0 
                                 ? "text-blue-600 hover:bg-blue-100 cursor-pointer" 
                                 : "text-slate-400 cursor-not-allowed"
                             }`}
-                            title="Mark all as read"
                         >
                             <CheckCheck className="w-4 h-4" />
                             <span className="hidden sm:inline">Mark all read</span>
                         </button>
                       </div>
 
+                      {/* LIST */}
                       <div className="max-h-[400px] overflow-y-auto scrollbar-thin">
-                        {notificationsList.length === 0 ? (
+                        {notifications.length === 0 ? (
                           <div className="p-8 text-center flex flex-col items-center gap-3">
                              <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center">
                                  <Bell className="w-6 h-6 text-slate-300" />
@@ -336,11 +205,11 @@ const Navbar: React.FC = () => {
                           </div>
                         ) : (
                           <div className="divide-y divide-slate-50">
-                            {notificationsList.map((notif, index) => (
+                            {notifications.map((notif) => (
                               <div 
-                                key={notif.id} // Better key than index
+                                key={notif.id}
                                 onClick={() => handleNotificationClick(notif)}
-                                className={`p-4 hover:bg-slate-50 transition-colors cursor-pointer flex gap-4 group ${!notif.isRead ? 'bg-blue-50/40' : ''}`}
+                                className={`p-4 hover:bg-slate-50 transition-colors cursor-pointer flex gap-4 group ${!notif.is_read ? 'bg-blue-50/40' : ''}`}
                               >
                                 <div className={`mt-1 w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
                                     notif.type === 'CHAT_MESSAGE' ? 'bg-purple-100 text-purple-600' : 
@@ -351,12 +220,15 @@ const Navbar: React.FC = () => {
                                 </div>
                                 <div className="flex-1 min-w-0">
                                   <div className="flex justify-between items-start mb-0.5">
-                                      <h5 className={`text-sm truncate pr-2 ${!notif.isRead ? 'font-bold text-slate-900' : 'font-medium text-slate-700'}`}>
+                                      <h5 className={`text-sm truncate pr-2 ${!notif.is_read ? 'font-bold text-slate-900' : 'font-medium text-slate-700'}`}>
                                         {notif.title}
                                       </h5>
-                                      {/* ✅ DELETE BUTTON (Visible on hover) */}
+                                      {/* DELETE BUTTON */}
                                       <button 
-                                        onClick={(e) => handleDeleteNotification(e, notif.id, notif.isRead)}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            deleteNotification(Number(notif.id));
+                                        }}
                                         className="text-slate-300 hover:text-red-500 hover:bg-red-50 p-1 rounded transition-all opacity-0 group-hover:opacity-100"
                                         title="Delete notification"
                                       >
@@ -364,7 +236,9 @@ const Navbar: React.FC = () => {
                                       </button>
                                   </div>
                                   <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">{notif.message}</p>
-                                  <p className="text-[10px] text-slate-400 mt-2">{notif.timestamp.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
+                                  <p className="text-[10px] text-slate-400 mt-2">
+                                      {new Date(notif.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                  </p>
                                 </div>
                               </div>
                             ))}
@@ -376,7 +250,7 @@ const Navbar: React.FC = () => {
                 </AnimatePresence>
               </div>
 
-              {/* Profile Menu (Unchanged) */}
+              {/* --- PROFILE MENU --- */}
               <div className="relative">
                 <button
                   onClick={() => setShowProfileDropdown(!showProfileDropdown)}
@@ -418,7 +292,7 @@ const Navbar: React.FC = () => {
           </div>
         </div>
 
-        {/* MOBILE SIDEBAR (Unchanged structure) */}
+        {/* MOBILE SIDEBAR */}
         <AnimatePresence>
           {sidebarOpen && (
             <>

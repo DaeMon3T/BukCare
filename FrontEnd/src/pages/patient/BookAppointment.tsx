@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import toast from "react-hot-toast";
 import Navbar from "@/components/Navbar";
 import api from "@/services/api";
 import GetDoctorAPI, { type DoctorAvailability, type Doctor } from "@/services/patient/GetDoctorAPI";
 import AppointmentAvailabilityAPI from "@/services/patient/AppointmentAvailabilityAPI";
-import { Calendar, Clock, CheckCircle } from "lucide-react";
+import { Calendar, Clock, CheckCircle, ArrowLeft } from "lucide-react";
 
 type BookingMode = "availability" | "custom";
 
@@ -263,14 +263,21 @@ const BookAppointment: React.FC = () => {
       </div>
     );
   }
+  
 
   return (
     <div className="min-h-screen bg-slate-50 pb-20">
       <Navbar/>
+      
 
       <main className="max-w-3xl mx-auto px-4 py-8">
         
+        
         {/* DOCTOR HEADER CARD */}
+        <Link to="/patient/find-doctor" className="inline-flex items-center gap-2 text-sm font-bold text-slate-400 hover:text-[#00aeef] transition-colors">
+            <ArrowLeft className="w-4 h-4" /> Back to Find Doctors
+        </Link>
+        
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mb-6">
           <div className="h-24 bg-gradient-to-r from-blue-600 to-indigo-600"></div>
           <div className="px-6 pb-6 relative">
@@ -286,6 +293,7 @@ const BookAppointment: React.FC = () => {
             <div className="flex justify-between items-start">
                 <div>
                     <h1 className="text-2xl font-bold text-slate-900">Dr. {doctor.name}</h1>
+                    <p className="text-slate-500 font-medium">{doctor.address || "Address not found"}</p>
                     <p className="text-slate-500 font-medium">{doctor.specialization || "General Practice"}</p>
                 </div>
                 {availabilities.length > 0 && (

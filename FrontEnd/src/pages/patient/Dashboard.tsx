@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
-import { useWebSocket } from "@/context/WebSocketContext"; // ✅ USE GLOBAL SOCKET
+import { useWebSocket } from "@/context/WebSocketContext"; 
 import api from "@/services/api";
 import Navbar from "@/components/Navbar";
 import QuickActions from "@/components/QuickActions";
@@ -48,7 +48,7 @@ interface HealthTip {
 
 const PatientDashboard = () => {
   const { user } = useAuth();
-  const { lastMessage } = useWebSocket(); // ✅ Hook into the live stream
+  const { lastMessage } = useWebSocket(); // Hook into the live stream
   const navigate = useNavigate();
   
   const [doctors, setDoctors] = useState<Doctor[]>([]);
@@ -126,7 +126,7 @@ const PatientDashboard = () => {
     fetchDashboardData();
   }, [fetchDashboardData]);
 
-  // 3. ⚡ REAL-TIME LISTENER
+  // 3. REAL-TIME LISTENER
   // This listens for signals from the backend (Doctor accepted, new booking, etc.)
   useEffect(() => {
     if (lastMessage) {
@@ -176,16 +176,6 @@ const PatientDashboard = () => {
               {getGreeting()}, <span className="text-blue-600">{user?.fname || "Patient"}</span>
             </h1>
             <p className="text-slate-500 mt-1">Here is your daily health overview.</p>
-          </div>
-          <div className="flex gap-2">
-             <div className="px-4 py-2 bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col items-center min-w-[100px]">
-                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Pending</span>
-                <span className="text-2xl font-bold text-amber-500">{stats.pending}</span>
-             </div>
-             <div className="px-4 py-2 bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col items-center min-w-[100px]">
-                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Completed</span>
-                <span className="text-2xl font-bold text-emerald-500">{stats.completed}</span>
-             </div>
           </div>
         </div>
 
@@ -250,24 +240,36 @@ const PatientDashboard = () => {
                         </div>
                     </div>
                 ) : (
-                    <div className="h-full bg-white rounded-3xl p-8 border border-slate-200 shadow-sm flex flex-col justify-center items-start relative overflow-hidden min-h-[300px]">
-                        <div className="relative z-10">
-                            <h2 className="text-2xl font-bold text-slate-800 mb-2">No Upcoming Visits</h2>
-                            <p className="text-slate-500 mb-8 max-w-md leading-relaxed">
-                                You are all caught up! If you are feeling unwell or need a routine checkup, our doctors are here to help.
-                            </p>
-                            <button 
-                                onClick={() => navigate('/patient/find-doctor')}
-                                className="bg-blue-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-blue-700 transition-colors shadow-lg shadow-blue-200 flex items-center gap-2"
-                            >
-                                <Stethoscope className="w-5 h-5" />
-                                Find a Doctor
-                            </button>
+                    <div className="h-full bg-white rounded-3xl p-6 md:p-8 border border-slate-200 shadow-sm flex flex-col relative overflow-hidden min-h-[300px]">
+                    <div className="flex gap-2 self-end mb-4 md:mb-0 z-20">
+                        <div className="px-3 py-2 md:px-4 bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col items-center min-w-[80px] md:min-w-[100px]">
+                            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Pending</span>
+                            <span className="text-xl md:text-2xl font-bold text-blue-500">{stats.pending}</span>
                         </div>
-                        <div className="absolute right-[-20px] bottom-[-40px] opacity-5">
-                            <Stethoscope className="w-80 h-80 text-blue-600" />
+                        <div className="px-3 py-2 md:px-4 bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col items-center min-w-[80px] md:min-w-[100px]">
+                            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Completed</span>
+                            <span className="text-xl md:text-2xl font-bold text-blue-500">{stats.completed}</span>
                         </div>
                     </div>
+                    <div className="relative z-10 flex-1 flex flex-col justify-center items-start">
+                        <h2 className="text-xl md:text-2xl font-bold text-slate-800 mb-2">
+                            No Upcoming Visits
+                        </h2>
+                        <p className="text-slate-500 mb-6 md:mb-8 max-w-md leading-relaxed text-sm md:text-base">
+                            You are all caught up! If you are feeling unwell or need a routine checkup, our doctors are here to help.
+                        </p>
+                        <button 
+                            onClick={() => navigate('/patient/find-doctor')}
+                            className="w-full md:w-auto bg-blue-600 text-white px-6 py-3 md:px-8 rounded-xl font-bold hover:bg-blue-700 transition-colors shadow-lg shadow-blue-200 flex items-center justify-center gap-2"
+                        >
+                            <Stethoscope className="w-5 h-5" />
+                            Find a Doctor
+                        </button>
+                    </div>
+                    <div className="absolute -right-6 -bottom-6 md:right-[-20px] md:bottom-[-40px] opacity-5 pointer-events-none">
+                        <Stethoscope className="w-48 h-48 md:w-80 md:h-80 text-blue-600" />
+                    </div>
+                </div>
                 )}
             </div>
 

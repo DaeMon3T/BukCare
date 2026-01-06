@@ -30,9 +30,9 @@ export const WebSocketProvider = ({ children }: { children: React.ReactNode }) =
     ws.onmessage = (event) => {
       try {
         const rawData = JSON.parse(event.data);
-        console.log("📩 New Signal:", rawData);
+        console.log("New Signal:", rawData);
         
-        // 🔥 FIX: Attach a local timestamp when the message actually arrives
+        // FIX: Attach a local timestamp when the message actually arrives
         const messageWithTimestamp = {
             ...rawData,
             _receivedAt: Date.now() // Internal timestamp

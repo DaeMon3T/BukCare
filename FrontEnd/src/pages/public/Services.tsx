@@ -1,213 +1,447 @@
-// src/pages/public/Services.tsx
-import React, { useEffect } from "react";
-import { Link } from "react-router-dom";
+import React, { useEffect, useRef, useState, useLayoutEffect } from "react";
+import { Link, useLocation } from "react-router-dom";
+import { 
+  Stethoscope, 
+  Activity, 
+  Heart, 
+  Brain, 
+  Bone, 
+  Eye, 
+  Baby, 
+  Menu, 
+  X,
+  Search,
+  CalendarCheck,
+  UserCheck,
+  ArrowRight,
+  CheckCircle2,
+  Thermometer,
+} from "lucide-react";
+import gsap from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
+import Lenis from "@studio-freight/lenis";
+import api from "@/services/api"; 
 import Footer from "@/components/Footer";
+import logo from "@/assets/images/bukcare_logo.png"
+
+gsap.registerPlugin(ScrollTrigger);
 
 const Services: React.FC = () => {
-  // Ensure page starts at top on load
+  const containerRef = useRef<HTMLDivElement>(null);
+  const location = useLocation();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  
+  // Dynamic Data
+  const [specialties, setSpecialties] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // 1. Fetch Real Data (With Fallback)
   useEffect(() => {
-    window.scrollTo(0, 0);
+    const fetchData = async () => {
+      try {
+        const res = await api.get("/doctors");
+        if (Array.isArray(res.data) && res.data.length > 0) {
+            const uniqueSpecs = Array.from(new Set(res.data.map((d: any) => d.specialization))) as string[];
+            setSpecialties(uniqueSpecs);
+        } else {
+            // Fallback for visual testing
+            setSpecialties(["General Medicine", "Pediatrics", "Cardiology", "Neurology", "Dermatology", "Orthopedics", "Ophthalmology"]);
+        }
+      } catch (err) {
+        console.error("Using fallback due to API error", err);
+        setSpecialties(["General Medicine", "Pediatrics", "Cardiology", "Neurology", "Dermatology", "Orthopedics"]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
   }, []);
 
-  // Added this function to handle click events on the new links
-  const handleScrollTop = () => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+  // 2. Animations & Smooth Scroll
+  useLayoutEffect(() => {
+    const lenis = new Lenis({
+      duration: 1.2,
+      easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+      smoothWheel: true,
+    });
+
+    function raf(time: number) {
+      lenis.raf(time);
+      requestAnimationFrame(raf);
+    }
+    requestAnimationFrame(raf);
+
+    if (!loading) {
+        const ctx = gsap.context(() => {
+            // Hero Elements
+            const heroTl = gsap.timeline();
+            heroTl.fromTo(".hero-item", 
+                { y: 30, opacity: 0 },
+                { y: 0, opacity: 1, duration: 1, stagger: 0.15, ease: "power3.out", delay: 0.2 }
+            );
+
+            gsap.fromTo(".hero-image", 
+                { x: 30, opacity: 0 },
+                { x: 0, opacity: 1, duration: 1.2, ease: "power3.out", delay: 0.4 }
+            );
+
+            // Service Cards Stagger
+            gsap.fromTo(".service-card", 
+                { y: 50, opacity: 0 },
+                {
+                    y: 0, 
+                    opacity: 1, 
+                    duration: 0.8, 
+                    stagger: 0.1, 
+                    ease: "power3.out",
+                    scrollTrigger: {
+                        trigger: ".services-grid",
+                        start: "top 80%",
+                    }
+                }
+            );
+
+            // Process Steps
+            gsap.fromTo(".process-step", 
+                { y: 40, opacity: 0 },
+                {
+                    y: 0, 
+                    opacity: 1, 
+                    duration: 0.8, 
+                    stagger: 0.2, 
+                    ease: "power3.out",
+                    scrollTrigger: {
+                        trigger: ".process-section",
+                        start: "top 75%",
+                    }
+                }
+            );
+
+            // Features Section
+            gsap.fromTo(".feature-item", 
+                { x: -20, opacity: 0 },
+                {
+                    x: 0, 
+                    opacity: 1, 
+                    duration: 0.8, 
+                    stagger: 0.1, 
+                    ease: "power2.out",
+                    scrollTrigger: {
+                        trigger: ".features-list",
+                        start: "top 80%",
+                    }
+                }
+            );
+
+        }, containerRef);
+        return () => ctx.revert();
+    }
+    
+    return () => lenis.destroy();
+  }, [loading]);
+
+  // Icon Mapper Helper
+  const getIconForSpecialty = (spec: string) => {
+    const s = spec.toLowerCase();
+    if (s.includes("heart") || s.includes("cardio")) return <Heart className="w-8 h-8 text-rose-500"/>;
+    if (s.includes("brain") || s.includes("neuro")) return <Brain className="w-8 h-8 text-purple-500"/>;
+    if (s.includes("bone") || s.includes("ortho")) return <Bone className="w-8 h-8 text-slate-500"/>;
+    if (s.includes("eye") || s.includes("opth")) return <Eye className="w-8 h-8 text-blue-500"/>;
+    if (s.includes("baby") || s.includes("pedia")) return <Baby className="w-8 h-8 text-pink-500"/>;
+    if (s.includes("general") || s.includes("med")) return <Thermometer className="w-8 h-8 text-green-500"/>;
+    if (s.includes("derma") || s.includes("skin")) return <Activity className="w-8 h-8 text-amber-500"/>;
+    return <Stethoscope className="w-8 h-8 text-[#00aeef]"/>;
   };
 
+  const handleScrollTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setMobileMenuOpen(false);
+  };
+
+  const navLinks = [
+    { name: "Home", path: "/" },
+    { name: "About", path: "/about" },
+    { name: "Services", path: "/services" },
+    { name: "Contact", path: "/contact" },
+    { name: "Terms of Services & Privacy Policy", path: "/Terms" },
+  ];
+
   return (
-    <div className="min-h-screen bg-white text-slate-600 font-sans">
+    <div ref={containerRef} className="bg-white min-h-screen font-sans text-slate-600 selection:bg-[#00aeef] selection:text-white overflow-x-hidden">
       
-      {/* Navigation (Matches white header) */}
-      <nav className="bg-white shadow-sm sticky top-0 z-50">
+      {/* --- 1. NAVIGATION --- */}
+      <nav className="fixed w-full bg-white/80 backdrop-blur-xl border-b border-slate-100 z-50 transition-all">
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-          
-          {/* Logo Group */}
-          <div className="flex items-center gap-2">
-            <div className="text-2xl font-bold text-slate-800">
-              <span className="text-[#0099cc]">Buk</span>Care
-            </div>
+          <Link to="/" className="flex items-center gap-2 group" onClick={handleScrollTop}>
+              <div className="w-15 h-15 rounded-xl flex items-center justify-center text-white shadow-lg shadow-blue-500/20 group-hover:scale-105 transition-transform">
+                <img src={logo} className="w-20 h-20"/>
+              </div>
+              <span className="text-xl font-bold text-slate-900 tracking-tight">
+                 Buk<span className="text-[#00aeef]">Care</span>
+              </span>
+          </Link>
+
+          <div className="hidden md:flex items-center gap-8">
+             {navLinks.map((link) => (
+                <Link 
+                    key={link.name}
+                    to={link.path} 
+                    onClick={handleScrollTop}
+                    className={`text-sm font-bold uppercase tracking-wider transition-colors ${
+                        location.pathname === link.path 
+                        ? "text-[#00aeef]" 
+                        : "text-slate-500 hover:text-[#00aeef]"
+                    }`}
+                >
+                    {link.name}
+                </Link>
+             ))}
           </div>
 
-          {/* Main Navigation Links */}
-          <div className="hidden md:flex items-center gap-20 text-sm font-bold text-gray-600 uppercase tracking-wide ml-60 pt-3 pb-3">
-              <Link to="/" className="hover:text-[#00aeef] transition" onClick={handleScrollTop}>Home</Link>
-              <Link to="/About" className="hover:text-[#00aeef] transition" onClick={handleScrollTop}>About</Link>
-              {/* Highlighted Services since we are on the Services page */}
-              <Link to="/Services" className="text-[#00aeef] transition" onClick={handleScrollTop}>Services</Link>
-              <Link to="/Contact" className="hover:text-[#00aeef] transition">Contact</Link>
-              <Link to="/Terms" className="hover:text-[#00aeef] transition">Terms of Services & Privacy Policy</Link>
-          </div>
-      
+          <button className="md:hidden text-slate-600 p-2" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
+             {mobileMenuOpen ? <X /> : <Menu />}
+          </button>
+        </div>
+        
+        {/* Mobile Menu */}
+        <div className={`md:hidden absolute top-20 left-0 w-full bg-white border-b border-slate-100 shadow-xl overflow-hidden transition-all duration-300 ${mobileMenuOpen ? "max-h-96 opacity-100" : "max-h-0 opacity-0"}`}>
+            <div className="flex flex-col p-6 gap-4">
+                {navLinks.map((link) => (
+                    <Link 
+                        key={link.name} 
+                        to={link.path} 
+                        onClick={handleScrollTop}
+                        className="text-lg font-medium text-slate-700 hover:text-[#00aeef]"
+                    >
+                        {link.name}
+                    </Link>
+                ))}
+            </div>
         </div>
       </nav>
 
-      {/* Hero Section */}
-      <section className="relative h-[600px] w-full flex items-center bg-gray-50 overflow-hidden">
-        {/* Background Image */}
-        <div 
-          className="absolute inset-0 z-0 bg-cover bg-right md:bg-center bg-no-repeat"
-          style={{
-            backgroundImage: "url('https://images.unsplash.com/photo-1551884170-09fb70a3a2ed?ixlib=rb-1.2.1&auto=format&fit=crop&w=1950&q=80')"
-          }}
-        >
-          {/* Gentle Overlay for text readability */}
-          <div className="absolute inset-0 bg-gradient-to-r from-white via-white/80 to-transparent"></div>
-        </div>
+      {/* --- 2. HERO SECTION --- */}
+      <section className="relative pt-32 pb-20 lg:pt-48 lg:pb-32 px-6 overflow-hidden bg-gradient-to-br from-blue-50/50 to-white">
+         <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-16 items-center">
+            
+            {/* Left: Text */}
+            <div className="hero-content relative z-10">
+                <div className="hero-item inline-flex items-center gap-2 px-3 py-1 bg-blue-50 border border-blue-100 text-[#00aeef] rounded-full text-xs font-bold uppercase tracking-widest mb-6">
+                    <Activity className="w-3 h-3" /> Comprehensive Care
+                </div>
+                
+                <h1 className="hero-item text-5xl lg:text-7xl font-extrabold text-slate-900 leading-[1.1] mb-6 tracking-tight">
+                    Medical Services <br/>
+                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#00aeef] to-[#0077a3]">Simplified.</span>
+                </h1>
+                
+                <p className="hero-item text-xl text-slate-500 mb-8 leading-relaxed max-w-lg">
+                    From routine checkups to specialized treatments, find the right doctor for your needs without the hassle of traditional booking.
+                </p>
 
-        {/* Content */}
-        <div className="relative z-10 max-w-7xl mx-auto px-6 w-full">
-          <div className="max-w-xl">
-             <span className="text-[#0099cc] font-medium tracking-wide mb-2 block">
-               
-             </span>
-             <h1 className="text-5xl font-bold text-slate-800 mb-6 leading-tight">
-               Our <br />
-               Healthcare <span className="text-slate-700">Services</span>
-             </h1>
-             <p className="text-lg text-slate-500 mb-8 leading-relaxed">
-               Comprehensive healthcare solutions designed to meet all your medical needs.
-               Lorem ipsum dolor sit amet, consectetuer adipiscing elit.
-             </p>
-          </div>
-        </div>
-      </section>
-
-      {/* How It Works Section */}
-      <section className="relative z-20 -mt-20 mx-auto max-w-7xl px-4 md:px-0">
-        <div className="grid md:grid-cols-3 text-white shadow-xl">
-          {[
-            {
-              step: "1️⃣",
-              title: "Create Account",
-              desc: "Sign up with your email and complete your medical profile securely",
-              color: "bg-[#2dbce0]" // Light Blue
-            },
-            {
-              step: "2️⃣",
-              title: "Find Your Doctor",
-              desc: "Search by specialty, location, availability, and patient reviews",
-              color: "bg-[#0099cc]" // Medium Blue
-            },
-            {
-              step: "3️⃣",
-              title: "Book Instantly",
-              desc: "Choose your preferred time slot and get instant confirmation",
-              color: "bg-[#007aa3]" // Darker Blue
-            },
-          ].map((item, index) => (
-            <div
-              key={index}
-              className={`${item.color} p-10 text-center transition hover:brightness-110`}
-            >
-              <div className="text-4xl mb-4 opacity-80">{item.step}</div>
-              <h3 className="text-xl font-bold mb-3 uppercase tracking-wide">{item.title}</h3>
-              <p className="text-white/90 text-sm leading-relaxed">{item.desc}</p>
+                <div className="hero-item flex flex-wrap gap-4">
+                    <button 
+                        onClick={() => document.getElementById('specialties')?.scrollIntoView({ behavior: 'smooth' })}
+                        className="px-8 py-4 bg-slate-900 text-white rounded-xl font-bold shadow-xl shadow-slate-900/20 hover:bg-[#00aeef] hover:shadow-blue-500/30 transition-all flex items-center gap-2 hover:-translate-y-1"
+                    >
+                        Explore Departments <ArrowRight className="w-4 h-4"/>
+                    </button>
+                </div>
             </div>
-          ))}
-        </div>
-        <div className="text-center mt-4">
-           <span className="text-xs text-gray-400 uppercase tracking-widest">How it works</span>
-        </div>
+
+            {/* Right: Image */}
+            <div className="hero-image relative lg:translate-x-10">
+                <div className="aspect-[4/3] rounded-[2.5rem] overflow-hidden shadow-2xl shadow-blue-100 border border-slate-100 transform -rotate-2 hover:rotate-0 transition-transform duration-700">
+                    <img 
+                        src="https://images.unsplash.com/photo-1551884170-09fb70a3a2ed?ixlib=rb-1.2.1&auto=format&fit=crop&w=1950&q=80" 
+                        alt="Medical Services" 
+                        className="w-full h-full object-cover scale-105 hover:scale-110 transition-transform duration-1000"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-900/30 to-transparent"></div>
+                </div>
+            </div>
+
+         </div>
       </section>
 
-      {/* Medical Specialties Section */}
-      <section id="specialties" className="py-24 px-6 bg-white">
+      {/* --- 3. DYNAMIC SPECIALTIES (Grid) --- */}
+      <section id="specialties" className="py-24 px-6 bg-slate-50">
         <div className="max-w-7xl mx-auto">
-           <div className="text-center mb-16">
-             <h2 className="text-3xl font-bold text-slate-800 mb-4">Medical Specialties Available</h2>
-             <div className="h-1 w-16 bg-[#0099cc] mx-auto"></div>
-           </div>
-           
-           <div className="grid md:grid-cols-4 gap-8">
-             {[
-               { emoji: "🩺", title: "General Practice", desc: "Primary healthcare and routine checkups" },
-               { emoji: "❤️", title: "Cardiology", desc: "Heart and cardiovascular system care" },
-               { emoji: "🧠", title: "Neurology", desc: "Brain and nervous system disorders" },
-               { emoji: "🦴", title: "Orthopedics", desc: "Bone, joint, and muscle treatment" },
-               { emoji: "👁️", title: "Ophthalmology", desc: "Eye care and vision treatment" },
-               { emoji: "🩸", title: "Dermatology", desc: "Skin, hair, and nail conditions" },
-               { emoji: "🤱", title: "Pediatrics", desc: "Specialized care for children" },
-               { emoji: "🏥", title: "Emergency Care", desc: "Urgent medical attention" },
-             ].map((spec, index) => (
-               <div
-                 key={index}
-                 className="group bg-white p-6 border border-gray-100 rounded hover:shadow-xl transition duration-300 text-center"
-               >
-                 <div className="text-4xl mb-4 group-hover:scale-110 transition-transform duration-300">{spec.emoji}</div>
-                 <h3 className="font-bold text-lg mb-2 text-slate-700 group-hover:text-[#0099cc] transition-colors">{spec.title}</h3>
-                 <p className="text-sm text-gray-500 leading-relaxed">{spec.desc}</p>
-               </div>
-             ))}
-           </div>
+            <div className="text-center mb-16">
+                <h2 className="text-3xl font-bold text-slate-900 mb-4">Available Departments</h2>
+                <div className="h-1.5 w-20 bg-[#00aeef] mx-auto mb-6 rounded-full"></div>
+                <p className="text-slate-500 max-w-2xl mx-auto text-lg">
+                    Connect with verified specialists across these fields today.
+                </p>
+            </div>
+
+            {loading ? (
+                // Skeletons
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                    {[1,2,3,4,5,6,7,8].map(i => (
+                        <div key={i} className="h-48 bg-white rounded-3xl border border-slate-100 animate-pulse"></div>
+                    ))}
+                </div>
+            ) : specialties.length > 0 ? (
+                // Real Data Grid
+                <div className="services-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+                    {specialties.map((spec, index) => (
+                        <div 
+                            key={index} 
+                            className="service-card group bg-white p-8 rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-xl hover:border-blue-100 hover:-translate-y-2 transition-all duration-300 flex flex-col items-center text-center"
+                        >
+                            <div className="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center mb-6 group-hover:bg-[#00aeef] group-hover:text-white transition-colors duration-300 group-hover:scale-110">
+                                {getIconForSpecialty(spec)}
+                            </div>
+                            <h3 className="text-xl font-bold text-slate-900 mb-2">{spec}</h3>
+                            <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-6 bg-slate-50 px-3 py-1 rounded-full">
+                                Appointments Available
+                            </p>
+                            <Link 
+                                to="/signup" 
+                                className="mt-auto inline-flex items-center gap-2 text-sm font-bold text-[#00aeef] group-hover:gap-3 transition-all"
+                            >
+                                Find Doctor <ArrowRight className="w-4 h-4" />
+                            </Link>
+                        </div>
+                    ))}
+                </div>
+            ) : (
+                // Empty State
+                <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-slate-300">
+                    <p className="text-slate-500">Updating directory...</p>
+                </div>
+            )}
         </div>
       </section>
 
-      {/* Features Section */}
-      <section className="py-20 px-6 bg-[#f9f9f9]">
+      {/* --- 4. HOW IT WORKS --- */}
+      <section className="process-section py-24 px-6 bg-white overflow-hidden">
         <div className="max-w-6xl mx-auto">
-          <h2 className="text-3xl font-bold text-center mb-16 text-slate-800">
-              Platform Features
-          </h2>
-          <div className="grid md:grid-cols-2 gap-12 ml-50">
-            <div>
-              <h3 className="text-xl font-bold mb-6 text-[#0099cc] border-b pb-2 border-gray-200">For Patients</h3>
-              {[
-                { title: "Online Booking", desc: "Schedule appointments 24/7 from any device" },
-                { title: "Appointment Reminders", desc: "Never miss an appointment with automated notifications" },
-                { title: "Doctor Reviews", desc: "Read patient feedback to choose the right doctor" },
-              ].map((feature, index) => (
-                <div key={index} className="flex gap-4 mb-6">
-                  <div className="min-w-[4px] bg-[#0099cc] h-full rounded-full"></div>
-                  <div>
-                    <h4 className="font-bold text-slate-700">{feature.title}</h4>
-                    <p className="text-sm text-gray-500">{feature.desc}</p>
-                  </div>
-                </div>
-              ))}
+            <div className="text-center mb-20">
+                <h2 className="text-3xl md:text-5xl font-extrabold text-slate-900">How to get treated.</h2>
             </div>
 
-            <div>
-              <h3 className="text-xl font-bold mb-6 text-[#0099cc] border-b pb-2 border-gray-200">For Healthcare Providers</h3>
-              {[
-                { title: "Schedule Management", desc: "Efficiently manage your appointment calendar" },
-                { title: "Patient Database", desc: "Secure access to patient information and history" },
-                { title: "Secure Communication", desc: "HIPAA-compliant messaging with patients" },
-              ].map((feature, index) => (
-                <div key={index} className="flex gap-4 mb-6">
-                  <div className="min-w-[4px] bg-[#0099cc] h-full rounded-full"></div>
-                  <div>
-                    <h4 className="font-bold text-slate-700">{feature.title}</h4>
-                    <p className="text-sm text-gray-500">{feature.desc}</p>
-                  </div>
-                </div>
-              ))}
+            <div className="grid md:grid-cols-3 gap-12 relative">
+                {/* Connector Line (Desktop) */}
+                <div className="hidden md:block absolute top-10 left-0 w-full h-0.5 bg-slate-100 -z-10"></div>
+
+                {[
+                    { 
+                        icon: UserCheck, 
+                        title: "1. Create Account", 
+                        desc: "Register securely. Your medical history stays private." 
+                    },
+                    { 
+                        icon: Search, 
+                        title: "2. Choose Specialist", 
+                        desc: "Filter by specialty or availability." 
+                    },
+                    { 
+                        icon: CalendarCheck, 
+                        title: "3. Book Slot", 
+                        desc: "Select a time and receive instant confirmation." 
+                    }
+                ].map((step, i) => (
+                    <div key={i} className="process-step bg-white text-center group">
+                        <div className="w-20 h-20 mx-auto bg-slate-900 text-white rounded-2xl flex items-center justify-center text-xl font-bold shadow-lg shadow-slate-200 mb-8 group-hover:scale-110 group-hover:bg-[#00aeef] transition-all duration-300">
+                            <step.icon className="w-8 h-8" />
+                        </div>
+                        <h3 className="text-xl font-bold text-slate-900 mb-3">{step.title}</h3>
+                        <p className="text-slate-500 leading-relaxed px-4">{step.desc}</p>
+                    </div>
+                ))}
             </div>
-          </div>
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section className="py-20 px-6 text-center bg-white border-t border-gray-100">
-        <h2 className="text-3xl font-bold mb-4 text-slate-800">
-          Ready to Experience Better Healthcare?
-        </h2>
-        <p className="mb-8 max-w-2xl mx-auto text-lg text-gray-500">
-          Join thousands of patients who have simplified their healthcare journey with BukCare.
-        </p>
-        <div className="flex justify-center gap-6">
-          <Link
-            to="/signup"
-            className="bg-[#0099cc] text-white font-bold px-8 py-3 rounded-sm shadow hover:bg-[#0088b5] transition duration-300 uppercase text-sm tracking-wide"
-          >
-            Start Booking
-          </Link>
-          <Link
-            to="/contact"
-            className="bg-white text-slate-700 border border-gray-300 font-bold px-8 py-3 rounded-sm hover:bg-gray-50 transition duration-300 uppercase text-sm tracking-wide"
-          >
-            Contact Us
-          </Link>
+      {/* --- 5. PLATFORM FEATURES --- */}
+      <section className="py-24 px-6 bg-[#F8FAFC]">
+        <div className="max-w-7xl mx-auto">
+            <div className="grid md:grid-cols-2 gap-16 items-center">
+                
+                {/* Left: List */}
+                <div className="features-list">
+                    <span className="text-[#00aeef] font-bold tracking-widest uppercase text-xs mb-2 block">Why Choose Us</span>
+                    <h2 className="text-3xl md:text-5xl font-extrabold text-slate-900 mb-6 leading-tight">
+                        Designed for <br/> Modern Patients.
+                    </h2>
+                    <p className="text-lg text-slate-500 mb-10">
+                        We replaced the clipboard with a dashboard. Experience a smoother, faster, and more transparent healthcare journey.
+                    </p>
+                    <div className="space-y-5">
+                        {[
+                            "Instant Appointment Confirmation",
+                            "Secure Digital Health Records",
+                            "Real-time Doctor Availability",
+                            "SMS & Email Reminders"
+                        ].map((item, i) => (
+                            <div key={i} className="feature-item flex items-center gap-4 p-4 bg-white rounded-xl shadow-sm border border-slate-100">
+                                <CheckCircle2 className="w-6 h-6 text-green-500 flex-shrink-0" />
+                                <span className="text-slate-800 font-bold">{item}</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Right: Abstract UI Card */}
+                <div className="bg-white p-8 rounded-[2.5rem] shadow-2xl shadow-slate-200/50 border border-slate-100 relative overflow-hidden group hover:shadow-blue-100 transition-all duration-500">
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-blue-50 rounded-full blur-[80px] -z-10 opacity-50"></div>
+                    
+                    <div className="flex items-center gap-4 mb-10">
+                        <div className="w-14 h-14 bg-gradient-to-br from-[#00aeef] to-[#0077a3] rounded-2xl flex items-center justify-center text-white shadow-lg shadow-blue-500/30">
+                            <Activity className="w-7 h-7" />
+                        </div>
+                        <div>
+                            <h4 className="font-bold text-xl text-slate-900">System Status</h4>
+                            <p className="text-sm text-green-600 font-bold flex items-center gap-2 mt-1">
+                                <span className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse"></span> 
+                                All Systems Operational
+                            </p>
+                        </div>
+                    </div>
+                    
+                    {/* Simulated Appointments */}
+                    <div className="space-y-4">
+                        {[1,2,3].map(i => (
+                            <div key={i} className="flex justify-between items-center p-4 bg-slate-50 rounded-2xl border border-slate-100 group-hover:border-blue-100 transition-colors">
+                                <div className="flex gap-4">
+                                    <div className="h-10 w-10 bg-white rounded-xl shadow-sm"></div>
+                                    <div className="space-y-2">
+                                        <div className="h-2 w-24 bg-slate-200 rounded-full"></div>
+                                        <div className="h-2 w-16 bg-slate-200 rounded-full"></div>
+                                    </div>
+                                </div>
+                                <div className="h-8 w-20 bg-white rounded-lg border border-slate-200"></div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+            </div>
         </div>
+      </section>
+
+      {/* --- 6. CTA --- */}
+      <section className="py-24 px-6 bg-[#00aeef] relative overflow-hidden">
+         {/* Abstract BG */}
+         <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20"></div>
+         <div className="absolute -left-20 -bottom-20 w-96 h-96 bg-white rounded-full blur-[100px] opacity-20"></div>
+
+         <div className="max-w-4xl mx-auto text-center relative z-10">
+            <h2 className="text-4xl md:text-6xl font-extrabold text-white mb-6 tracking-tight">Your health comes first.</h2>
+            <p className="text-white/90 text-xl mb-12 max-w-2xl mx-auto font-medium">
+                Stop waiting in line. Start booking online.
+            </p>
+            <div className="flex flex-col sm:flex-row justify-center gap-6">
+                <Link to="/signup" className="px-10 py-5 bg-white text-[#00aeef] rounded-xl font-bold text-lg shadow-xl shadow-blue-900/10 hover:shadow-2xl hover:-translate-y-1 transition-all">
+                    Book Now
+                </Link>
+                <Link to="/contact" className="px-10 py-5 bg-[#008fb3] text-white rounded-xl font-bold text-lg hover:bg-[#007da0] transition-all border border-white/10">
+                    Contact Us
+                </Link>
+            </div>
+         </div>
       </section>
 
       <Footer />
