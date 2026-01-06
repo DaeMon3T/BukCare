@@ -156,7 +156,7 @@ export default function UsersDetail() {
   const isDoctor = user.role === "doctor" || user.role === "pending";
 
   return (
-    <div className="h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 overflow-hidden">
+    <div className="h-screen bg-gradient-to-r from-blue-700 to-[#2dc7f8] overflow-hidden">
       <Navbar/>
 
       <main className="h-[calc(100vh-4rem)] overflow-y-auto">
@@ -172,7 +172,7 @@ export default function UsersDetail() {
           <h1 className="text-2xl font-bold mb-6 text-gray-800">User Details</h1>
 
           {/* USER PROFILE CARD */}
-          <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-6 
+          <div className="bg-gradient-to-r from-blue-700 to-[#2dc7f8] rounded-2xl p-6 
                           text-white shadow-md mb-6 flex flex-col items-center space-y-3">
 
             <img
@@ -276,7 +276,7 @@ export default function UsersDetail() {
                 <button
                   onClick={handleApproveDoctor}
                   disabled={approving || user.doctor_profile?.is_doctor_approved}
-                  className="flex-1 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 
+                  className="flex-1 bg-gradient-to-r from-blue-700 to-[#2dc7f8] hover:from-cyan-600 hover:to-cyan-700 
                              disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 px-4 rounded-lg 
                              transition flex items-center justify-center gap-2"
                 >
@@ -301,7 +301,7 @@ export default function UsersDetail() {
                 <button
                   onClick={handleRejectDoctor}
                   disabled={rejecting || user.doctor_profile?.is_doctor_approved}
-                  className="flex-1 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700
+                  className="flex-1 bg-gradient-to-r from-blue-700 to-[#2dc7f8] hover:from-red-600 hover:to-red-700
                              disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 px-4 rounded-lg
                              transition flex items-center justify-center gap-2"
                 >

@@ -122,7 +122,7 @@ const AdminDashboard: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="h-screen bg-gradient-to-br from-slate-50 via-purple-50 to-blue-50 flex items-center justify-center">
+      <div className="h-screen bg-gradient-to-r from-blue-700 to-[#2dc7f8] flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto"></div>
           <p className="text-slate-600 mt-4">Loading analytics...</p>
@@ -132,7 +132,7 @@ const AdminDashboard: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50 to-blue-50">
+    <div className="min-h-screen bg-gradient-to-r from-blue-700 to-[#2dc7f8]">
       {notification && (
         <Notification
           type={notification.type}

@@ -19,6 +19,8 @@ from routers.v1 import notifications
 from routers.v1 import tips
 from models.review import Review
 from routers.v1 import reviews
+from routers.v1 import appointments 
+from utils.admin import create_admin_if_not_exists
 
 def create_app() -> FastAPI:
     setup_logging()
@@ -77,6 +79,8 @@ def create_app() -> FastAPI:
     app.include_router(reviews.router, prefix="/v1/reviews", tags=["Reviews"])
 
     app.include_router(doctors.router, prefix="/v1/doctor", tags=["Doctor"])
+
+    app.include_router(appointments.router, prefix="/v1/appointments", tags=["Appointments"])
 
     # ============================================================
     # MAIN V1 ROUTER (Appointments, Auth, etc.)

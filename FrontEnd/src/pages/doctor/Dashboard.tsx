@@ -409,7 +409,7 @@ const DoctorDashboard: FC = () => {
     <div className="fixed inset-0 bg-gradient-to-br from-black/70 via-slate-900/60 to-black/70 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-in fade-in duration-300">
       <div className="bg-white rounded-3xl max-w-2xl w-full shadow-2xl max-h-[95vh] overflow-hidden transform animate-in zoom-in-95 duration-300 border border-white/20">
         {/* Premium Header with Glass Effect */}
-        <div className="relative bg-gradient-to-r from-blue-600 via-cyan-600 to-blue-500 p-4 overflow-hidden">
+        <div className="relative bg-gradient-to-r from-blue-700 to-[#2dc7f8] p-4 overflow-hidden">
           {/* Decorative pattern overlay */}
           <div className="absolute inset-0 opacity-10">
             <div className="absolute top-0 left-0 w-full h-full" 
