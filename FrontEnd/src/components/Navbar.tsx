@@ -116,7 +116,7 @@ const Navbar: React.FC = () => {
                 <div className="relative overflow-hidden rounded-xl shadow-sm transition-transform group-hover:scale-105">
                     <img src={bukcareLogo} alt="BukCare" className="w-10 h-10 object-cover"/>
                 </div>
-                <span className="text-xl font-bold bg-gradient-to-r from-blue-700 to-cyan-600 bg-clip-text text-transparent hidden sm:block">
+                <span className="text-xl font-bold bg-gradient-to-r from-blue-700 to-[#2dc7f8] bg-clip-text text-transparent hidden sm:block">
                   BukCare
                 </span>
               </Link>

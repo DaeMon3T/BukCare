@@ -241,7 +241,7 @@ const BookingModal: React.FC<BookingModalProps> = ({
             <button
                 disabled={!selectedTime || !reason || loadingSlots}
                 onClick={handleConfirm}
-                className="flex-[2] py-3 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                className="flex-[2] py-3 px-4 bg-gradient-to-r from-blue-700 to-[#2dc7f8] text-white font-bold rounded-xl shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
             >
                 Confirm Appointment
             </button>

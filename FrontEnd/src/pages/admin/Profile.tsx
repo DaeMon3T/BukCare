@@ -150,20 +150,20 @@ export default function Profile() {
   // --------------------------------------------
   if (loading) {
     return (
-      <div className="h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50">
+      <div className="h-screen flex items-center justify-center bg-gradient-to-r from-blue-700 to-[#2dc7f8]">
         <p className="text-gray-500 animate-pulse">Loading profile...</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-blue-50 via-white to-purple-50">
+    <div className="min-h-screen flex flex-col bg-gradient-to-r from-blue-700 to-[#2dc7f8]">
       <Navbar/> 
 
       <main className="flex-grow overflow-y-auto">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
           {/* Profile Header */}
-          <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-6 text-white shadow-lg mb-8 flex flex-col items-center space-y-4 transition-transform duration-300 hover:scale-[1.01]">
+          <div className="bg-gradient-to-r from-blue-700 to-[#2dc7f8] rounded-2xl p-6 text-white shadow-lg mb-8 flex flex-col items-center space-y-4 transition-transform duration-300 hover:scale-[1.01]">
             <img
               src={picture}
               alt="Profile"

@@ -7,13 +7,12 @@ from datetime import datetime, date
 from core.database import get_db
 from models.appointment import Appointment, AppointmentStatus
 from models.users import User, UserRole
-from models.doctor import Doctor
+from models.doctor import Doctor, DoctorAvailability
 from models.notification import Notification # <--- Added for History
 from routers.v1.dependencies import get_current_user
 from schemas.appointment import AppointmentCreate
 from utils.appointment_helpers import check_appointment_conflict, get_available_slots
-# 🚀 IMPORT SOCKET MANAGER
-from core.socket_manager import manager 
+from core.socket_manager import manager
 
 router = APIRouter()
 
@@ -181,9 +180,11 @@ def get_doctor_available_slots(
     date: date = Query(..., description="Date to check availability (YYYY-MM-DD)"),
     db: Session = Depends(get_db)
 ):
-    """Get available time slots for a doctor on a specific date"""
+    """
+    Get available time slots based on what the DOCTOR explicitly set.
+    """
     
-    # Verify doctor exists
+    # A. Verify doctor exists
     doctor = db.query(Doctor).filter(Doctor.doctor_id == doctor_id).first()
     if not doctor:
         raise HTTPException(
@@ -191,21 +192,49 @@ def get_doctor_available_slots(
             detail="Doctor not found"
         )
     
-    # Get available slots
-    slots = get_available_slots(
-        db=db,
-        doctor_id=doctor.user_id,
-        date=date,
-        start_hour=8,   # 8 AM
-        end_hour=17,    # 5 PM
-        slot_duration=60  # 1 hour slots
-    )
+    # B. Fetch the Specific Slots created by the Doctor
+    # We query the DoctorAvailability table for this specific date
+    db_slots = db.query(DoctorAvailability).filter(
+        DoctorAvailability.doctor_id == doctor.user_id, # Use doctor.user_id as the link
+        DoctorAvailability.date == date,
+        DoctorAvailability.is_available == True
+    ).all()
+
+    # C. Extract the start times (e.g., "09:00:00")
+    # We assume if the doctor set the slot, they want it to be bookable.
+    # (Optional: You could filter out already booked appointments here if you wanted strictly unbooked slots)
     
+    # Check for existing appointments to filter out duplicates or conflicts
+    booked_appointments = db.query(Appointment).filter(
+        Appointment.doctor_id == doctor.user_id,
+        # Check if appointment is on the same day
+        Appointment.appointment_date >= datetime.combine(date, datetime.min.time()),
+        Appointment.appointment_date < datetime.combine(date, datetime.max.time()),
+        # Only count confirmed/pending
+        Appointment.status.in_([AppointmentStatus.CONFIRMED, AppointmentStatus.PENDING])
+    ).all()
+
+    # Create a list of booked times (HH:MM) to compare
+    booked_times = [
+        appt.appointment_date.strftime("%H:%M:%S") 
+        for appt in booked_appointments
+    ]
+    
+    available_slots = []
+    for slot in db_slots:
+        # Only add if not already booked
+        # Note: This is a simple exact time match. 
+        if slot.start_time not in booked_times:
+             available_slots.append(slot.start_time)
+
+    # D. Sort them nicely
+    available_slots.sort()
+
     return {
         "doctor_id": doctor_id,
         "date": date.isoformat(),
-        "available_slots": [slot.isoformat() for slot in slots],
-        "total_slots": len(slots)
+        "available_slots": available_slots,
+        "total_slots": len(available_slots)
     }
 
 

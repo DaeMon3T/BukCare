@@ -129,7 +129,7 @@ const DoctorAppointmentHistory = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+    <div className="min-h-screen bg-gradient-to-r from-blue-700 to-[#2dc7f8]">
       <Navbar />
 
       <div className="p-6 max-w-7xl mx-auto">

@@ -99,7 +99,7 @@ export default function ForgotPassword() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#1A1A40] via-[#0057B8] to-[#00A8E8] text-white">
+    <div className="min-h-screen bg-gradient-to-r from-blue-700 to-[#2dc7f8] text-white">
       {/* Navbar */}
       <nav className="flex items-center justify-between px-8 py-4 bg-[#1A1A40]/80 shadow sticky top-0 z-10">
         <Link to="/" className="text-2xl font-bold tracking-tight text-[#FFC43D] drop-shadow">

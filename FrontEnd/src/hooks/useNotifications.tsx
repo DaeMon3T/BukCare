@@ -4,7 +4,7 @@ import { useWebSocket } from "@/context/WebSocketContext";
 import { useAuth } from "@/context/AuthContext"; 
 import api from "@/services/api"; 
 import toast from "react-hot-toast";
-import notificationSound from "@/assets/sounds/notification.mp3";
+import notificationSound from "@/assets/sounds/notification2.mp3";
 import { MessageCircle, Bell, X, CheckCircle } from "lucide-react"; 
 
 export interface Notification {

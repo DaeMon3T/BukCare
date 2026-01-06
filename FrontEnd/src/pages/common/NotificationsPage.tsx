@@ -124,7 +124,7 @@ const NotificationsPage: React.FC = () => {
         {toast && (
           <Notification
             type={toast.type}
-            title={toast.title}
+            {...(toast.title && { title: toast.title })}
             message={toast.message}
             onClose={() => setToast(null)}
             duration={5000}

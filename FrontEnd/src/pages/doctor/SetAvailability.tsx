@@ -312,7 +312,7 @@ const DoctorSetAvailability = () => {
                             className={`w-full py-3 rounded-xl font-bold text-white shadow-lg transition-all flex items-center justify-center gap-2 ${
                                 generating 
                                     ? "bg-slate-400 cursor-not-allowed" 
-                                    : "bg-gradient-to-r from-blue-600 to-indigo-600 hover:scale-[1.02] shadow-blue-500/30"
+                                    : "bg-gradient-to-r from-blue-700 to-[#2dc7f8] hover:scale-[1.02] shadow-blue-500/30"
                             }`}
                         >
                             {generating ? (
@@ -332,7 +332,7 @@ const DoctorSetAvailability = () => {
               {/* Header: Compact & Clean */}
               <div className="flex items-center justify-between bg-white px-5 py-4 rounded-xl border border-slate-200 shadow-sm">
                   <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                      <CalendarDays className="w-5 h-5 text-purple-600" />
+                      <CalendarDays className="w-5 h-5 text-blue-600" />
                       Upcoming Schedule
                   </h2>
                   <span className="text-xs font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-md">
