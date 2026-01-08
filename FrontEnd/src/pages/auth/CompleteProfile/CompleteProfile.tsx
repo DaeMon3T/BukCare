@@ -208,14 +208,6 @@ const CompleteProfile: React.FC = () => {
       payload.append("city_name", cityName);
       payload.append("barangay_name", barangayName);
 
-      // 🔍 Debug logging
-      console.log("🔍 Province ID:", formData.province_id);
-      console.log("🔍 Province Name:", provinceName);
-      console.log("🔍 City ID:", formData.city_id);
-      console.log("🔍 City Name:", cityName);
-      console.log("🔍 Barangay ID:", formData.barangay_id);
-      console.log("🔍 Barangay Name:", barangayName);
-
       if (role === "doctor") {
         if (formData.license_number)
           payload.append("license_number", formData.license_number);

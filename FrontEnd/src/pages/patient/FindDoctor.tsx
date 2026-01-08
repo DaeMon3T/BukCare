@@ -3,22 +3,12 @@ import { useSearchParams, Link } from "react-router-dom";
 import toast from "react-hot-toast";
 import { Search, Filter, X, Stethoscope } from "lucide-react";
 import Navbar from "@/components/Navbar";
-import DoctorCard from "@/components/DoctorCard";
+import DoctorCard, { type Doctor } from "@/components/DoctorCard";
 import GetDoctorAPI from "@/services/patient/GetDoctorAPI";
-
-// The UI Card expects this structure
-interface UICardDoctor {
-  doctor_id: number;
-  name: string;
-  specialization?: { name?: string; descriptions?: string };
-  avatar?: string;
-  address: string;
-  email: string;
-}
 
 const FindDoctor: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [allDoctors, setAllDoctors] = useState<UICardDoctor[]>([]);
+  const [allDoctors, setAllDoctors] = useState<Doctor[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   
@@ -32,44 +22,41 @@ const FindDoctor: React.FC = () => {
   }, [searchParams]);
 
   const filters = [
-    "All", 
-    "General Practice", 
-    "Cardiology", 
-    "Neurology", 
-    "Pediatrics", 
-    "Orthopedics", 
-    "Ophthalmology",
-    "Dermatology"
+    "All", "General Practice", "Cardiology", "Neurologist", 
+    "Pediatrics", "Orthopedics", "Ophthalmology", "Dermatology"
   ];
 
   useEffect(() => {
     const fetchDoctors = async () => {
       try {
         setLoading(true);
-        // We use 'any' here temporarily to allow us to inspect the incoming structure safely
-        // before mapping it to our strict UICardDoctor type.
         const data: any[] = await GetDoctorAPI.getDoctors();
 
-        const formattedDoctors: UICardDoctor[] = data.map((doc) => {
-            // 1. Handle Specialization (String vs Object)
-            let specName = "General Practice";
-            if (typeof doc.specialization === "string") {
-                specName = doc.specialization;
-            } else if (doc.specialization && typeof doc.specialization === "object") {
-                specName = doc.specialization.name || "General Practice";
+        const formattedDoctors: Doctor[] = data.map((doc) => {
+            const rawSpec = doc.specializations || doc.specialization;
+            
+            let cleanSpec = "General Practice";
+            if (rawSpec) {
+                cleanSpec = Array.isArray(rawSpec) ? rawSpec.join(", ") : String(rawSpec);
             }
-
-            // 2. Handle Avatar (Prevent 'undefined')
-            // Using || ensures we never pass undefined/null to the string field
-            const avatarSrc = doc.avatar || "/default-avatar.png";
 
             return {
                 doctor_id: doc.doctor_id,
                 name: doc.name,
-                specialization: { name: specName },
-                avatar: avatarSrc, // strictly a string now
+                specializations: cleanSpec, 
+                specialization: cleanSpec,
+                
+                avatar: doc.avatar || "/default-avatar.png",
                 address: doc.address || "No address provided",
                 email: doc.email || "",
+                user_id: doc.user_id,
+                is_verified: doc.is_verified,
+                is_doctor_approved: doc.is_doctor_approved,
+                license_number: doc.license_number,
+                years_of_experience: doc.years_of_experience,
+                created_at: doc.created_at,
+                updated_at: doc.updated_at,
+                availabilities: doc.availabilities || []
             };
         });
 
@@ -99,13 +86,14 @@ const FindDoctor: React.FC = () => {
     const query = search.toLowerCase();
     
     const docName = doc.name?.toLowerCase() || "";
-    const docSpec = doc.specialization?.name?.toLowerCase() || "";
+    
+    const specStr = (doc.specializations || doc.specializations || "").toString().toLowerCase();
 
-    const matchesSearch = docName.includes(query) || docSpec.includes(query);
+    const matchesSearch = docName.includes(query) || specStr.includes(query);
     
     const matchesFilter = 
         activeFilter === "All" || 
-        doc.specialization?.name === activeFilter;
+        specStr.includes(activeFilter.toLowerCase());
 
     return matchesSearch && matchesFilter;
   });
@@ -165,24 +153,27 @@ const FindDoctor: React.FC = () => {
 
           {/* RESULTS GRID */}
           {loading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             {[1, 2, 3, 4, 5, 6].map((n) => (
               <DoctorCardSkeleton key={n} />
             ))}
           </div>
         ) : filteredDoctors.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          // 👇 CHANGE THIS LINE
+          // grid-cols-2 (for mobile) | md:grid-cols-2 | lg:grid-cols-3
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-6"> 
             {filteredDoctors.map((doc) => (
               <Link 
                 to={`/patient/doctor/${doc.doctor_id}`} 
                 key={doc.doctor_id}
+                // Remove 'max-w-sm mx-auto' if you want them to fill the grid cell perfectly
                 className="block transition-transform hover:-translate-y-1"
               >
                 <DoctorCard doctor={doc} />
               </Link>
             ))}
           </div>
-          ) : (
+        ) : (
             <div className="flex flex-col items-center justify-center py-20 bg-white rounded-2xl border border-dashed border-slate-300">
                 <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mb-4">
                     <Stethoscope className="w-10 h-10 text-slate-300" />
@@ -206,7 +197,8 @@ const FindDoctor: React.FC = () => {
 };
 
 const DoctorCardSkeleton = () => (
-    <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm flex flex-col gap-4 animate-pulse h-full">
+    // 👇 FIXED: Matches the real card sizing
+    <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm flex flex-col gap-4 animate-pulse h-full w-full max-w-sm mx-auto sm:max-w-none">
         <div className="h-24 bg-slate-100 rounded-xl mb-4"></div>
         <div className="flex justify-center -mt-12">
             <div className="w-20 h-20 bg-slate-200 rounded-full border-4 border-white"></div>

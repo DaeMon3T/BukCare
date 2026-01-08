@@ -184,7 +184,7 @@ const Users: React.FC = () => {
   return (
     <div>
       <Navbar/>
-      <div className="min-h-screen bg-gradient-to-r from-blue-700 to-[#2dc7f8] p-6">
+      <div className="min-h-screen bg-white p-6">
         <div className="max-w-7xl mx-auto">
           {/* Header */}
           <div className="mb-8">

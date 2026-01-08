@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { Search, FileText, Phone, Pill } from "lucide-react";
+import { Search, FileText, MessageCircle } from "lucide-react";
 
 const QuickActions = () => {
   const navigate = useNavigate();
@@ -16,22 +16,15 @@ const QuickActions = () => {
       label: "Records", 
       icon: FileText, 
       color: "bg-emerald-500", 
-      path: "/patient/history",
+      path: "/patient/appointments",
       desc: "View history"
     },
     { 
-      label: "Meds", 
-      icon: Pill, 
-      color: "bg-purple-500", 
-      path: "/patient/prescriptions",
-      desc: "Active meds"
-    },
-    { 
-      label: "Emergency", 
-      icon: Phone, 
+      label: "Message", 
+      icon: MessageCircle, 
       color: "bg-rose-500", 
-      path: "/patient/emergency",
-      desc: "Urgent help"
+      path: "/patient/messages",
+      desc: "Communicate"
     },
   ];
 

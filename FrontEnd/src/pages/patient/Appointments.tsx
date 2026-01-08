@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback } from "react";
 import toast from "react-hot-toast";
 import api from "@/services/api";
 import Navbar from "@/components/Navbar";
@@ -9,8 +9,11 @@ import {
   XCircle, 
   AlertCircle, 
   Search, 
+  Star,
+  MessageSquarePlus
 } from "lucide-react";
 import { useWebSocket } from "@/context/WebSocketContext";
+import ReviewModal from "@/components/ReviewModal"; // 👈 IMPORT THE MODAL
 
 interface Appointment {
   id: number;
@@ -23,14 +26,22 @@ interface Appointment {
   notes: string | null;
   created_at: string;
   updated_at: string;
+  // Optional: Add this later to your backend to disable the button if already reviewed
+  has_reviewed?: boolean; 
+  doctor_avatar?: string;
+  doctor_specialization?: string;
 }
 
 const PatientAppointments = () => {
-  const { lastMessage } = useWebSocket(); // Hook into live stream
+  const { lastMessage } = useWebSocket();
   
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<string>("all");
+
+  // REVIEW MODAL STATE
+  const [isReviewOpen, setIsReviewOpen] = useState(false);
+  const [selectedApptForReview, setSelectedApptForReview] = useState<Appointment | null>(null);
 
   // 1. FETCH APPOINTMENTS
   const fetchAppointments = useCallback(async (isBackground = false) => {
@@ -50,12 +61,10 @@ const PatientAppointments = () => {
   useEffect(() => {
     if (!lastMessage) return;
 
-    // Case A: Status Update (Doctor Confirms/Cancels/Completes)
     if (lastMessage.type === "APPOINTMENT_UPDATE") {
       const { appointment_id, status } = lastMessage;
       
       if (appointment_id && status) {
-          // Update only the specific item in the list (Instant UI update)
           setAppointments((prev) => 
             prev.map((appt) => 
               appt.id === appointment_id 
@@ -67,9 +76,8 @@ const PatientAppointments = () => {
       }
     }
 
-    // Case B: New Appointment Created (e.g. from another device)
     if (lastMessage.type === "NEW_APPOINTMENT") {
-      fetchAppointments(true); // Silent re-fetch to add the new item
+      fetchAppointments(true); 
       toast.success("New appointment received!");
     }
   }, [lastMessage, fetchAppointments]);
@@ -79,19 +87,28 @@ const PatientAppointments = () => {
     fetchAppointments();
   }, [fetchAppointments]);
 
-  // 4. SORTING & FILTERING
-  const filteredAppointments = useMemo(() => {
-    let filtered = appointments;
-    
-    if (filter !== "all") {
-        filtered = appointments.filter((appt) => appt.status === filter);
-    }
+  // 3. HANDLERS
+  const handleOpenReview = (appt: Appointment) => {
+    setSelectedApptForReview(appt);
+    setIsReviewOpen(true);
+  };
 
-    // Sort: Future dates first, then past dates descending
-    return filtered.sort((a, b) => {
-        return new Date(b.appointment_date).getTime() - new Date(a.appointment_date).getTime();
+  const handleReviewSuccess = () => {
+    // Optional: Mark locally as reviewed if you add that field later
+    // setAppointments(prev => prev.map(a => a.id === selectedApptForReview?.id ? {...a, has_reviewed: true} : a));
+  };
+
+  // 4. SORTING & FILTERING
+  const filteredAppointments = appointments
+    .filter((appt) => {
+      if (filter === "all") return true;
+      return appt.status === filter;
+    })
+    .sort((a, b) => {
+      // Turn strings into Dates and subtract to sort
+      // (b - a) means Descending Order (Latest First)
+      return new Date(b.appointment_date).getTime() - new Date(a.appointment_date).getTime();
     });
-  }, [appointments, filter]);
 
   const formatDateTime = (dateTimeString: string) => {
     const dateObj = new Date(dateTimeString);
@@ -122,6 +139,18 @@ const PatientAppointments = () => {
       <Navbar />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        
+        {/* REVIEW MODAL COMPONENT */}
+        {selectedApptForReview && (
+            <ReviewModal 
+                isOpen={isReviewOpen}
+                onClose={() => setIsReviewOpen(false)}
+                doctorId={selectedApptForReview.doctor_id}
+                appointmentId={selectedApptForReview.id}
+                onSuccess={handleReviewSuccess}
+            />
+        )}
+
         {/* Header Section */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
             <div>
@@ -173,65 +202,133 @@ const PatientAppointments = () => {
             ) : (
                 <>
                     {/* Desktop Table */}
-                    <div className="hidden md:block overflow-x-auto">
-                        <table className="w-full text-left border-collapse">
+                    <div className="hidden md:block bg-white rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
+                        <table className="min-w-full">
+                            {/* HEADER */}
                             <thead>
-                                <tr className="bg-slate-50/50 border-b border-slate-100 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                                    <th className="px-6 py-4">Doctor</th>
-                                    <th className="px-6 py-4">Date & Time</th>
-                                    <th className="px-6 py-4">Status</th>
-                                    <th className="px-6 py-4">Details</th>
-                                </tr>
+                            <tr className="bg-slate-50/50 border-b border-slate-100 text-left">
+                                <th className="py-5 px-6 text-xs font-bold text-slate-400 uppercase tracking-wider">
+                                Doctor
+                                </th>
+                                <th className="py-5 px-6 text-xs font-bold text-slate-400 uppercase tracking-wider">
+                                Schedule
+                                </th>
+                                <th className="py-5 px-6 text-xs font-bold text-slate-400 uppercase tracking-wider">
+                                Status
+                                </th>
+                                <th className="py-5 px-6 text-xs font-bold text-slate-400 uppercase tracking-wider">
+                                Details
+                                </th>
+                                <th className="py-5 px-6 text-xs font-bold text-slate-400 uppercase tracking-wider text-right">
+                                Actions
+                                </th>
+                            </tr>
                             </thead>
-                            <tbody className="divide-y divide-slate-100">
-                                {filteredAppointments.map((appt) => {
-                                    const { date, time, isPast } = formatDateTime(appt.appointment_date);
-                                    const statusMeta = getStatusStyles(appt.status);
-                                    const StatusIcon = statusMeta.icon;
 
-                                    return (
-                                        <tr key={appt.id} className="hover:bg-slate-50/80 transition-colors group">
-                                            <td className="px-6 py-4">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center border border-slate-200 text-slate-400">
-                                                        <User className="w-5 h-5" />
-                                                    </div>
-                                                    <div>
-                                                        <p className="font-medium text-slate-900">Dr. {appt.doctor_name || `#${appt.doctor_id}`}</p>
-                                                        <p className="text-xs text-slate-500">General Practice</p>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <div className="flex flex-col">
-                                                    <span className={`font-medium ${isPast ? "text-slate-500" : "text-slate-900"}`}>{date}</span>
-                                                    <span className="text-xs text-slate-500 flex items-center gap-1">
-                                                        <Clock className="w-3 h-3" /> {time}
-                                                    </span>
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${statusMeta.style} transition-colors duration-300`}>
-                                                    <StatusIcon className="w-3.5 h-3.5" />
-                                                    {appt.status.charAt(0).toUpperCase() + appt.status.slice(1)}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <div className="max-w-[200px]">
-                                                    <p className="text-sm text-slate-700 truncate" title={appt.reason || ""}>
-                                                        {appt.reason || "No reason provided"}
-                                                    </p>
-                                                    {appt.notes && (
-                                                        <p className="text-xs text-slate-400 truncate mt-0.5">Note: {appt.notes}</p>
-                                                    )}
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    );
-                                })}
+                            {/* BODY */}
+                            <tbody className="divide-y divide-slate-100">
+                            {filteredAppointments.map((appt) => {
+                                const { date, time, isPast } = formatDateTime(appt.appointment_date);
+                                const statusMeta = getStatusStyles(appt.status);
+                                const StatusIcon = statusMeta.icon;
+
+                                return (
+                                <tr 
+                                    key={appt.id} 
+                                    className="group hover:bg-slate-50/80 transition-colors duration-200"
+                                >
+                                    {/* 1. Doctor Column */}
+                                    <td className="py-5 px-6">
+                                      <div className="flex items-center gap-4">
+                                        <div className="relative">
+                                          {/* CONDITIONAL RENDERING: Real Avatar vs Default Icon */}
+                                          {appt.doctor_avatar ? (
+                                            <img 
+                                              src={appt.doctor_avatar} 
+                                              alt="Dr."
+                                              className="w-12 h-12 rounded-2xl object-cover border border-indigo-100 shadow-sm group-hover:scale-105 transition-transform duration-300"
+                                              onError={(e) => {
+                                                // Fallback if image fails to load
+                                                (e.target as HTMLImageElement).style.display = 'none';
+                                                (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden');
+                                              }}
+                                            />
+                                          ) : null}
+                                          
+                                          {/* Fallback Icon (Hidden if image loads successfully) */}
+                                          <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-50 to-blue-50 border border-indigo-100 flex items-center justify-center text-indigo-500 shadow-sm group-hover:scale-105 transition-transform duration-300 ${appt.doctor_avatar ? 'hidden' : ''}`}>
+                                            <User className="w-5 h-5" />
+                                          </div>
+                                        </div>
+                                        
+                                        <div>
+                                          <p className="text-sm font-bold text-slate-900 leading-tight">
+                                            Dr. {appt.doctor_name || `#${appt.doctor_id}`}
+                                          </p>
+                                          <p className="text-xs font-medium text-slate-400 mt-1">
+                                            {appt.doctor_specialization || "General Practice"}
+                                          </p>
+                                        </div>
+                                      </div>
+                                    </td>
+
+                                    {/* 2. Schedule Column */}
+                                    <td className="py-5 px-6">
+                                    <div className="flex flex-col">
+                                        <div className="flex items-center gap-2 mb-1">
+                                        <span className={`text-sm font-bold ${isPast ? "text-slate-500" : "text-slate-700 group-hover:text-blue-600 transition-colors"}`}>
+                                            {date}
+                                        </span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                        <Clock className="w-3.5 h-3.5 text-slate-300" />
+                                        <span className="text-xs font-medium text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">
+                                            {time}
+                                        </span>
+                                        </div>
+                                    </div>
+                                    </td>
+
+                                    {/* 3. Status Column */}
+                                    <td className="py-5 px-6">
+                                    <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border shadow-sm ${statusMeta.style}`}>
+                                        <StatusIcon className="w-3.5 h-3.5" />
+                                        {appt.status.charAt(0).toUpperCase() + appt.status.slice(1)}
+                                    </span>
+                                    </td>
+
+                                    {/* 4. Details Column */}
+                                    <td className="py-5 px-6">
+                                    <div className="max-w-[200px]">
+                                        <p className="text-sm text-slate-600 truncate font-medium">
+                                        {appt.reason || <span className="text-slate-400 italic font-normal">No reason provided</span>}
+                                        </p>
+                                        {appt.notes && (
+                                        <div className="mt-1.5 flex items-start gap-1.5 text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded-lg w-fit">
+                                            <span className="font-bold">Note:</span> {appt.notes}
+                                        </div>
+                                        )}
+                                    </div>
+                                    </td>
+
+                                    {/* 5. Actions Column */}
+                                    <td className="py-5 px-6 text-right">
+                                    {appt.status === "completed" && (
+                                        <button
+                                        onClick={() => handleOpenReview(appt)}
+                                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white text-indigo-600 text-xs font-bold border border-indigo-100 hover:bg-indigo-50 hover:border-indigo-200 transition-all shadow-sm group-hover:shadow-md active:scale-95"
+                                        >
+                                        <Star className="w-4 h-4 fill-indigo-100 text-indigo-500" /> 
+                                        Rate Doctor
+                                        </button>
+                                    )}
+                                    </td>
+                                </tr>
+                                );
+                            })}
                             </tbody>
                         </table>
-                    </div>
+                        </div>
 
                     {/* Mobile Cards */}
                     <div className="md:hidden divide-y divide-slate-100">
@@ -260,6 +357,16 @@ const PatientAppointments = () => {
                                         <span className="font-semibold text-slate-900 block mb-1 text-xs uppercase tracking-wide">Reason</span>
                                         {appt.reason || "No reason provided"}
                                     </div>
+
+                                    {/* MOBILE ACTION BUTTON */}
+                                    {appt.status === "completed" && (
+                                        <button
+                                            onClick={() => handleOpenReview(appt)}
+                                            className="w-full py-2.5 rounded-xl font-bold text-sm bg-gradient-to-r from-indigo-600 to-blue-600 text-white shadow-lg shadow-blue-500/20 active:scale-95 transition-all flex items-center justify-center gap-2"
+                                        >
+                                            <MessageSquarePlus className="w-4 h-4" /> Rate & Review Doctor
+                                        </button>
+                                    )}
                                 </div>
                             );
                         })}
@@ -276,7 +383,7 @@ const PatientAppointments = () => {
 const AppointmentsSkeleton = () => (
     <div className="animate-pulse">
         <div className="hidden md:flex border-b border-slate-100 bg-slate-50/50 px-6 py-4 gap-4">
-            {[1, 2, 3, 4].map(i => <div key={i} className="h-4 bg-slate-200 rounded w-24"></div>)}
+            {[1, 2, 3, 4, 5].map(i => <div key={i} className="h-4 bg-slate-200 rounded w-24"></div>)}
         </div>
         {[1, 2, 3, 4, 5].map(i => (
             <div key={i} className="px-6 py-4 flex items-center gap-6 border-b border-slate-50">
