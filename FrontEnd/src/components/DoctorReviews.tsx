@@ -1,29 +1,42 @@
 import React, { useState, useEffect } from "react";
-import { Star, User, MessageSquare } from "lucide-react";
-import reviewsAPI, { type Review } from "@/services/reviews";
-import { useAuth } from "@/context/AuthContext";
-import toast from "react-hot-toast";
+import { Star, MessageSquare, CheckCircle } from "lucide-react"; // Import CheckCircle here
+import reviewsAPI from "@/services/reviews";
+
+// 1. Update Interface to handle both formats
+export interface Review {
+  id: number;
+  rating: number;
+  comment: string;
+  created_at: string;
+  // The backend might send ONE of these formats:
+  patient_name?: string; 
+  patient?: {
+    fname: string;
+    lname: string;
+  };
+}
 
 interface Props {
   doctorId: number;
 }
 
 const DoctorReviews: React.FC<Props> = ({ doctorId }) => {
-  const { user } = useAuth();
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
   
-  // Form State
-  const [rating, setRating] = useState(0);
-  const [comment, setComment] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-
   const fetchReviews = async () => {
     try {
       const data = await reviewsAPI.getDoctorReviews(doctorId);
-      setReviews(data);
+      
+      // Ensure data is an array
+      if (Array.isArray(data)) {
+          setReviews(data);
+      } else {
+          console.error("API did not return an array:", data);
+          setReviews([]);
+      }
     } catch (err) {
-      console.error("Failed to load reviews");
+      console.error("Failed to load reviews", err);
     } finally {
       setLoading(false);
     }
@@ -33,27 +46,17 @@ const DoctorReviews: React.FC<Props> = ({ doctorId }) => {
     fetchReviews();
   }, [doctorId]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (rating === 0) return toast.error("Please select a star rating");
-    if (!user) return toast.error("You must be logged in to review");
-
-    setSubmitting(true);
-    try {
-      await reviewsAPI.createReview({ doctor_id: doctorId, rating, comment });
-      toast.success("Review posted!");
-      setRating(0);
-      setComment("");
-      fetchReviews(); // Refresh list
-    } catch (err) {
-      toast.error("Failed to post review");
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
   // Calculate Average
-  const averageRating = reviews.reduce((acc, r) => acc + r.rating, 0) / (reviews.length || 1);
+  const averageRating = reviews.length > 0 
+    ? reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length 
+    : 0;
+
+  // Helper to safely get the name
+  const getPatientName = (rev: Review) => {
+      if (rev.patient_name) return rev.patient_name;
+      if (rev.patient) return `${rev.patient.fname} ${rev.patient.lname}`;
+      return "Verified Patient";
+  };
 
   return (
     <div className="bg-white rounded-3xl border border-slate-100 p-8 shadow-sm">
@@ -62,7 +65,7 @@ const DoctorReviews: React.FC<Props> = ({ doctorId }) => {
       <div className="flex items-center justify-between mb-8">
         <div>
             <h3 className="text-2xl font-bold text-slate-900">Patient Reviews</h3>
-            <p className="text-slate-500 text-sm">{reviews.length} feedback(s)</p>
+            <p className="text-slate-500 text-sm">{reviews.length} Verified Feedback(s)</p>
         </div>
         <div className="text-right">
             <div className="flex items-center gap-1 text-yellow-400">
@@ -74,74 +77,52 @@ const DoctorReviews: React.FC<Props> = ({ doctorId }) => {
       </div>
 
       {/* Review List */}
-      <div className="space-y-6 mb-10 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+      <div className="space-y-6 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
         {loading ? (
-            <p className="text-slate-400 text-sm">Loading reviews...</p>
+            <div className="flex justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-900"></div>
+            </div>
         ) : reviews.length === 0 ? (
-            <div className="text-center py-8 bg-slate-50 rounded-xl">
-                <MessageSquare className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-                <p className="text-slate-500 text-sm">No reviews yet. Be the first!</p>
+            <div className="text-center py-12 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+                <MessageSquare className="w-10 h-10 text-slate-300 mx-auto mb-3" />
+                <p className="text-slate-900 font-medium">No reviews yet</p>
+                <p className="text-slate-500 text-sm">Patient reviews will appear here after appointments are completed.</p>
             </div>
         ) : (
-            reviews.map((rev) => (
-                <div key={rev.id} className="border-b border-slate-100 pb-6 last:border-0 last:pb-0">
-                    <div className="flex justify-between items-start mb-2">
-                        <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 bg-blue-50 rounded-full flex items-center justify-center text-blue-500">
-                                <User className="w-4 h-4" />
+            reviews.map((rev) => {
+                const patientName = getPatientName(rev);
+                
+                return (
+                    <div key={rev.id} className="border-b border-slate-100 pb-6 last:border-0 last:pb-0">
+                        <div className="flex justify-between items-start mb-3">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-400 font-bold uppercase">
+                                    {patientName.charAt(0)}
+                                </div>
+                                <div>
+                                    <span className="font-bold text-slate-900 text-sm block">{patientName}</span>
+                                    <span className="text-xs text-emerald-600 flex items-center gap-1 bg-emerald-50 px-2 py-0.5 rounded-full w-fit mt-1">
+                                        <CheckCircle className="w-3 h-3" /> Verified Patient
+                                    </span>
+                                </div>
                             </div>
-                            <span className="font-bold text-slate-800 text-sm">{rev.patient_name}</span>
+                            <div className="flex text-yellow-400 gap-0.5">
+                                {[...Array(5)].map((_, i) => (
+                                    <Star key={i} className={`w-4 h-4 ${i < rev.rating ? "fill-current" : "text-slate-200"}`} />
+                                ))}
+                            </div>
                         </div>
-                        <div className="flex text-yellow-400">
-                            {[...Array(5)].map((_, i) => (
-                                <Star key={i} className={`w-3 h-3 ${i < rev.rating ? "fill-current" : "text-slate-200"}`} />
-                            ))}
-                        </div>
+                        <p className="text-slate-600 text-sm leading-relaxed pl-[52px]">{rev.comment}</p>
+                        <p className="text-xs text-slate-400 mt-2 pl-[52px]">
+                            {rev.created_at 
+                                ? new Date(rev.created_at).toLocaleDateString() 
+                                : "Recently"}
+                        </p>
                     </div>
-                    <p className="text-slate-600 text-sm leading-relaxed">{rev.comment}</p>
-                    <p className="text-xs text-slate-400 mt-2">{new Date(rev.created_at).toLocaleDateString()}</p>
-                </div>
-            ))
+                );
+            })
         )}
       </div>
-
-      {/* Add Review Form (Only for Patients) */}
-      {user?.role === 'patient' && (
-          <form onSubmit={handleSubmit} className="bg-slate-50 p-6 rounded-2xl border border-slate-100">
-            <h4 className="font-bold text-slate-800 mb-4 text-sm">Write a Review</h4>
-            
-            {/* Star Selector */}
-            <div className="flex gap-2 mb-4">
-                {[1, 2, 3, 4, 5].map((star) => (
-                    <button
-                        key={star}
-                        type="button"
-                        onClick={() => setRating(star)}
-                        className={`transition-transform hover:scale-110 ${rating >= star ? "text-yellow-400 fill-current" : "text-slate-300"}`}
-                    >
-                        <Star className="w-6 h-6" />
-                    </button>
-                ))}
-            </div>
-
-            <textarea 
-                className="w-full p-3 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-blue-500 outline-none mb-4"
-                rows={3}
-                placeholder="Share your experience..."
-                value={comment}
-                onChange={(e) => setComment(e.target.value)}
-                required
-            />
-
-            <button 
-                type="submit" 
-                disabled={submitting}
-                className="w-full py-2.5 bg-slate-900 text-white font-bold rounded-xl text-sm hover:bg-slate-800 transition-colors disabled:opacity-50"
-            >
-                {submitting ? "Posting..." : "Submit Review"}
-            </button>
-          </form>
-      )}
     </div>
   );
 };

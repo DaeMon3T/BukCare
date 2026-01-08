@@ -87,8 +87,8 @@ class DoctorResponse(BaseModel):
     is_doctor_approved: bool
     availabilities: List[DoctorAvailability] = []
     avatar: Optional[str] = None
-    created_at: Optional[datetime] = None  # Make optional
-    updated_at: Optional[datetime] = None  # Make optional
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -105,5 +105,7 @@ class Doctor(BaseModel):
     is_verified: bool
     is_doctor_approved: bool
     is_accepting_patients: Optional[bool] = None
-    created_at: Optional[datetime] = None  # Make optional
-    updated_at: Optional[datetime] = None  # Make optional
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None 
+    average_rating: Optional[float] = 0.0
+    total_reviews: Optional[int] = 0

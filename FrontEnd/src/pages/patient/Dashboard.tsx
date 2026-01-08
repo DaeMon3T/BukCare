@@ -333,34 +333,42 @@ const PatientDashboard = () => {
                 <button onClick={() => navigate('/patient/find-doctor')} className="text-sm font-semibold text-blue-600 hover:underline">See All</button>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                {doctors.map((doc) => (
-                    <div key={doc.doctor_id} className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all flex flex-col">
-                        <div className="flex items-center gap-4 mb-4">
-                            <img 
-                                src={doc.avatar || "/default-avatar.png"} 
-                                alt={doc.name}
-                                className="w-14 h-14 rounded-full object-cover bg-slate-100 border border-slate-100"
-                                onError={(e) => (e.currentTarget as HTMLImageElement).src = "/default-avatar.png"} 
-                            />
-                            <div className="min-w-0">
-                                <h4 className="font-bold text-slate-900 truncate">Dr. {doc.name}</h4>
-                                <p className="text-xs text-slate-500 truncate">{doc.specialization || "General"}</p>
-                                <div className="flex items-center gap-1 mt-1 text-amber-400">
-                                    <Star className="w-3 h-3 fill-current" />
-                                    <span className="text-xs font-bold text-slate-700">4.9</span>
+                <div className="flex overflow-x-auto pb-6 gap-4 -mx-4 px-4 md:mx-0 md:px-0 scrollbar-hide snap-x snap-mandatory">
+                    {doctors.map((doc) => (
+                        <div key={doc.doctor_id} className="min-w-[280px] snap-center flex">
+                            
+                            <div className="w-full bg-white p-5 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all flex flex-col">
+                                <div className="flex items-center gap-4 mb-4">
+                                    <img 
+                                        src={doc.avatar || "/default-avatar.png"} 
+                                        alt={doc.name}
+                                        className="w-14 h-14 rounded-full object-cover bg-slate-100 border border-slate-100 shrink-0"
+                                        onError={(e) => (e.currentTarget as HTMLImageElement).src = "/default-avatar.png"} 
+                                    />
+                                    <div className="min-w-0">
+                                        <h4 className="font-bold text-slate-900 truncate">Dr. {doc.name}</h4>
+                                        
+                                        <p className="text-xs text-slate-500 truncate">
+                                            {doc.specialization || doc.specialization || "General Practice"}
+                                        </p>
+                                        
+                                        <div className="flex items-center gap-1 mt-1 text-amber-400">
+                                            <Star className="w-3 h-3 fill-current" />
+                                            <span className="text-xs font-bold text-slate-700">Appoint To Review</span>
+                                        </div>
+                                    </div>
                                 </div>
+                                
+                                <button 
+                                    onClick={() => navigate(`/patient/book/${doc.doctor_id}`)}
+                                    className="mt-auto w-full py-2.5 bg-slate-50 text-slate-700 text-sm font-semibold rounded-xl hover:bg-blue-600 hover:text-white transition-all"
+                                >
+                                    Book Visit
+                                </button>
                             </div>
                         </div>
-                        <button 
-                            onClick={() => navigate(`/patient/book/${doc.doctor_id}`)}
-                            className="mt-auto w-full py-2.5 bg-slate-50 text-slate-700 text-sm font-semibold rounded-xl hover:bg-blue-600 hover:text-white transition-all"
-                        >
-                            Book Visit
-                        </button>
-                    </div>
-                ))}
-            </div>
+                    ))}
+                </div>
         </div>
 
       </div>

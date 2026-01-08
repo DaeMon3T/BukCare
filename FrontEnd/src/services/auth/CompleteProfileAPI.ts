@@ -48,12 +48,13 @@ export const completeProfile = async (
     let response;
 
     if (payload instanceof FormData) {
-      console.log("📤 Sending FormData directly");
-      console.log("FormData contents:", Array.from(payload.entries()));
       response = await BaseAPI.post<CompleteProfileResponse>(
         "/auth/complete-profile",
         payload,
-        { headers: { "Content-Type": "multipart/form-data" } }
+        { 
+            headers: { "Content-Type": "multipart/form-data" },
+            timeout: 180000 
+        }
       );
     } 
     // Doctor with files
@@ -62,7 +63,6 @@ export const completeProfile = async (
       (payload as DoctorProfilePayload).prc_license_back ||
       (payload as DoctorProfilePayload).prc_license_selfie
     ) {
-      console.log("📤 Building FormData for Doctor with files");
       const formData = new FormData();
 
       // Required fields
@@ -93,28 +93,23 @@ export const completeProfile = async (
       if (doctorPayload.prc_license_selfie)
         formData.append("prc_license_selfie", doctorPayload.prc_license_selfie);
 
-      console.log("📤 FormData entries:", Array.from(formData.entries()).map(([key, val]) => [
-        key,
-        val instanceof File ? `[File: ${val.name}]` : val
-      ]));
 
       response = await BaseAPI.post<CompleteProfileResponse>(
         "/auth/complete-profile",
         formData,
-        { headers: { "Content-Type": "multipart/form-data" } }
+        { 
+            headers: { "Content-Type": "multipart/form-data" },
+            timeout: 180000
+        }
       );
     } 
-    // Patient (JSON body)
     else {
-      console.log("📤 Sending Patient data as JSON");
-      console.log("Payload:", payload);
       response = await BaseAPI.post<CompleteProfileResponse>(
         "/auth/complete-profile",
         payload
       );
     }
 
-    console.log("Success:", response.data);
     return response.data;
   } catch (error: any) {
     console.error("Error:", error);
@@ -146,6 +141,8 @@ export const completeProfile = async (
       } else {
         message = JSON.stringify(error.response.data.detail);
       }
+    } else if (error.code === 'ECONNABORTED') {
+        message = "Upload timed out. Please check your connection or try smaller files.";
     }
     
     throw new Error(message);

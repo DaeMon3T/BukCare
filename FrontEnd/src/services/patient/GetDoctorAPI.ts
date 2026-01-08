@@ -19,7 +19,10 @@ export interface Doctor {
   user_id?: number;           // backend returns this
   name: string;
   email: string;
-  specialization?: string;    // summary field
+  
+  // Changed to 'specializations' (Plural)
+  specializations?: string;    // summary field
+  
   license_number?: string;
   years_of_experience?: number;
   address?: string;

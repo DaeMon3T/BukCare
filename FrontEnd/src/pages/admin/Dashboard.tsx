@@ -132,7 +132,7 @@ const AdminDashboard: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-r from-blue-700 to-[#2dc7f8]">
+    <div className="min-h-screen bg-white/50">
       {notification && (
         <Notification
           type={notification.type}

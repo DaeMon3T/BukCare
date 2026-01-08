@@ -4,23 +4,27 @@ from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from utils.admin import create_admin_if_not_exists
 from core.config import settings
-from core.database import Base, engine
+from core.database import Base, engine, SessionLocal # 👈 Added SessionLocal
 from core.logging_config import setup_logging, get_logger
 from middleware.rate_limiting import rate_limit_middleware, endpoint_rate_limit_middleware
 from middleware.security import security_middleware_handler
 from middleware.request_logging import request_logging_middleware
 import logging
 import traceback
+from sqlalchemy.orm import Session # 👈 Added Session import
+
+# Router Imports
 from routers.v1 import router as v1_router
 from routers.v1 import doctors
-from utils.admin import create_admin_if_not_exists
-from models.message import Message
 from routers.v1 import notifications
 from routers.v1 import tips
-from models.review import Review
 from routers.v1 import reviews
 from routers.v1 import appointments 
-from utils.admin import create_admin_if_not_exists
+
+# Model Imports for Seeding
+from models.doctor import Specialization # 👈 Added Specialization model
+from models.message import Message
+from models.review import Review
 
 def create_app() -> FastAPI:
     setup_logging()
@@ -58,41 +62,72 @@ def create_app() -> FastAPI:
     app.middleware("http")(endpoint_rate_limit_middleware)
 
     # ============================================================
-    # NOTIFICATIONS ROUTER
-    # Changed prefix to "/v1/notifications" to match the rest of your API
-    # WebSocket URL will be: ws://localhost:8000/v1/notifications/ws/{user_id}
+    # ROUTERS
     # ============================================================
     app.include_router(notifications.router, prefix="/v1/notifications", tags=["Notifications"])
-
-    
-    # ============================================================
-    # HEALTH TIPS ROUTER
-    # ============================================================
     app.include_router(tips.router, prefix="/v1")
-
-
-    # DB initialization
-    Base.metadata.create_all(bind=engine)
-    logger.info("Database tables created successfully")
-
-    # Doctor Review
     app.include_router(reviews.router, prefix="/v1/reviews", tags=["Reviews"])
-
     app.include_router(doctors.router, prefix="/v1/doctor", tags=["Doctor"])
-
     app.include_router(appointments.router, prefix="/v1/appointments", tags=["Appointments"])
+    app.include_router(v1_router, prefix="/v1") # Auth, etc.
+
 
     # ============================================================
-    # MAIN V1 ROUTER (Appointments, Auth, etc.)
+    # 🛡️ DATABASE SEEDER FUNCTION
+    # This runs on startup to ensure "Cardiology" exists (ID 6)
+    # instead of creating a specialization literally named "6"
     # ============================================================
-    app.include_router(v1_router, prefix="/v1")
+    def seed_specializations(db: Session):
+        """
+        Ensures standard specializations exist in the database.
+        """
+        standard_specs = [
+            "General Practice",     # ID 1
+            "Pediatrics",           # ID 2
+            "Dermatology",          # ID 3
+            "Neurology",            # ID 4
+            "Internal Medicine",    # ID 5
+            "Cardiology",           # ID 6 <--- Now this matches your frontend!
+            "Psychiatry",           # ID 7
+            "Surgery",              # ID 8
+            "Orthopedics",          # ID 9
+            "Ophthalmology",        # ID 10
+            "Obstetrics and Gynecology" # ID 11
+        ]
 
-    # Startup event for tasks like creating default admin
+        # Check if table is empty
+        try:
+            if db.query(Specialization).count() == 0:
+                logger.info("🌱 Seeding Specializations database...")
+                for name in standard_specs:
+                    db.add(Specialization(name=name))
+                db.commit()
+                logger.info("✅ Specializations seeded successfully!")
+            else:
+                logger.info("👌 Specializations already exist. Skipping seed.")
+        except Exception as e:
+            logger.error(f"⚠️ Error seeding specializations: {e}")
+
+
+    # ============================================================
+    # STARTUP TASKS
+    # ============================================================
     @app.on_event("startup")
     def startup_tasks():
-        # Commented out - implement this if needed
-        # create_admin_if_not_exists()
+        # 1. Create Tables
+        Base.metadata.create_all(bind=engine)
+        logger.info("Database tables verified/created successfully")
+
+        # 2. Run Seeder
+        db = SessionLocal()
+        try:
+            seed_specializations(db)
+            # You can add create_admin_if_not_exists() here too if needed
+        finally:
+            db.close()
+        
         logger.info("Startup tasks completed")
+
 
     # ================================
     # Exception Handlers
@@ -135,6 +170,5 @@ def create_app() -> FastAPI:
         )
 
     return app
-
 
 app = create_app()

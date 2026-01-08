@@ -156,7 +156,7 @@ export default function UsersDetail() {
   const isDoctor = user.role === "doctor" || user.role === "pending";
 
   return (
-    <div className="h-screen bg-gradient-to-r from-blue-700 to-[#2dc7f8] overflow-hidden">
+    <div className="h-screen bg-white overflow-hidden">
       <Navbar/>
 
       <main className="h-[calc(100vh-4rem)] overflow-y-auto">

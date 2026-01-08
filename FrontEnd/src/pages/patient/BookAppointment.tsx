@@ -29,8 +29,11 @@ const BookAppointment: React.FC = () => {
   const [bookingMode, setBookingMode] = useState<BookingMode>("availability");
   const [selectedAvailabilitySlot, setSelectedAvailabilitySlot] = useState<number | null>(null);
   
-  // NEW: Track which date tab is selected in "Suggested" mode
+  // Track selected date tab
   const [activeDateTab, setActiveDateTab] = useState<string>("");
+
+  // Store "real" booked slots to filter them out of suggestions
+  const [bookedSlotsForActiveTab, setBookedSlotsForActiveTab] = useState<string[]>([]);
 
   const [selectedDate, setSelectedDate] = useState<string>("");
   const [availableTimeSlots, setAvailableTimeSlots] = useState<string[]>([]);
@@ -61,28 +64,14 @@ const BookAppointment: React.FC = () => {
         const doctorData = await GetDoctorAPI.getDoctorById(doctorId);
         const todayStr = getLocalTodayStr(); 
 
-        // Filter valid slots
+        // === FILTER: REMOVE PAST DATES ===
         let validAvailabilities = (doctorData.availabilities || []).filter((slot) => {
             if (!slot.date || !slot.start_time) return false;
             const slotDate = slot.date.split("T")[0] ?? "";
             
-            // TEST MODE: Logic is set to "return true" for testing
-            // PRODUCTION: Uncomment these checks
+            // 1. If date is in the past, hide it entirely
             if (slotDate < todayStr) return false; 
-            // if (slotDate > todayStr) return true;  
-
-            if (slotDate === todayStr) {
-                 return true; // FORCE SHOW FOR TESTING
-                 // const now = new Date();
-                 // const currentHour = now.getHours();
-                 // const currentMinute = now.getMinutes();
-                 // const parts = slot.start_time.split(":").map(Number);
-                 // const h = parts[0] ?? 0;
-                 // const m = parts[1] ?? 0;
-                 // if (h > currentHour) return true;
-                 // if (h === currentHour && m > currentMinute) return true;
-                 // return false; 
-            }
+            
             return true;
         });
 
@@ -99,15 +88,9 @@ const BookAppointment: React.FC = () => {
         
         // AUTO-SELECT FIRST DATE
         if (validAvailabilities.length > 0) {
-            // 1. Safely access the first item using Optional Chaining (?.)
             const firstSlot = validAvailabilities[0];
-
-            // 2. Ensure slot exists AND has a date string
             if (firstSlot?.date) {
-                // 3. Fallback to empty string if split fails, ensuring it's ALWAYS a string
                 const firstDate = firstSlot.date.split('T')[0] || ""; 
-                
-                // Now TypeScript is happy because firstDate is definitely a string
                 if (firstDate) {
                     setActiveDateTab(firstDate);
                     setBookingMode("availability");
@@ -128,7 +111,30 @@ const BookAppointment: React.FC = () => {
     fetchDoctorData();
   }, [doctorId]);
 
-  // 2. Fetch Slots for "Custom" Mode
+  // 2. NEW: Fetch Real Availability for Suggested Tabs
+  // This ensures that even "Suggested" slots respect real bookings
+  useEffect(() => {
+    if (!doctorId || !activeDateTab || bookingMode !== "availability") return;
+
+    const verifyTabAvailability = async () => {
+        try {
+            // We ask the backend: "What is REALLY available on this date?"
+            // The backend checks the 'appointments' table and excludes booked times.
+            const response = await AppointmentAvailabilityAPI.getAvailableSlots(
+                doctorId,
+                activeDateTab
+            );
+            // Store the list of TRULY available times (e.g., ["09:00:00", "10:00:00"])
+            setBookedSlotsForActiveTab(response.available_slots || []); 
+        } catch (error) {
+            console.error("Failed to verify tab slots", error);
+        }
+    };
+    verifyTabAvailability();
+  }, [doctorId, activeDateTab, bookingMode]);
+
+
+  // 3. Fetch Slots for "Custom" Mode
   useEffect(() => {
     if (bookingMode !== "custom" || !doctorId || !selectedDate) return;
 
@@ -144,10 +150,26 @@ const BookAppointment: React.FC = () => {
         
         const todayStr = getLocalTodayStr();
         const isToday = selectedDate === todayStr;
+        const now = new Date();
+        const currentHour = now.getHours();
+        const currentMinute = now.getMinutes();
 
-        const validSlots = response.available_slots.filter((_timeStr: string) => {
+        // === FILTER: PAST TIME CHECK ===
+        const validSlots = response.available_slots.filter((timeStr: string) => {
             if (!isToday) return true; 
-            return true; // FORCE SHOW FOR TESTING
+            
+            // If today, check the time
+            let timePart = timeStr;
+            if (timeStr.includes("T")) timePart = timeStr.split("T")[1] ?? timeStr;
+            
+            const [hStr, mStr] = timePart.split(":");
+            const h = parseInt(hStr || "0", 10);
+            const m = parseInt(mStr || "0", 10);
+
+            if (h > currentHour) return true;
+            if (h === currentHour && m > currentMinute) return true;
+            
+            return false; // Time has passed
         });
         
         setAvailableTimeSlots(validSlots);
@@ -193,6 +215,7 @@ const BookAppointment: React.FC = () => {
       return;
     }
     let appointmentDateTime: string;
+    
     if (bookingMode === "availability") {
       if (selectedAvailabilitySlot === null) {
         toast.error("Please select a schedule slot");
@@ -227,9 +250,11 @@ const BookAppointment: React.FC = () => {
       navigate("/patient/appointments");
     } catch (err: any) {
       if (err?.response?.status === 409) {
-        toast.error("This time slot is no longer available.");
+        toast.error("This time slot was just booked by someone else.");
+        // Refresh the list to remove the taken slot
         if (bookingMode === "custom" && selectedDate) {
              setAvailableTimeSlots([]); 
+             // Trigger re-fetch logic here ideally
         }
       } else {
         toast.error(err?.response?.data?.detail || "Failed to create appointment");
@@ -247,6 +272,7 @@ const BookAppointment: React.FC = () => {
   const avatarSrc = doctor?.avatar && doctor.avatar.trim() !== "" ? doctor.avatar : "/default-avatar.png";
 
   // === DATA PROCESSING FOR GROUPED VIEW ===
+  
   // 1. Get unique dates
   const uniqueDates = useMemo(() => {
     const dates = new Set<string>();
@@ -259,10 +285,40 @@ const BookAppointment: React.FC = () => {
     return Array.from(dates);
   }, [availabilities]);
 
-  // 2. Filter slots for active tab
+  // 2. Filter slots for active tab AND Check against real bookings
   const activeSlots = useMemo(() => {
-    return availabilities.filter(slot => slot.date.startsWith(activeDateTab));
-  }, [availabilities, activeDateTab]);
+    const todayStr = getLocalTodayStr();
+    const now = new Date();
+    const currentHour = now.getHours();
+    const currentMinute = now.getMinutes();
+
+    return availabilities.filter(slot => {
+        // A. Must match the selected date tab
+        if (!slot.date.startsWith(activeDateTab)) return false;
+
+        // B. Must NOT be in the past (Time check)
+        if (activeDateTab === todayStr) {
+             const [hStr, mStr] = slot.start_time.split(":");
+             const h = parseInt(hStr || "0", 10);
+             const m = parseInt(mStr || "0", 10);
+             
+             if (h < currentHour) return false;
+             if (h === currentHour && m <= currentMinute) return false;
+        }
+
+        // C. Must be "Real" Available (Backend check)
+        // If we fetched the real slots, verify this slot is in that list.
+        // The backend returns "09:00:00". Our slot is "09:00:00".
+        if (bookedSlotsForActiveTab.length > 0) {
+            // If the slot's time is NOT in the list of available times from backend, hide it
+            if (!bookedSlotsForActiveTab.includes(slot.start_time)) {
+                return false; 
+            }
+        }
+
+        return true;
+    });
+  }, [availabilities, activeDateTab, bookedSlotsForActiveTab]);
 
   // 3. Group by Morning / Afternoon
   const groupedSlots = useMemo(() => {
@@ -326,7 +382,7 @@ const BookAppointment: React.FC = () => {
                     <div className="flex flex-col gap-1 text-slate-500 text-sm font-medium">
                         <div className="flex items-center gap-2">
                             <Stethoscope className="w-4 h-4 text-blue-500" />
-                            {doctor.specialization || "General Practice"}
+                            {doctor.specializations || "General Practice"}
                         </div>
                         <div className="flex items-center gap-2">
                             <MapPin className="w-4 h-4 text-slate-400" />
@@ -463,6 +519,12 @@ const BookAppointment: React.FC = () => {
                                             )
                                         })}
                                     </div>
+                                </div>
+                            )}
+
+                            {groupedSlots.morning.length === 0 && groupedSlots.afternoon.length === 0 && (
+                                <div className="p-6 bg-slate-50 border border-slate-100 rounded-xl text-center text-slate-500 text-sm">
+                                    No available slots for this date.
                                 </div>
                             )}
                         </div>

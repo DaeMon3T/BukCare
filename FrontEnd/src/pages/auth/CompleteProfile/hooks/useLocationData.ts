@@ -47,23 +47,14 @@ export const useLocationData = (selectedProvinceId: string, selectedCityId: stri
       try {
         const citiesUrl = `${BASE_URL}/provinces/${selectedProvinceId}/cities.json`;
         const municipalitiesUrl = `${BASE_URL}/provinces/${selectedProvinceId}/municipalities.json`;
-        
-        console.log("Fetching from:", citiesUrl);
-        console.log("Fetching from:", municipalitiesUrl);
 
         const [citiesRes, municipalitiesRes] = await Promise.all([
           fetch(citiesUrl),
           fetch(municipalitiesUrl),
         ]);
 
-        console.log("Cities response:", citiesRes.status);
-        console.log("Municipalities response:", municipalitiesRes.status);
-
         const citiesData = citiesRes.ok ? await citiesRes.json() : [];
         const municipalitiesData = municipalitiesRes.ok ? await municipalitiesRes.json() : [];
-
-        console.log("Cities data:", citiesData);
-        console.log("Municipalities data:", municipalitiesData);
 
         const allCities: CityData[] = [
           ...citiesData.map((c: any) => ({
@@ -79,8 +70,6 @@ export const useLocationData = (selectedProvinceId: string, selectedCityId: stri
             province_id: selectedProvinceId,
           })),
         ];
-
-        console.log("All cities combined:", allCities);
         
         allCities.sort((a, b) => a.name.localeCompare(b.name));
         setCitiesData(allCities);

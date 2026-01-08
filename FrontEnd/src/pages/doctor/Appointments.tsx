@@ -42,18 +42,14 @@ const DoctorAppointments = () => {
     }
   }, []);
 
-  // 2. WEBSOCKET LISTENER (Updates from Patients/Other Devices)
+  // 2. WEBSOCKET LISTENER
   useEffect(() => {
     if (!lastMessage) return;
 
-    // SCENARIO A: A Patient booked a NEW appointment
     if (lastMessage.type === "NEW_APPOINTMENT") {
-      // We just want to refresh the data silently. The Navbar handles the notification.
-      console.log("Silent refresh triggered by socket");
       fetchAppointments(true); 
     }
 
-    // SCENARIO B: Status was updated
     if (lastMessage.type === "APPOINTMENT_UPDATE") {
       setAppointments((prev) => 
         prev.map((appt) => 
@@ -64,7 +60,6 @@ const DoctorAppointments = () => {
       );
     }
 
-    // SCENARIO C: Appointment was deleted (System Signal)
     if (lastMessage.type === "APPOINTMENT_DELETED") {
       setAppointments((prev) => 
         prev.filter((appt) => appt.id !== lastMessage.appointment_id)
@@ -72,19 +67,23 @@ const DoctorAppointments = () => {
     }
   }, [lastMessage, fetchAppointments]);
 
-  // Initial Load
   useEffect(() => {
     fetchAppointments();
   }, [fetchAppointments]);
 
-  // 3. UPDATE STATUS (Local Update + API)
-  const updateStatus = async (id: number, newStatus: "confirmed" | "completed") => {
+  // 3. UPDATE STATUS (Updated to include "cancelled")
+  const updateStatus = async (id: number, newStatus: "confirmed" | "completed" | "cancelled") => {
     try {
-      // 1. Call API
       await api.put(`/appointments/${id}/status`, { status: newStatus });
-      toast.success(`Appointment ${newStatus}`);
+      
+      const statusMessages = {
+        confirmed: "Appointment confirmed",
+        completed: "Appointment marked completed",
+        cancelled: "Appointment cancelled"
+      };
+      
+      toast.success(statusMessages[newStatus]);
 
-      // 2. MANUAL UPDATE: Update local state instantly (Don't wait for socket)
       setAppointments((prev) => 
         prev.map((appt) => 
           appt.id === id 
@@ -98,14 +97,12 @@ const DoctorAppointments = () => {
     }
   };
 
-  // 4. DELETE (Local Update + API)
+  // 4. DELETE
   const deleteAppointment = async (id: number) => {
     try {
       await api.delete(`/appointments/${id}/permanent`);
       toast.success("Appointment permanently deleted");
       setDeleteConfirm(null);
-
-      // MANUAL UPDATE: Remove from list instantly
       setAppointments((prev) => prev.filter((a) => a.id !== id));
     } catch (err: any) {
       console.error("Delete failed:", err);
@@ -113,10 +110,16 @@ const DoctorAppointments = () => {
     }
   };
 
-  const filteredAppointments = appointments.filter((appt) => {
-    if (filter === "all") return true;
-    return appt.status === filter;
-  });
+  const filteredAppointments = appointments
+    .filter((appt) => {
+      if (filter === "all") return true;
+      return appt.status === filter;
+    })
+    .sort((a, b) => {
+      // Turn strings into Dates and subtract to sort
+      // (b - a) means Descending Order (Latest First)
+      return new Date(b.appointment_date).getTime() - new Date(a.appointment_date).getTime();
+    });
 
   const formatDateTime = (dateTimeString: string) => {
     const date = new Date(dateTimeString);
@@ -235,106 +238,165 @@ const DoctorAppointments = () => {
         ) : (
           <>
             {/* Desktop Table */}
-            <div className="hidden md:block overflow-hidden bg-white rounded-2xl shadow-lg border border-slate-200">
+            <div className="hidden md:block bg-white rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
               <table className="min-w-full">
-                <thead className="bg-gradient-to-r from-slate-50 to-slate-100 border-b border-slate-200">
-                  <tr>
-                    <th className="p-4 text-left text-sm font-bold text-slate-700">Patient ID</th>
-                    <th className="p-4 text-left text-sm font-bold text-slate-700">Patient Name</th>
-                    <th className="p-4 text-left text-sm font-bold text-slate-700">Date & Time</th>
-                    <th className="p-4 text-left text-sm font-bold text-slate-700">Reason</th>
-                    <th className="p-4 text-left text-sm font-bold text-slate-700">Status</th>
-                    <th className="p-4 text-left text-sm font-bold text-slate-700">Actions</th>
+                {/* HEADER */}
+                <thead>
+                  <tr className="bg-slate-50/50 border-b border-slate-100 text-left">
+                    <th className="py-5 px-6 text-xs font-bold text-slate-400 uppercase tracking-wider">
+                      Patient
+                    </th>
+                    <th className="py-5 px-6 text-xs font-bold text-slate-400 uppercase tracking-wider">
+                      Schedule
+                    </th>
+                    <th className="py-5 px-6 text-xs font-bold text-slate-400 uppercase tracking-wider">
+                      Purpose
+                    </th>
+                    <th className="py-5 px-6 text-xs font-bold text-slate-400 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="py-5 px-6 text-xs font-bold text-slate-400 uppercase tracking-wider text-right">
+                      Actions
+                    </th>
                   </tr>
                 </thead>
+
+                {/* BODY */}
                 <tbody className="divide-y divide-slate-100">
                   {filteredAppointments.map((appt) => {
                     const { date, time } = formatDateTime(appt.appointment_date);
                     const statusStyle = getStatusStyles(appt.status);
-                    
+
                     return (
-                      <tr key={appt.id} className="hover:bg-slate-50 transition-colors">
-                        <td className="p-4">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-cyan-600 flex items-center justify-center">
-                              <User className="w-5 h-5 text-white" />
-                            </div>
-                            <div>
-                              <p className="text-sm font-semibold text-slate-900">Patient #{appt.patient_id}</p>
-                              <p className="text-xs text-slate-500">ID: {appt.id}</p>
-                            </div>
-                          </div>
-                        </td>
-
-                        <td className="p-4 text-sm text-gray-900 font-medium">
-                          {appt.patient_name}
-                        </td>
-
-                        <td className="p-4">
-                          <div className="flex items-start gap-2">
-                            <Calendar className="w-4 h-4 text-slate-500 mt-0.5" />
-                            <div>
-                              <p className="text-sm font-medium text-slate-900">{date}</p>
-                              <div className="flex items-center gap-1 mt-1">
-                                <Clock className="w-3 h-3 text-slate-400" />
-                                <p className="text-xs text-slate-600">{time}</p>
+                      <tr 
+                        key={appt.id} 
+                        className="group hover:bg-slate-50/80 transition-colors duration-200"
+                      >
+                        {/* 1. Patient Column */}
+                        <td className="py-5 px-6">
+                          <div className="flex items-center gap-4">
+                            <div className="relative">
+                              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-500 shadow-sm group-hover:scale-105 transition-transform duration-300">
+                                <User className="w-5 h-5" />
+                              </div>
+                              {/* Online Indicator (Optional decoration) */}
+                              <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-white rounded-full flex items-center justify-center">
+                                <div className="w-2.5 h-2.5 bg-emerald-400 rounded-full border border-white"></div>
                               </div>
                             </div>
+                            <div>
+                              <p className="text-sm font-bold text-slate-900 leading-tight">
+                                {appt.patient_name}
+                              </p>
+                              <p className="text-xs font-medium text-slate-400 mt-1">
+                                ID: <span className="font-mono text-slate-500">#{appt.patient_id}</span>
+                              </p>
+                            </div>
                           </div>
                         </td>
-                        <td className="p-4">
-                          <p className="text-sm text-slate-700 max-w-xs truncate">
-                            {appt.reason || <span className="text-slate-400 italic">No reason provided</span>}
-                          </p>
+
+                        {/* 2. Date & Time Column */}
+                        <td className="py-5 px-6">
+                          <div className="flex flex-col">
+                            <div className="flex items-center gap-2 mb-1">
+                              <Calendar className="w-4 h-4 text-slate-400" />
+                              <span className="text-sm font-bold text-slate-700 group-hover:text-blue-600 transition-colors">
+                                {date}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Clock className="w-4 h-4 text-slate-300" />
+                              <span className="text-xs font-medium text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">
+                                {time}
+                              </span>
+                            </div>
+                          </div>
                         </td>
-                        <td className="p-4">
-                          <span
-                            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border ${statusStyle.badge}`}
-                          >
+
+                        {/* 3. Reason Column */}
+                        <td className="py-5 px-6">
+                          <div className="max-w-[220px]">
+                            <p className={`text-sm leading-relaxed ${appt.reason ? "text-slate-600" : "text-slate-400 italic"}`}>
+                              {appt.reason || "No reason provided"}
+                            </p>
+                            {appt.notes && (
+                              <div className="mt-1.5 flex items-start gap-1.5 text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded-lg w-fit">
+                                <span className="font-bold">Note:</span> {appt.notes}
+                              </div>
+                            )}
+                          </div>
+                        </td>
+
+                        {/* 4. Status Column */}
+                        <td className="py-5 px-6">
+                          <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border shadow-sm ${statusStyle.badge}`}>
                             {statusStyle.icon}
-                            {appt.status}
+                            {appt.status.charAt(0).toUpperCase() + appt.status.slice(1)}
                           </span>
                         </td>
-                        <td className="p-4">
-                          <div className="flex gap-2">
+
+                        {/* 5. Actions Column */}
+                        <td className="py-5 px-6 text-right">
+                          <div className="flex items-center justify-end gap-2 opacity-90 group-hover:opacity-100 transition-opacity">
                             {appt.status === "pending" && (
-                              <button
-                                onClick={() => updateStatus(appt.id, "confirmed")}
-                                className="px-4 py-2 rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 text-white text-sm font-semibold hover:from-emerald-700 hover:to-teal-700 transition-all shadow-md hover:shadow-lg"
-                              >
-                                Confirm
-                              </button>
+                              <>
+                                <button
+                                  onClick={() => updateStatus(appt.id, "confirmed")}
+                                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-xs font-bold shadow-md shadow-emerald-200 hover:shadow-lg hover:translate-y-[-1px] transition-all"
+                                >
+                                  Confirm
+                                </button>
+                                <button
+                                  onClick={() => updateStatus(appt.id, "cancelled")}
+                                  className="p-2 rounded-xl bg-slate-50 text-slate-400 hover:bg-red-50 hover:text-red-500 border border-slate-200 hover:border-red-100 transition-all"
+                                  title="Decline Appointment"
+                                >
+                                  <XCircle className="w-5 h-5" />
+                                </button>
+                              </>
                             )}
+
                             {appt.status === "confirmed" && (
-                              <button
-                                onClick={() => updateStatus(appt.id, "completed")}
-                                className="px-4 py-2 rounded-lg bg-gradient-to-r from-blue-600 to-cyan-600 text-white text-sm font-semibold hover:from-blue-700 hover:to-cyan-700 transition-all shadow-md hover:shadow-lg"
-                              >
-                                Complete
-                              </button>
+                              <>
+                                <button
+                                  onClick={() => updateStatus(appt.id, "completed")}
+                                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-xs font-bold shadow-md shadow-blue-200 hover:shadow-lg hover:translate-y-[-1px] transition-all"
+                                >
+                                  Complete
+                                </button>
+                                <button
+                                  onClick={() => updateStatus(appt.id, "cancelled")}
+                                  className="p-2 rounded-xl bg-slate-50 text-slate-400 hover:bg-slate-100 hover:text-slate-600 border border-slate-200 transition-all"
+                                  title="Cancel Appointment"
+                                >
+                                  <XCircle className="w-5 h-5" />
+                                </button>
+                              </>
                             )}
+
                             {(appt.status === "completed" || appt.status === "cancelled") && (
                               <>
                                 {deleteConfirm === appt.id ? (
-                                  <div className="flex gap-2">
+                                  <div className="flex items-center gap-2 bg-red-50 p-1 rounded-xl border border-red-100 animate-fade-in">
+                                    <span className="text-[10px] font-bold text-red-600 px-2">Sure?</span>
                                     <button
                                       onClick={() => deleteAppointment(appt.id)}
-                                      className="px-3 py-1.5 rounded-lg bg-red-600 text-white text-xs font-semibold hover:bg-red-700 transition-all"
+                                      className="px-3 py-1.5 rounded-lg bg-red-500 text-white text-xs font-bold hover:bg-red-600"
                                     >
-                                      Confirm Delete
+                                      Yes
                                     </button>
                                     <button
                                       onClick={() => setDeleteConfirm(null)}
-                                      className="px-3 py-1.5 rounded-lg bg-slate-200 text-slate-700 text-xs font-semibold hover:bg-slate-300 transition-all"
+                                      className="px-3 py-1.5 rounded-lg bg-white text-slate-600 text-xs font-bold border border-slate-200 hover:bg-slate-50"
                                     >
-                                      Cancel
+                                      No
                                     </button>
                                   </div>
                                 ) : (
                                   <button
                                     onClick={() => setDeleteConfirm(appt.id)}
-                                    className="p-2 rounded-lg bg-red-100 text-red-600 hover:bg-red-200 transition-all"
-                                    title="Delete appointment"
+                                    className="p-2 rounded-xl bg-white text-slate-400 border border-slate-200 hover:border-red-200 hover:bg-red-50 hover:text-red-500 transition-all"
+                                    title="Delete from history"
                                   >
                                     <Trash2 className="w-4 h-4" />
                                   </button>
@@ -359,7 +421,7 @@ const DoctorAppointments = () => {
                 return (
                   <div
                     key={appt.id}
-                    className="bg-white p-5 rounded-2xl shadow-lg border border-slate-200 hover:shadow-xl transition-all"
+                    className="bg-white p-5 rounded-2xl shadow-lg border border-slate-200"
                   >
                     <div className="flex justify-between items-start mb-4">
                       <div className="flex items-center gap-3">
@@ -367,8 +429,8 @@ const DoctorAppointments = () => {
                           <User className="w-6 h-6 text-white" />
                         </div>
                         <div>
-                          <p className="text-sm font-bold text-slate-900">Patient #{appt.patient_id}</p>
-                          <p className="text-xs text-slate-500">ID: {appt.id}</p>
+                          <p className="text-sm font-bold text-slate-900">{appt.patient_name}</p>
+                          <p className="text-xs text-slate-500">ID: #{appt.patient_id}</p>
                         </div>
                       </div>
                       <span
@@ -396,51 +458,62 @@ const DoctorAppointments = () => {
                           {appt.reason || <span className="text-slate-400 italic">No reason provided</span>}
                         </p>
                       </div>
-                      {appt.notes && (
-                        <div className="pt-3 border-t border-slate-100">
-                          <p className="text-xs font-semibold text-slate-600 mb-1">Notes:</p>
-                          <p className="text-sm text-slate-700">{appt.notes}</p>
-                        </div>
-                      )}
                     </div>
 
+                    <div className="flex gap-2">
                     {appt.status === "pending" && (
-                      <button
-                        onClick={() => updateStatus(appt.id, "confirmed")}
-                        className="w-full px-4 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl font-semibold hover:from-emerald-700 hover:to-teal-700 transition-all shadow-md hover:shadow-lg"
-                      >
-                        Confirm Appointment
-                      </button>
+                      <>
+                        <button
+                          onClick={() => updateStatus(appt.id, "confirmed")}
+                          className="flex-1 px-4 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl font-semibold hover:from-emerald-700 hover:to-teal-700 transition-all shadow-md"
+                        >
+                          Confirm
+                        </button>
+                        <button
+                          onClick={() => updateStatus(appt.id, "cancelled")}
+                          className="flex-1 px-4 py-3 bg-red-50 text-red-600 border border-red-100 rounded-xl font-semibold hover:bg-red-100 transition-all"
+                        >
+                          Decline
+                        </button>
+                      </>
                     )}
                     {appt.status === "confirmed" && (
-                      <button
-                        onClick={() => updateStatus(appt.id, "completed")}
-                        className="w-full px-4 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-xl font-semibold hover:from-blue-700 hover:to-cyan-700 transition-all shadow-md hover:shadow-lg"
-                      >
-                        Mark as Completed
-                      </button>
+                      <>
+                        <button
+                          onClick={() => updateStatus(appt.id, "completed")}
+                          className="flex-1 px-4 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-xl font-semibold hover:from-blue-700 hover:to-cyan-700 transition-all shadow-md"
+                        >
+                          Complete
+                        </button>
+                        <button
+                          onClick={() => updateStatus(appt.id, "cancelled")}
+                          className="px-4 py-3 bg-slate-100 text-slate-600 rounded-xl font-semibold hover:bg-slate-200 transition-all"
+                        >
+                          Cancel
+                        </button>
+                      </>
                     )}
                     {(appt.status === "completed" || appt.status === "cancelled") && (
                       <>
                         {deleteConfirm === appt.id ? (
-                          <div className="flex gap-2">
+                          <div className="flex gap-2 w-full">
                             <button
                               onClick={() => deleteAppointment(appt.id)}
                               className="flex-1 px-4 py-3 bg-red-600 text-white rounded-xl font-semibold hover:bg-red-700 transition-all"
                             >
-                              Confirm Delete
+                              Confirm
                             </button>
                             <button
                               onClick={() => setDeleteConfirm(null)}
                               className="flex-1 px-4 py-3 bg-slate-200 text-slate-700 rounded-xl font-semibold hover:bg-slate-300 transition-all"
                             >
-                              Cancel
+                              Back
                             </button>
                           </div>
                         ) : (
                           <button
                             onClick={() => setDeleteConfirm(appt.id)}
-                            className="w-full px-4 py-3 bg-red-100 text-red-600 rounded-xl font-semibold hover:bg-red-200 transition-all flex items-center justify-center gap-2"
+                            className="w-full px-4 py-3 bg-slate-100 text-slate-500 rounded-xl font-semibold hover:bg-red-100 hover:text-red-600 transition-all flex items-center justify-center gap-2"
                           >
                             <Trash2 className="w-4 h-4" />
                             Delete Appointment
@@ -448,6 +521,7 @@ const DoctorAppointments = () => {
                         )}
                       </>
                     )}
+                    </div>
                   </div>
                 );
               })}

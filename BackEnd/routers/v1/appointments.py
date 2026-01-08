@@ -8,7 +8,7 @@ from core.database import get_db
 from models.appointment import Appointment, AppointmentStatus
 from models.users import User, UserRole
 from models.doctor import Doctor, DoctorAvailability
-from models.notification import Notification # <--- Added for History
+from models.notification import Notification
 from routers.v1.dependencies import get_current_user
 from schemas.appointment import AppointmentCreate
 from utils.appointment_helpers import check_appointment_conflict, get_available_slots
@@ -25,6 +25,9 @@ def get_appointments(
     db: Session = Depends(get_db)
 ):
     """Get appointments with optional filtering"""
+    
+    from models.doctor import Doctor 
+
     query = db.query(Appointment).options(
         joinedload(Appointment.patient),
         joinedload(Appointment.doctor)
@@ -34,10 +37,8 @@ def get_appointments(
     if current_user.role.value == "patient":
         query = query.filter(Appointment.patient_id == current_user.id)
     elif current_user.role.value == "doctor":
-        # FIXED: doctor_id already points to users.id
         query = query.filter(Appointment.doctor_id == current_user.id)
     elif current_user.role.value == "admin":
-        # Admins can see all appointments
         pass
     else:
         raise HTTPException(
@@ -55,22 +56,49 @@ def get_appointments(
     
     appointments = query.order_by(Appointment.appointment_date.desc()).all()
     
-    return [
-        {
+    results = []
+    for appointment in appointments:
+        specialization = "General Practice"
+        avatar = None
+
+        try:
+            doc_profile = db.query(Doctor).filter(Doctor.user_id == appointment.doctor_id).first()
+            
+            if doc_profile:
+                if hasattr(doc_profile, "specializations_json") and doc_profile.specializations_json:
+                    specs = doc_profile.specializations_json
+                    if isinstance(specs, list):
+                        specialization = ", ".join(specs)
+                    else:
+                        specialization = str(specs)
+                elif hasattr(doc_profile, "specialization") and doc_profile.specialization:
+                    specialization = doc_profile.specialization
+            if appointment.doctor:
+                if hasattr(appointment.doctor, "picture") and appointment.doctor.picture:
+                    avatar = appointment.doctor.picture
+                elif hasattr(appointment.doctor, "avatar") and appointment.doctor.avatar:
+                    avatar = appointment.doctor.avatar
+
+        except Exception as e:
+            print(f"Error fetching details for appt {appointment.id}: {e}")
+
+        results.append({
             "id": appointment.id,
             "patient_id": appointment.patient_id,
             "patient_name": f"{appointment.patient.fname} {appointment.patient.lname}",
             "doctor_id": appointment.doctor_id,
             "doctor_name": f"{appointment.doctor.fname} {appointment.doctor.lname}",
+            "doctor_avatar": avatar, 
+            "doctor_specialization": specialization,
             "appointment_date": appointment.appointment_date,
             "reason": appointment.reason,
             "status": appointment.status.value,
             "notes": appointment.notes,
             "created_at": appointment.created_at,
             "updated_at": appointment.updated_at
-        }
-        for appointment in appointments
-    ]
+        })
+    
+    return results
 
 @router.post("/", response_model=dict)
 async def create_appointment(
@@ -613,7 +641,6 @@ async def update_appointment_status(
         await manager.send_personal_message({
             "type": "APPOINTMENT_UPDATE",
             
-            # 👇 THESE ARE THE MISSING KEYS YOUR FRONTEND NEEDS 👇
             "appointment_id": appointment.id,   
             "status": new_status_str,           
             
@@ -629,3 +656,5 @@ async def update_appointment_status(
         print(f"Socket error: {e}")
 
     return {"message": "Status updated", "status": new_status_str}
+
+
