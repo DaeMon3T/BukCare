@@ -1,4 +1,5 @@
-import React, { Component, ErrorInfo, ReactNode } from 'react';
+import { Component, type ErrorInfo, type ReactNode } from 'react';
+import { AlertTriangle, RefreshCw, Home } from 'lucide-react';
 
 interface Props {
   children: ReactNode;
@@ -20,38 +21,67 @@ class ErrorBoundary extends Component<Props, State> {
     return { hasError: true, error };
   }
 
-  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+  override componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    // In a real app, you would log this to Sentry/Datadog
     console.error('ErrorBoundary caught an error:', error, errorInfo);
   }
 
-  render() {
+  handleGoHome = () => {
+    window.location.href = '/';
+  };
+
+  override render() {
     if (this.state.hasError) {
       if (this.props.fallback) {
         return this.props.fallback;
       }
 
       return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50">
-          <div className="max-w-md w-full bg-white shadow-lg rounded-lg p-6">
-            <div className="flex items-center justify-center w-12 h-12 mx-auto bg-red-100 rounded-full">
-              <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-              </svg>
+        <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
+          <div className="max-w-md w-full bg-white shadow-xl shadow-slate-200/50 rounded-2xl border border-slate-100 p-8 text-center animate-fade-in">
+            
+            {/* Icon Blob */}
+            <div className="flex items-center justify-center w-16 h-16 mx-auto bg-red-50 rounded-2xl mb-6">
+              <AlertTriangle className="w-8 h-8 text-red-500" />
             </div>
-            <div className="mt-4 text-center">
-              <h3 className="text-lg font-medium text-gray-900">Something went wrong</h3>
-              <p className="mt-2 text-sm text-gray-500">
-                We're sorry, but something unexpected happened. Please try refreshing the page.
-              </p>
-              <div className="mt-4">
-                <button
-                  onClick={() => window.location.reload()}
-                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                >
-                  Refresh Page
-                </button>
-              </div>
+
+            {/* Text Content */}
+            <h3 className="text-xl font-bold text-slate-900 mb-2">
+              Something went wrong
+            </h3>
+            <p className="text-sm text-slate-500 mb-8 leading-relaxed">
+              We encountered an unexpected error. Our team has been notified. 
+              Please try refreshing the page or return home.
+            </p>
+
+            {/* Action Buttons */}
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={() => window.location.reload()}
+                className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 border border-transparent text-sm font-bold rounded-xl text-white bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-200 transition-all active:scale-95"
+              >
+                <RefreshCw className="w-4 h-4" />
+                Refresh Page
+              </button>
+              
+              <button
+                onClick={this.handleGoHome}
+                className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 border border-slate-200 text-sm font-bold rounded-xl text-slate-600 bg-white hover:bg-slate-50 hover:text-slate-900 transition-all active:scale-95"
+              >
+                <Home className="w-4 h-4" />
+                Go Back Home
+              </button>
             </div>
+
+            {/* Optional Technical Details (Dev Only) */}
+            {import.meta.env.DEV && this.state.error && (
+                <div className="mt-8 text-left bg-slate-50 p-4 rounded-xl border border-slate-200 overflow-hidden">
+                    <p className="text-xs font-mono text-red-500 break-words">
+                        {this.state.error.toString()}
+                    </p>
+                </div>
+            )}
+
           </div>
         </div>
       );

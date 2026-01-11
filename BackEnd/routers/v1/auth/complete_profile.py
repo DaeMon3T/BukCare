@@ -1,10 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
-from fastapi.concurrency import run_in_threadpool # 👈 Added for speed
+from fastapi.concurrency import run_in_threadpool
 from sqlalchemy.orm import Session
 from datetime import datetime
 from typing import Optional
 import json 
-import asyncio # 👈 Added for speed
+import asyncio
 
 from core.database import get_db
 from models.users import User, UserRole
