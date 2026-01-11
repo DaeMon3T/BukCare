@@ -3,15 +3,17 @@ from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import or_, and_, desc
 from typing import List
 from datetime import datetime
+from pydantic import BaseModel 
 
-from core.database import get_db
+# Unified Imports (Fixes the confusion)
 from models.message import Message, MessageType
 from models.users import User
-from models.appointment import Appointment # Needs appointment model access
+from models.appointment import Appointment
+from core.database import get_db
 from routers.v1.dependencies import get_current_user
 from core.socket_manager import manager 
 
-# Import our new Schemas
+# Import Schemas
 from schemas.message import (
     MessageCreate, 
     MessageResponse, 
@@ -20,7 +22,10 @@ from schemas.message import (
     ReminderRequest
 )
 
-router = APIRouter()
+router = APIRouter(
+    prefix="/messages",
+    tags=["Messages"]
+)
 
 # --- Endpoints ---
 
@@ -118,7 +123,7 @@ def get_chat_history(
     Uses joinedload to fetch appointment details efficiently.
     """
     messages = db.query(Message).options(
-        joinedload(Message.appointment) # 👈 Important: Load nested appointment data
+        joinedload(Message.appointment) 
     ).filter(
         or_(
             and_(Message.sender_id == current_user.id, Message.receiver_id == other_user_id),
@@ -175,7 +180,8 @@ async def send_message(
             "sender_picture": current_user.picture
         }
     }
-    await manager.send_personal_message(socket_payload, user_id=str(message_data.receiver_id))
+    # Note: Ensure payload.receiver_id is passed as int if your manager expects int
+    await manager.send_personal_message(socket_payload, user_id=message_data.receiver_id)
     
     return new_message
 
@@ -189,12 +195,10 @@ async def send_appointment_reminder(
     """
     Send an Appointment Reminder Card
     """
-    # Fetch & Validate Appointment
     appt = db.query(Appointment).filter(Appointment.id == request.appointment_id).first()
     if not appt:
         raise HTTPException(404, "Appointment not found")
 
-    # Create Message
     new_msg = Message(
         sender_id=current_user.id,
         receiver_id=request.receiver_id,
@@ -207,18 +211,18 @@ async def send_appointment_reminder(
     db.commit()
     db.refresh(new_msg)
     
-    # WEBSOCKET BROADCAST (Rich Data)
+    # WEBSOCKET BROADCAST
     socket_payload = {
         "type": "CHAT_MESSAGE",
         "message": {
             "id": new_msg.id,
             "sender_id": new_msg.sender_id,
+            "receiver_id": new_msg.receiver_id,
             "content": new_msg.content,
             "message_type": "appointment_reminder",
             "timestamp": new_msg.timestamp.isoformat(),
             "sender_name": f"{current_user.fname} {current_user.lname}",
             "sender_picture": current_user.picture,
-            # Embed the card data directly
             "appointment": {
                 "id": appt.id,
                 "appointment_date": appt.appointment_date.isoformat(),
@@ -228,9 +232,8 @@ async def send_appointment_reminder(
         }
     }
     
-    # Send to Receiver AND Sender (so it appears in their own chat window immediately)
-    await manager.send_personal_message(socket_payload, str(request.receiver_id))
-    await manager.send_personal_message(socket_payload, str(current_user.id))
+    await manager.send_personal_message(socket_payload, request.receiver_id)
+    await manager.send_personal_message(socket_payload, current_user.id)
 
     return {"status": "sent", "message_id": new_msg.id}
 
@@ -248,8 +251,7 @@ async def delete_message(
     if message.sender_id != current_user.id:
         raise HTTPException(status_code=403, detail="You can only delete your own messages")
 
-    # Soft Delete (We actually just flag it)
-    message.is_delete = True # Match your model field 'is_delete' (not is_deleted)
+    message.is_delete = True 
     message.content = "Message unsent"
     db.commit()
 
@@ -260,7 +262,7 @@ async def delete_message(
             "message_id": message_id,
             "conversation_id": current_user.id 
         },
-        user_id=str(message.receiver_id)
+        user_id=message.receiver_id
     )
     
     # Notify Sender
@@ -269,7 +271,44 @@ async def delete_message(
             "type": "MESSAGE_DELETED",
             "message_id": message_id
         },
-        user_id=str(current_user.id)
+        user_id=current_user.id
     )
 
     return {"message": "Message deleted"}
+
+
+@router.put("/read/{other_user_id}", status_code=status.HTTP_202_ACCEPTED)
+def mark_messages_read(
+    other_user_id: int,
+    db: Session = Depends(get_db), # 👈 Fixed import
+    current_user: User = Depends(get_current_user) # 👈 Fixed import
+):
+    db.query(Message).filter(
+        Message.sender_id == other_user_id,
+        Message.receiver_id == current_user.id,
+        Message.is_read == False
+    ).update({"is_read": True}, synchronize_session=False)
+    
+    db.commit()
+    return {"message": "Marked as read"}
+
+
+# Typing Indicator
+class TypingSchema(BaseModel):
+    receiver_id: int
+    status: str 
+
+@router.post("/typing", status_code=status.HTTP_200_OK)
+async def broadcast_typing(
+    payload: TypingSchema,
+    current_user: User = Depends(get_current_user) # 👈 Fixed import
+):
+    ws_message = {
+        "type": "TYPING_START" if payload.status == "start" else "TYPING_STOP",
+        "sender_id": current_user.id,
+        "receiver_id": payload.receiver_id
+    }
+    
+    await manager.send_personal_message(ws_message, payload.receiver_id)
+    
+    return {"status": "sent"}

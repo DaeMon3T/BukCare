@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useNotifications } from "@/hooks/useNotifications"; 
+import { useWebSocket } from "@/context/WebSocketContext"; // 👈 Import WebSocket Context
 import bukcareLogo from "@/assets/images/bukcare_logo.png";
 import defaultAvatar from "@/assets/images/default_avatar.png";
 
@@ -29,9 +30,12 @@ const Navbar: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
+  // 1. Get Chat Unread Count from WebSocket (Real-time & Syncs with ChatWindow)
+  const { unreadCount: chatUnreadCount } = useWebSocket(); 
+
   const { 
     notifications, 
-    unreadCount, 
+    unreadCount: systemUnreadCount, // This is for Bell Icon (Appointments only)
     markAllAsRead, 
     markAsRead, 
     deleteNotification 
@@ -44,10 +48,13 @@ const Navbar: React.FC = () => {
   // --- MEMOIZED BADGE COUNTS ---
   const badgeCounts = useMemo(() => {
     return {
-        messages: notifications.filter(n => n.type === 'CHAT_MESSAGE' && !n.is_read).length,
+        // ⚡ Update: Use the WebSocket count for messages
+        messages: chatUnreadCount, 
+        
+        // Keep existing logic for appointments
         appointments: notifications.filter(n => ['NEW_APPOINTMENT', 'APPOINTMENT_UPDATE'].includes(n.type) && !n.is_read).length
     };
-  }, [notifications]);
+  }, [notifications, chatUnreadCount]);
 
   // --- ACTION HANDLERS ---
   const handleNotificationClick = useCallback(async (notif: any) => {
@@ -87,7 +94,7 @@ const Navbar: React.FC = () => {
           { label: "Dashboard", path: "/doctor/dashboard", icon: Home },
           { label: "Appointments", path: "/doctor/appointments", icon: Calendar, badge: badgeCounts.appointments },
           { label: "Availability", path: "/doctor/set-availability", icon: ClipboardList },
-          { label: "Messages", path: "/doctor/messages", icon: MessageCircle, badge: badgeCounts.messages },
+          { label: "Messages", path: "/doctor/messages", icon: MessageCircle, badge: badgeCounts.messages }, // 👈 Uses new count
         ];
         break;
       case "patient":
@@ -96,7 +103,7 @@ const Navbar: React.FC = () => {
           { label: "Home", path: "/patient/home", icon: Home },
           { label: "Find Doctors", path: "/patient/find-doctor", icon: Search },
           { label: "Appointments", path: "/patient/appointments", icon: ClipboardList, badge: badgeCounts.appointments },
-          { label: "Messages", path: "/patient/messages", icon: MessageCircle, badge: badgeCounts.messages },
+          { label: "Messages", path: "/patient/messages", icon: MessageCircle, badge: badgeCounts.messages }, // 👈 Uses new count
         ];
         break;
     }
@@ -166,11 +173,11 @@ const Navbar: React.FC = () => {
                 <button
                   onClick={() => setShowNotifications(!showNotifications)}
                   className={`relative p-2 md:p-2.5 rounded-xl transition-all ${
-                    showNotifications || unreadCount > 0 ? "bg-blue-50 text-blue-600" : "text-slate-500 hover:bg-slate-100"
+                    showNotifications || systemUnreadCount > 0 ? "bg-blue-50 text-blue-600" : "text-slate-500 hover:bg-slate-100"
                   }`}
                 >
                   <Bell className="w-5 h-5 md:w-5 md:h-5" />
-                  {unreadCount > 0 && (
+                  {systemUnreadCount > 0 && (
                     <span className="absolute top-2 right-2 md:right-2.5 w-2 md:w-2.5 h-2 md:h-2.5 bg-rose-500 border-2 border-white rounded-full animate-bounce"></span>
                   )}
                 </button>
@@ -188,17 +195,17 @@ const Navbar: React.FC = () => {
                       <div className="px-5 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
                         <div className="flex items-center gap-2">
                             <h3 className="font-bold text-slate-800">Notifications</h3>
-                            {unreadCount > 0 && (
+                            {systemUnreadCount > 0 && (
                                 <span className="bg-blue-100 text-blue-700 text-[10px] font-bold px-2 py-0.5 rounded-full">
-                                    {unreadCount} New
+                                    {systemUnreadCount} New
                                 </span>
                             )}
                         </div>
                         <button 
                             onClick={markAllAsRead}
-                            disabled={unreadCount === 0}
+                            disabled={systemUnreadCount === 0}
                             className={`flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-md transition-colors ${
-                                unreadCount > 0 
+                                systemUnreadCount > 0 
                                 ? "text-blue-600 hover:bg-blue-100 cursor-pointer" 
                                 : "text-slate-400 cursor-not-allowed"
                             }`}
@@ -239,7 +246,6 @@ const Navbar: React.FC = () => {
                                       <button 
                                         onClick={(e) => {
                                             e.stopPropagation();
-                                            // The hook handles the logic. If it shows a toast, you might need to edit the hook itself.
                                             deleteNotification(Number(notif.id));
                                         }}
                                         className="text-slate-300 hover:text-red-500 hover:bg-red-50 p-1 rounded transition-all opacity-100 md:opacity-0 group-hover:opacity-100"

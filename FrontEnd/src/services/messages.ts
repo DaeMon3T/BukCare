@@ -1,5 +1,12 @@
 import api from "./api";
 
+export interface UserSearchResult {
+  id: number;
+  name: string;
+  role: string;
+  picture?: string;
+}
+
 export interface Message {
   id: number;
   sender_id: number;
@@ -9,6 +16,9 @@ export interface Message {
   is_read: boolean;
   sender_name?: string;
   sender_picture?: string;
+  message_type?: "text" | "image" | "file" | "appointment_reminder";
+  is_delete?: boolean;
+  appointment?: any; 
 }
 
 export interface Conversation {
@@ -19,13 +29,6 @@ export interface Conversation {
   last_message?: string;
   last_message_time?: string;
   unread_count: number;
-}
-
-export interface UserSearchResult {
-  id: number;
-  name: string;
-  role: string;
-  picture?: string;
 }
 
 const messagesAPI = {
@@ -58,6 +61,15 @@ const messagesAPI = {
 
   deleteMessage: async (messageId: number): Promise<void> => {
     await api.delete(`/messages/${messageId}`);
+  },
+
+  markAsRead: async (otherUserId: number) => {
+    const response = await api.put(`/messages/read/${otherUserId}`);
+    return response.data;
+  },
+
+  sendTypingStatus: async (receiverId: number, status: 'start' | 'stop') => {
+    return api.post('/messages/typing', { receiver_id: receiverId, status });
   }
 };
 
