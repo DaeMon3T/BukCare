@@ -20,6 +20,7 @@ from routers.v1 import notifications
 from routers.v1 import tips
 from routers.v1 import reviews
 from routers.v1 import appointments 
+from routers.v1 import messages
 
 # Model Imports for Seeding
 from models.doctor import Specialization 
@@ -69,7 +70,9 @@ def create_app() -> FastAPI:
     app.include_router(reviews.router, prefix="/v1/reviews", tags=["Reviews"])
     app.include_router(doctors.router, prefix="/v1/doctor", tags=["Doctor"])
     app.include_router(appointments.router, prefix="/v1/appointments", tags=["Appointments"])
-    app.include_router(v1_router, prefix="/v1") # Auth, etc.
+    app.include_router(messages.router, prefix="/v1")
+    app.include_router(v1_router, prefix="/v1")
+
 
 
     # ============================================================
@@ -154,6 +157,12 @@ def create_app() -> FastAPI:
                 "status_code": 422
             }
         )
+
+
+    @app.get("/")
+    def read_root():
+        return {"message": "Welcome to BukCare API"}
+    
 
     @app.exception_handler(Exception)
     async def general_exception_handler(request: Request, exc: Exception):

@@ -5,7 +5,9 @@ import { useWebSocket } from "@/context/WebSocketContext";
 import messagesAPI, { type Conversation } from "@/services/messages";
 import ChatList from "@/components/chat/ChatList";
 import ChatWindow from "@/components/chat/ChatWindow";
-import { User } from "lucide-react";
+import { MessageSquare } from "lucide-react";
+
+// 🗑️ Removed: notificationSound import
 
 const Messages: React.FC = () => {
   const { user } = useAuth();
@@ -14,8 +16,11 @@ const Messages: React.FC = () => {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeChat, setActiveChat] = useState<Conversation | null>(null);
   const [isMobileChatOpen, setIsMobileChatOpen] = useState(false);
+  
+  const [typingUsers, setTypingUsers] = useState<Set<number>>(new Set());
+  
+  // 🗑️ Removed: audioRef
 
-  // 1. Fetch Conversations
   useEffect(() => {
     loadConversations();
   }, []);
@@ -23,31 +28,39 @@ const Messages: React.FC = () => {
   const loadConversations = async () => {
     try {
       const data = await messagesAPI.getConversations();
-      setConversations(data);
+      // Robust Sort
+      const sorted = data.sort((a: any, b: any) => 
+        new Date(b.last_message_time || 0).getTime() - new Date(a.last_message_time || 0).getTime()
+      );
+      setConversations(sorted);
     } catch (error) {
       console.error("Failed to load conversations", error);
     }
   };
 
-  // 2. WebSocket Listener (Global Updates)
+  // 🗑️ Removed: playNotification helper
+
+  // WEBSOCKET LISTENER 
   useEffect(() => {
     if (!lastMessage) return;
 
+    // A. HANDLE MESSAGES
     if (lastMessage.type === "CHAT_MESSAGE" && lastMessage.message) {
       const incomingMsg = lastMessage.message;
       const currentUserId = Number(user?.id);
       const senderId = incomingMsg.sender_id;
-      const receiverId = incomingMsg.receiver_id;
-      const otherUserId = senderId === currentUserId ? receiverId : senderId;
+      const isActiveChat = activeChat?.user_id === senderId;
 
-      // Update Conversation List Preview
+      // 🗑️ Removed: Local Sound Effect (Handled Globally)
+
       setConversations(prev => {
-        const exists = prev.find(c => c.user_id === otherUserId);
-        
-        // Helper to format preview text
+        const exists = prev.find(c => c.user_id === senderId || c.user_id === incomingMsg.receiver_id);
+        const otherUserId = senderId === currentUserId ? incomingMsg.receiver_id : senderId;
+
+        // Preview Logic
         let preview = incomingMsg.content;
         if (incomingMsg.message_type === "appointment_reminder") preview = "📅 Appointment Reminder";
-        if (incomingMsg.content.includes("📞 Started a Video Call")) preview = "📞 Video Call";
+        if (incomingMsg.content.includes("video_call")) preview = "📞 Video Call";
 
         if (exists) {
           return prev.map(c => 
@@ -56,19 +69,35 @@ const Messages: React.FC = () => {
                   ...c, 
                   last_message: preview, 
                   last_message_time: incomingMsg.timestamp, 
-                  unread_count: (activeChat?.user_id === otherUserId) ? 0 : c.unread_count + 1 
+                  unread_count: isActiveChat ? 0 : (c.unread_count || 0) + 1 
                 } 
               : c
           ).sort((a, b) => new Date(b.last_message_time!).getTime() - new Date(a.last_message_time!).getTime());
         } else {
-          loadConversations(); // New user started chatting
+          loadConversations(); 
           return prev;
         }
       });
     }
-  }, [lastMessage, activeChat, user]);
 
-  // 3. Handlers
+    // B. HANDLE TYPING INDICATORS
+    if (lastMessage.type === "TYPING_START" && lastMessage.sender_id) {
+       const senderId = lastMessage.sender_id;
+       setTypingUsers(prev => new Set(prev).add(senderId));
+    }
+    
+    if (lastMessage.type === "TYPING_STOP" && lastMessage.sender_id) {
+       const senderId = lastMessage.sender_id;
+       setTypingUsers(prev => {
+          const next = new Set(prev);
+          next.delete(senderId);
+          return next;
+       });
+    }
+
+  }, [lastMessage, activeChat, user]); // 🗑️ Removed: playNotification from dependency
+
+  // 4. Handlers
   const handleStartNewChat = (userResult: any) => {
     const existing = conversations.find(c => c.user_id === userResult.id);
     if (existing) {
@@ -97,36 +126,43 @@ const Messages: React.FC = () => {
   };
 
   return (
-    <div className="h-screen flex flex-col bg-slate-50 overflow-hidden">
+    <div className="h-screen flex flex-col bg-[#F8FAFC] overflow-hidden">
       <Navbar />
 
-      <div className="flex-1 flex max-w-[1600px] w-full mx-auto p-4 gap-4 h-[calc(100vh-80px)]">
+      <div className="flex-1 flex max-w-[1600px] w-full mx-auto p-4 gap-6 h-[calc(100vh-80px)]">
         
         {/* SIDEBAR */}
-        <div className={`w-full md:w-80 lg:w-96 bg-white rounded-2xl shadow-sm border border-slate-200 flex flex-col ${isMobileChatOpen ? 'hidden md:flex' : 'flex'}`}>
+        <div className={`w-full md:w-80 lg:w-96 bg-white rounded-2xl shadow-lg shadow-slate-200/50 border border-slate-100 flex flex-col transition-all duration-300 ${isMobileChatOpen ? 'hidden md:flex' : 'flex'}`}>
           <ChatList 
             conversations={conversations}
             activeChat={activeChat}
-            onSelectChat={(chat) => { setActiveChat(chat); setIsMobileChatOpen(true); }}
+            onSelectChat={(chat) => { 
+                setActiveChat(chat); 
+                setIsMobileChatOpen(true); 
+                setConversations(prev => prev.map(c => c.user_id === chat.user_id ? {...c, unread_count: 0} : c));
+            }}
             onStartNewChat={handleStartNewChat}
+            typingUsers={typingUsers} 
           />
         </div>
 
         {/* CHAT WINDOW */}
-        <div className={`flex-1 bg-white rounded-2xl shadow-sm border border-slate-200 flex flex-col ${!isMobileChatOpen ? 'hidden md:flex' : 'flex'}`}>
+        <div className={`flex-1 bg-white rounded-2xl shadow-lg shadow-slate-200/50 border border-slate-100 flex flex-col overflow-hidden transition-all duration-300 ${!isMobileChatOpen ? 'hidden md:flex' : 'flex'}`}>
           {activeChat ? (
             <ChatWindow 
               activeChat={activeChat}
               onBack={() => setIsMobileChatOpen(false)}
               onMessageSent={handleMessageSent}
+              isTyping={typingUsers.has(activeChat.user_id)} 
             />
           ) : (
-            <div className="flex-1 flex flex-col items-center justify-center text-slate-400 bg-slate-50/50 rounded-2xl">
-              <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mb-4">
-                <User className="w-10 h-10 text-slate-300" />
+            // Empty State
+            <div className="flex-1 flex flex-col items-center justify-center text-slate-400 bg-slate-50/30">
+              <div className="w-24 h-24 bg-slate-100 rounded-full flex items-center justify-center mb-6 animate-pulse-slow">
+                <MessageSquare className="w-10 h-10 text-slate-300" />
               </div>
-              <p className="text-lg font-medium">Select a conversation</p>
-              <p className="text-sm">Search for a user to start chatting</p>
+              <h3 className="text-xl font-bold text-slate-700">Doctor Messages</h3>
+              <p className="text-sm text-slate-500 mt-2">Select a conversation to start chatting</p>
             </div>
           )}
         </div>

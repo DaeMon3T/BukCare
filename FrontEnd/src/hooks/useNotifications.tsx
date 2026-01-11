@@ -5,7 +5,7 @@ import { useAuth } from "@/context/AuthContext";
 import api from "@/services/api"; 
 import toast from "react-hot-toast";
 import notificationSound from "@/assets/sounds/notification2.mp3";
-import { MessageCircle, Bell, X, CheckCircle } from "lucide-react"; 
+import { Bell, X, CheckCircle } from "lucide-react"; 
 
 export interface Notification {
   id: number;
@@ -45,36 +45,32 @@ export const useNotifications = (userId?: number) => {
     fetchNotifications();
   }, [fetchNotifications]);
 
-  // 2. Handle Real-Time Messages (The Super-Deduping Logic)
+  // 2. Handle Real-Time Messages
   useEffect(() => {
     if (!lastMessage) return;
 
-    // --- SHIELD 1: STALE CHECK ---
-    // If the message is older than 5 seconds, ignore it. 
-    // This prevents "notification blasts" when you refresh the page.
-    const messageTime = new Date(lastMessage.created_at || Date.now()).getTime();
-    const now = Date.now();
-    if (now - messageTime > 5000) {
-        // console.log("Skipping stale message:", lastMessage);
+    // 🛑 STOP! FILTER OUT CHAT MESSAGES HERE
+    // We do this because WebSocketContext.tsx already handles Chat Toasts (smartly).
+    // If we don't return here, we get Double Notifications.
+    if (lastMessage.type === "CHAT_MESSAGE" || lastMessage.type === "TYPING_START" || lastMessage.type === "TYPING_STOP") {
         return; 
     }
 
+    // --- SHIELD 1: STALE CHECK ---
+    const messageTime = new Date(lastMessage.created_at || Date.now()).getTime();
+    const now = Date.now();
+    if (now - messageTime > 5000) return; 
+
     // --- SHIELD 2: ROBUST ID GENERATION ---
-    // If there is no ID, we create one from the content. 
-    // This stops "ghost" messages with no IDs from showing up multiple times.
     const rawId = lastMessage.id || lastMessage.message?.id;
     const contentHash = lastMessage.message?.content || lastMessage.message || "unknown";
-    
-    // Unique Key: Uses ID if available, otherwise uses the text content + type
     const uniqueKey = rawId ? `id-${rawId}` : `content-${lastMessage.type}-${contentHash}`;
 
     // Dedupe Check
     if (globalProcessedIds.has(uniqueKey)) return;
     globalProcessedIds.add(uniqueKey);
 
-    // --- FROM HERE, IT'S THE SAME TOAST LOGIC ---
-
-    // Play Sound
+    // --- PLAY SOUND (Only for System Alerts now) ---
     try {
       const audio = new Audio(notificationSound);
       audio.play().catch(() => {}); 
@@ -83,33 +79,21 @@ export const useNotifications = (userId?: number) => {
     }
 
     // Data Prep
-    let displayMessage = "";
-    let displayTitle = "New Notification";
+    let displayTitle = lastMessage.title || "Notification";
+    let displayMessage = typeof lastMessage.message === 'string' 
+        ? lastMessage.message 
+        : (lastMessage.message?.content || "You have a new update");
+    
     let messageType = lastMessage.type || "info";
     let appointmentId = lastMessage.appointment_id || lastMessage.message?.appointment_id;
 
-    if (messageType === "CHAT_MESSAGE") {
-        const chatData = lastMessage.message;
-        displayTitle = chatData.sender_name || "New Message";
-        displayMessage = chatData.content; 
-    } else {
-        displayTitle = lastMessage.title || "Notification";
-        // Ensure message is a string, not an object
-        displayMessage = typeof lastMessage.message === 'string' 
-            ? lastMessage.message 
-            : (lastMessage.message?.content || "You have a new update");
-    }
-
-    // CUSTOM TOAST UI
+    // CUSTOM TOAST UI (For Appointments/System only)
     toast.custom((t) => (
       <div
         onClick={() => {
             toast.dismiss(t.id);
             const baseRoute = user?.role === 'doctor' ? '/doctor' : '/patient';
-            
-            if (messageType === "CHAT_MESSAGE") {
-                navigate(`${baseRoute}/messages`);
-            } else if (appointmentId) {
+            if (appointmentId) {
                 navigate(`${baseRoute}/appointments`);
             }
         }}
@@ -121,14 +105,11 @@ export const useNotifications = (userId?: number) => {
           <div className="flex items-start">
             <div className="flex-shrink-0 pt-0.5">
                <div className={`h-10 w-10 rounded-full flex items-center justify-center ${
-                   messageType === 'CHAT_MESSAGE' ? 'bg-purple-100 text-purple-600' : 
                    messageType === 'success' ? 'bg-emerald-100 text-emerald-600' : 'bg-blue-100 text-blue-600'
                }`}>
-                  {messageType === 'CHAT_MESSAGE' ? <MessageCircle className="w-6 h-6"/> : 
-                   messageType === 'success' ? <CheckCircle className="w-6 h-6"/> : <Bell className="w-6 h-6"/>}
+                  {messageType === 'success' ? <CheckCircle className="w-6 h-6"/> : <Bell className="w-6 h-6"/>}
                </div>
             </div>
-            
             <div className="ml-3 flex-1">
               <p className="text-sm font-bold text-slate-900">{displayTitle}</p>
               <p className="mt-1 text-sm text-slate-500 line-clamp-2">
@@ -151,7 +132,7 @@ export const useNotifications = (userId?: number) => {
       </div>
     ), { duration: 5000, position: "top-right" });
 
-    // Update State
+    // Update State (Add to Bell List)
     const newNotif: Notification = {
         id: rawId || Date.now(),
         title: displayTitle,
@@ -163,9 +144,7 @@ export const useNotifications = (userId?: number) => {
     };
 
     setNotifications((prev) => [newNotif, ...prev]);
-    if (messageType !== "CHAT_MESSAGE") {
-        setUnreadCount((prev) => prev + 1);
-    }
+    setUnreadCount((prev) => prev + 1);
 
   }, [lastMessage, user, navigate]);
 
