@@ -9,10 +9,10 @@ import {
   Trash2, 
   RefreshCw,
   CalendarDays,
-  X
+  X,
+  Info
 } from "lucide-react";
 
-// 1. Strict Interface
 interface Schedule {
   id: number;
   doctor_id: number;
@@ -28,20 +28,34 @@ const DoctorSetAvailability = () => {
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
+  const [progress, setProgress] = useState(0);
 
-  // --- BULK GENERATOR STATE ---
+  // --- LOCAL DATE HELPER ---
+  const getLocalToday = () => {
+      const d = new Date();
+      return d.toLocaleDateString('en-CA');
+  };
+
+  const getFutureDate = (days: number) => {
+      const d = new Date();
+      d.setDate(d.getDate() + days);
+      return d.toLocaleDateString('en-CA');
+  };
+
+  // --- GENERATOR STATE ---
   const [dateRange, setDateRange] = useState({
-    start: new Date().toISOString().split('T')[0], 
-    end: new Date(new Date().setDate(new Date().getDate() + 30)).toISOString().split('T')[0] 
+    start: getLocalToday(), 
+    end: getFutureDate(30)
   });
   
   const [timeRange, setTimeRange] = useState({
     start: "09:00",
     end: "17:00",
-    duration: 60 
+    duration: 30 
   });
 
-  const [selectedDays, setSelectedDays] = useState<number[]>([1, 3, 5]); 
+  // Default: All days selected. If user clears this, we assume "Specific Dates Only"
+  const [selectedDays, setSelectedDays] = useState<number[]>([1, 2, 3, 4, 5]); 
   const [notes, setNotes] = useState("");
 
   const daysOfWeek = [
@@ -58,18 +72,12 @@ const DoctorSetAvailability = () => {
   const fetchSchedules = useCallback(async () => {
     try {
       const res = await api.get("/schedules");
-      
       const data = res.data as Schedule[];
       
-      // SORTING FIX: Sort by Date first, THEN by Start Time
       const sorted = data.sort((a, b) => {
-        // 1. Compare Dates
-        const dateA = new Date(a.date || "").getTime();
-        const dateB = new Date(b.date || "").getTime();
+        const dateA = new Date(a.date).getTime();
+        const dateB = new Date(b.date).getTime();
         if (dateA !== dateB) return dateA - dateB;
-
-        // 2. If dates are equal, compare Start Times
-        // "09:00" comes before "10:00" string-wise, so localeCompare works perfectly
         return a.start_time.localeCompare(b.start_time);
       });
       
@@ -92,37 +100,37 @@ const DoctorSetAvailability = () => {
     if (!user?.id) return;
     
     setGenerating(true);
+    setProgress(0);
 
     try {
-      // Use Partial<Schedule> since we don't have 'id' yet
       const slotsToCreate: Partial<Schedule>[] = [];
-      
-      // Ensure strings are valid
-      const startStr = dateRange.start || new Date().toISOString().substring(0, 10);
-      const endStr = dateRange.end || new Date().toISOString().substring(0, 10);
+      const startDate = new Date(dateRange.start);
+      const endDate = new Date(dateRange.end);
 
-      const startDate = new Date(startStr);
-      const endDate = new Date(endStr);
-
+      // Loop through dates
       for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-        if (selectedDays.includes(d.getDay())) {
-          
-          const currentSlot = new Date(`2000-01-01T${timeRange.start}:00`); 
-          const endSlot = new Date(`2000-01-01T${timeRange.end}:00`);
+        
+        // 🛠️ LOGIC FIX: 
+        // If selectedDays is empty (length 0), we treat it as "Generate for ALL dates in range".
+        // Otherwise, we strictly filter by the selected weekdays.
+        const isDayIncluded = selectedDays.length === 0 || selectedDays.includes(d.getDay());
+
+        if (isDayIncluded) {
+          const baseDateStr = d.toISOString().substring(0, 10); 
+          const currentSlot = new Date(`${baseDateStr}T${timeRange.start}:00`); 
+          const endSlot = new Date(`${baseDateStr}T${timeRange.end}:00`);
 
           while (currentSlot < endSlot) {
             const slotStart = currentSlot.toTimeString().slice(0, 5); 
             
-            currentSlot.setMinutes(currentSlot.getMinutes() + timeRange.duration);
+            currentSlot.setMinutes(currentSlot.getMinutes() + parseInt(String(timeRange.duration)));
             const slotEnd = currentSlot.toTimeString().slice(0, 5); 
 
-            if (currentSlot > endSlot && slotEnd !== "00:00" && slotEnd > timeRange.end) break;
+            if (slotEnd !== "00:00" && slotEnd > timeRange.end && currentSlot > endSlot) break;
 
-            // KEY FIX HERE: Use .substring(0, 10) instead of .split('T')[0]
-            // This guarantees a string and satisfies TypeScript
             slotsToCreate.push({
               doctor_id: Number(user.id),
-              date: d.toISOString().substring(0, 10), 
+              date: baseDateStr, 
               start_time: slotStart,
               end_time: slotEnd,
               is_available: true,
@@ -133,21 +141,30 @@ const DoctorSetAvailability = () => {
       }
 
       if (slotsToCreate.length === 0) {
-        toast.error("No slots generated. Check settings.");
+        toast.error("No slots generated. Check date range.");
         setGenerating(false);
         return;
       }
 
-      if (slotsToCreate.length > 150) {
-        if(!confirm(`Generate ${slotsToCreate.length} slots? This might take a moment.`)) {
-            setGenerating(false);
-            return;
-        }
+      // Safety check for mass generation
+      if (slotsToCreate.length > 500) {
+         if(!confirm(`Warning: This will create ${slotsToCreate.length} slots. Proceed?`)) {
+             setGenerating(false);
+             return;
+         }
       }
 
-      await Promise.all(slotsToCreate.map(slot => api.post("/schedules/", slot)));
+      // Batch Processing
+      const BATCH_SIZE = 20;
+      for (let i = 0; i < slotsToCreate.length; i += BATCH_SIZE) {
+          const batch = slotsToCreate.slice(i, i + BATCH_SIZE);
+          await Promise.all(batch.map(slot => api.post("/schedules/", slot)));
+          
+          const percentage = Math.round(((i + BATCH_SIZE) / slotsToCreate.length) * 100);
+          setProgress(Math.min(percentage, 100));
+      }
 
-      toast.success(`Generated ${slotsToCreate.length} slots!`);
+      toast.success(`Success! Generated ${slotsToCreate.length} slots.`);
       fetchSchedules();
 
     } catch (err: any) {
@@ -155,6 +172,7 @@ const DoctorSetAvailability = () => {
       toast.error("Error creating slots.");
     } finally {
       setGenerating(false);
+      setProgress(0);
     }
   };
 
@@ -164,18 +182,38 @@ const DoctorSetAvailability = () => {
     );
   };
 
-  const handleDelete = async (id: number) => {
-    if (!confirm("Remove this slot?")) return;
+  const handleDeleteDay = async (date: string, slots: any[]) => {
+    if (!window.confirm(`Delete all ${slots.length} slots for ${new Date(date).toLocaleDateString()}?`)) return;
+    
+    // Optimistic UI Update
+    const slotIdsToRemove = new Set(slots.map(s => s.id));
+    setSchedules(prev => prev.filter(s => !slotIdsToRemove.has(s.id)));
+
     try {
-      await api.delete(`/schedules/${id}`);
-      setSchedules(prev => prev.filter(s => s.id !== id));
-      toast.success("Slot removed");
-    } catch {
-      toast.error("Failed to remove slot");
+        const BATCH_SIZE = 10;
+        for (let i = 0; i < slots.length; i += BATCH_SIZE) {
+            const batch = slots.slice(i, i + BATCH_SIZE);
+            await Promise.all(batch.map(slot => api.delete(`/schedules/${slot.id}`)));
+        }
+        toast.success("Day cleared");
+    } catch (err) {
+        toast.error("Failed to clear slots");
+        fetchSchedules(); 
     }
   };
 
-  // Group schedules by date
+  const handleDelete = async (id: number) => {
+    if (!confirm("Delete this slot?")) return;
+    try {
+        await api.delete(`/schedules/${id}`);
+        setSchedules(prev => prev.filter(s => s.id !== id));
+        toast.success("Slot removed");
+    } catch {
+        toast.error("Failed");
+    }
+  };
+
+  // Group schedules
   const groupedSchedules = schedules.reduce((acc, curr) => {
     const dateKey = curr.date || "Unknown";
     if (!acc[dateKey]) acc[dateKey] = [];
@@ -183,76 +221,57 @@ const DoctorSetAvailability = () => {
     return acc;
   }, {} as Record<string, Schedule[]>);
 
-  const handleDeleteDay = async (date: string, slots: any[]) => {
-    if (!window.confirm(`Delete all ${slots.length} slots for ${new Date(date).toLocaleDateString()}?`)) return;
-    
-    // UI: Optimistic update (remove them from screen immediately)
-    const slotIdsToRemove = new Set(slots.map(s => s.id));
-    setSchedules(prev => prev.filter(s => !slotIdsToRemove.has(s.id)));
-
-    try {
-        // Loop through and delete each slot using the endpoint WE KNOW works
-        await Promise.all(slots.map(slot => api.delete(`/schedules/${slot.id}`)));
-        toast.success("Day schedule cleared");
-    } catch (err) {
-        console.error(err);
-        toast.error("Failed to clear some slots");
-        fetchSchedules(); // Re-fetch if something failed, just to be safe
-    }
-  };
-
   return (
-    <div className="min-h-screen bg-slate-50 pb-20">
+    <div className="min-h-screen bg-slate-50 font-sans text-slate-900 pb-20">
       <Navbar />
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
         
-        <div>
-            <h1 className="text-3xl font-bold text-slate-900">Manage Availability</h1>
-            <p className="text-slate-500 mt-1">Automate your schedule.</p>
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+                <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Manage Availability</h1>
+                <p className="text-slate-500 mt-1">Define specific dates or recurring weekly schedules.</p>
+            </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             
-            {/* LEFT: BULK GENERATOR FORM */}
+            {/* LEFT: GENERATOR */}
             <div className="lg:col-span-1 space-y-6">
                 <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 sticky top-24">
-                    <div className="flex items-center gap-2 mb-6 text-blue-600">
-                        <RefreshCw className="w-5 h-5" />
-                        <h2 className="text-lg font-bold">Auto-Generator</h2>
+                    <div className="flex items-center gap-2 mb-6 pb-4 border-b border-slate-100">
+                        <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
+                            <RefreshCw className={`w-5 h-5 ${generating ? 'animate-spin' : ''}`} />
+                        </div>
+                        <div>
+                            <h2 className="text-lg font-bold text-slate-900">Auto-Generator</h2>
+                            <p className="text-xs text-slate-500">Bulk create time slots</p>
+                        </div>
                     </div>
 
                     <form onSubmit={handleBulkGenerate} className="space-y-5">
-                        {/* 1. Date Range */}
                         <div className="space-y-2">
                             <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Date Range</label>
                             <div className="grid grid-cols-2 gap-2">
                                 <div>
                                     <span className="text-xs text-slate-400 mb-1 block">From</span>
-                                    <input 
-                                        type="date" 
-                                        className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                                        value={dateRange.start}
-                                        onChange={e => setDateRange({...dateRange, start: e.target.value})}
-                                        required
-                                    />
+                                    <input type="date" className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none" value={dateRange.start} onChange={e => setDateRange({...dateRange, start: e.target.value})} required />
                                 </div>
                                 <div>
                                     <span className="text-xs text-slate-400 mb-1 block">To</span>
-                                    <input 
-                                        type="date" 
-                                        className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                                        value={dateRange.end}
-                                        onChange={e => setDateRange({...dateRange, end: e.target.value})}
-                                        required
-                                    />
+                                    <input type="date" className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none" value={dateRange.end} onChange={e => setDateRange({...dateRange, end: e.target.value})} required />
                                 </div>
                             </div>
                         </div>
 
-                        {/* 2. Days of Week */}
                         <div className="space-y-2">
-                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Repeat On</label>
+                            <div className="flex justify-between items-center">
+                                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Repeat On</label>
+                                <span className="text-[10px] text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full font-medium">
+                                    {selectedDays.length === 0 ? "Every day in range" : `${selectedDays.length} days selected`}
+                                </span>
+                            </div>
+                            
                             <div className="flex flex-wrap gap-2">
                                 {daysOfWeek.map(day => (
                                     <button
@@ -261,7 +280,7 @@ const DoctorSetAvailability = () => {
                                         onClick={() => toggleDay(day.id)}
                                         className={`w-9 h-9 rounded-full text-xs font-bold transition-all flex items-center justify-center ${
                                             selectedDays.includes(day.id)
-                                                ? "bg-blue-600 text-white shadow-md shadow-blue-200"
+                                                ? "bg-blue-600 text-white shadow-md shadow-blue-200 scale-105"
                                                 : "bg-slate-100 text-slate-500 hover:bg-slate-200"
                                         }`}
                                     >
@@ -269,150 +288,106 @@ const DoctorSetAvailability = () => {
                                     </button>
                                 ))}
                             </div>
+                            {selectedDays.length === 0 && (
+                                <p className="text-xs text-slate-400 flex items-center gap-1 mt-1">
+                                    <Info className="w-3 h-3"/> No days selected. Slots will be created for <b>all dates</b> above.
+                                </p>
+                            )}
                         </div>
 
-                        {/* 3. Time Range */}
                         <div className="space-y-2">
                             <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Daily Hours</label>
                             <div className="flex items-center gap-2">
-                                <input 
-                                    type="time" 
-                                    className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm"
-                                    value={timeRange.start}
-                                    onChange={e => setTimeRange({...timeRange, start: e.target.value})}
-                                    required
-                                />
-                                <span className="text-slate-400">-</span>
-                                <input 
-                                    type="time" 
-                                    className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm"
-                                    value={timeRange.end}
-                                    onChange={e => setTimeRange({...timeRange, end: e.target.value})}
-                                    required
-                                />
+                                <input type="time" className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none" value={timeRange.start} onChange={e => setTimeRange({...timeRange, start: e.target.value})} required />
+                                <span className="text-slate-400 font-medium">-</span>
+                                <input type="time" className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none" value={timeRange.end} onChange={e => setTimeRange({...timeRange, end: e.target.value})} required />
                             </div>
                         </div>
 
-                        {/* 4. Notes */}
                         <div className="space-y-2">
-                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Notes</label>
-                            <input 
-                                type="text" 
-                                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
-                                placeholder="e.g., Clinic Hours"
-                                value={notes}
-                                onChange={e => setNotes(e.target.value)}
-                            />
+                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Slot Duration</label>
+                            <select value={timeRange.duration} onChange={e => setTimeRange({...timeRange, duration: Number(e.target.value)})} className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none">
+                                <option value={15}>15 Minutes</option>
+                                <option value={30}>30 Minutes</option>
+                                <option value={45}>45 Minutes</option>
+                                <option value={60}>1 Hour</option>
+                            </select>
                         </div>
 
-                        {/* Submit */}
-                        <button 
-                            type="submit" 
-                            disabled={generating || selectedDays.length === 0}
-                            className={`w-full py-3 rounded-xl font-bold text-white shadow-lg transition-all flex items-center justify-center gap-2 ${
-                                generating 
-                                    ? "bg-slate-400 cursor-not-allowed" 
-                                    : "bg-gradient-to-r from-blue-700 to-[#2dc7f8] hover:scale-[1.02] shadow-blue-500/30"
-                            }`}
-                        >
-                            {generating ? (
-                                <RefreshCw className="w-5 h-5 animate-spin" />
-                            ) : (
-                                <Plus className="w-5 h-5" />
+                        <div className="space-y-2">
+                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Note (Optional)</label>
+                            <input type="text" className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none" placeholder="e.g. Clinic" value={notes} onChange={e => setNotes(e.target.value)} />
+                        </div>
+
+                        <div className="pt-2">
+                            {generating && progress > 0 && (
+                                <div className="mb-2 w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                                    <div className="bg-blue-600 h-1.5 rounded-full transition-all duration-300" style={{ width: `${progress}%` }}></div>
+                                </div>
                             )}
-                            {generating ? "Generating..." : "Generate Slots"}
-                        </button>
+                            
+                            <button 
+                                type="submit" 
+                                disabled={generating} // 🚀 ENABLED even if selectedDays is empty
+                                className={`w-full py-3 rounded-xl font-bold text-white shadow-lg transition-all flex items-center justify-center gap-2 ${
+                                    generating 
+                                        ? "bg-slate-400 cursor-not-allowed" 
+                                        : "bg-gradient-to-r from-blue-700 to-[#2dc7f8] hover:scale-[1.02] shadow-blue-500/30"
+                                }`}
+                            >
+                                {generating ? <>Processing {progress}%</> : <><Plus className="w-5 h-5" /> Generate Slots</>}
+                            </button>
+                        </div>
                     </form>
                 </div>
             </div>
 
-            {/* RIGHT: CURRENT SCHEDULE LIST (Grouped) */}
+            {/* RIGHT: SCHEDULE LIST */}
             <div className="lg:col-span-2 space-y-4">
-    
-              {/* Header: Compact & Clean */}
-              <div className="flex items-center justify-between bg-white px-5 py-4 rounded-xl border border-slate-200 shadow-sm">
+              <div className="flex items-center justify-between bg-white px-6 py-4 rounded-2xl border border-slate-200 shadow-sm">
                   <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                      <CalendarDays className="w-5 h-5 text-blue-600" />
-                      Upcoming Schedule
+                      <CalendarDays className="w-5 h-5 text-blue-600" /> Active Schedule
                   </h2>
-                  <span className="text-xs font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-md">
-                      {schedules.length} Slots Total
-                  </span>
+                  <span className="text-xs font-bold text-slate-500 bg-slate-100 px-3 py-1 rounded-full border border-slate-200">{schedules.length} Slots</span>
               </div>
 
-              {/* Content */}
               {loading ? (
-                  <div className="space-y-3 animate-pulse">
-                      {[1, 2, 3].map(i => <div key={i} className="h-24 bg-slate-200 rounded-xl"></div>)}
+                  <div className="space-y-4 animate-pulse">
+                      {[1, 2, 3].map(i => <div key={i} className="h-32 bg-slate-200 rounded-2xl"></div>)}
                   </div>
               ) : Object.keys(groupedSchedules).length === 0 ? (
-                  <div className="bg-slate-50 rounded-xl border border-dashed border-slate-300 p-8 text-center">
-                      <Calendar className="w-8 h-8 text-slate-400 mx-auto mb-2" />
-                      <p className="text-sm text-slate-500 font-medium">No schedule set.</p>
+                  <div className="bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200 p-12 text-center">
+                      <Calendar className="w-16 h-16 text-slate-300 mx-auto mb-3" />
+                      <h3 className="text-slate-900 font-bold mb-1">No schedule found</h3>
+                      <p className="text-sm text-slate-500">Use the generator to add availability.</p>
                   </div>
               ) : (
-                  <div className="space-y-3">
+                  <div className="space-y-4">
                       {Object.entries(groupedSchedules).map(([date, daySlots]) => {
                           const dateObj = new Date(date);
                           const isToday = new Date().toDateString() === dateObj.toDateString();
 
                           return (
-                              <div key={date} className={`group bg-white rounded-xl border transition-all hover:shadow-md ${isToday ? 'border-blue-300 shadow-blue-100' : 'border-slate-200'}`}>
-                                  
-                                  {/* Compact Row Header */}
-                                  <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-slate-50/50 rounded-t-xl">
-                                      <div className="flex items-center gap-3">
-                                          {/* Date Badge */}
-                                          <div className={`flex flex-col items-center justify-center w-10 h-10 rounded-lg border ${isToday ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-700 border-slate-200'}`}>
-                                              <span className="text-[9px] uppercase font-bold leading-none">{dateObj.toLocaleDateString("en-US", { month: 'short' })}</span>
-                                              <span className="text-base font-bold leading-none mt-0.5">{dateObj.getDate()}</span>
+                              <div key={date} className={`group bg-white rounded-2xl border transition-all duration-200 hover:shadow-md ${isToday ? 'border-blue-300 ring-4 ring-blue-50/50' : 'border-slate-200'}`}>
+                                  <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 bg-slate-50/30 rounded-t-2xl">
+                                      <div className="flex items-center gap-4">
+                                          <div className={`flex flex-col items-center justify-center w-12 h-12 rounded-xl border ${isToday ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-700 border-slate-200'}`}>
+                                              <span className="text-[10px] uppercase font-bold leading-none opacity-80">{dateObj.toLocaleDateString("en-US", { month: 'short' })}</span>
+                                              <span className="text-lg font-bold leading-none mt-0.5">{dateObj.getDate()}</span>
                                           </div>
-                                          
-                                          {/* Day Name */}
                                           <div>
-                                              <h3 className={`text-sm font-bold ${isToday ? 'text-blue-700' : 'text-slate-800'}`}>
-                                                  {isToday ? "Today" : dateObj.toLocaleDateString("en-US", { weekday: 'long' })}
-                                              </h3>
-                                              <p className="text-[11px] font-medium text-slate-400">
-                                                  {daySlots.length} slots
-                                              </p>
+                                              <h3 className={`text-base font-bold ${isToday ? 'text-blue-700' : 'text-slate-900'}`}>{isToday ? "Today" : dateObj.toLocaleDateString("en-US", { weekday: 'long' })}</h3>
+                                              <p className="text-xs font-medium text-slate-500">{daySlots.length} available slots</p>
                                           </div>
                                       </div>
-
-                                      {/* DELETE DAY BUTTON */}
-                                      <button 
-                                          onClick={() => handleDeleteDay(date, daySlots)}
-                                          className="text-slate-400 hover:text-red-600 hover:bg-red-50 p-2 rounded-lg transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
-                                          title="Clear entire day"
-                                      >
-                                          <Trash2 className="w-4 h-4" />
-                                      </button>
+                                      <button onClick={() => handleDeleteDay(date, daySlots)} className="text-slate-400 hover:text-red-600 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-all text-xs font-bold flex items-center gap-1 opacity-0 group-hover:opacity-100 focus:opacity-100"><Trash2 className="w-3.5 h-3.5" /> Clear Day</button>
                                   </div>
-                                  
-                                  {/* PILL LAYOUT (Saves Space!) */}
-                                  <div className="p-3 flex flex-wrap gap-2">
+                                  <div className="p-5 flex flex-wrap gap-2.5">
                                       {daySlots.map(slot => (
-                                          <div 
-                                              key={slot.id} 
-                                              className="relative group/slot flex items-center gap-2 bg-white border border-slate-200 hover:border-red-200 hover:bg-red-50 text-slate-600 hover:text-red-600 text-xs font-semibold px-2.5 py-1.5 rounded-lg transition-all cursor-default"
-                                          >
-                                              {/* Time */}
-                                              <span>
-                                                  {slot.start_time.slice(0, 5)} - {slot.end_time.slice(0, 5)}
-                                              </span>
-                                              
-                                              {/* Notes Indicator (if any) */}
-                                              {slot.notes && (
-                                                  <span className="w-1.5 h-1.5 rounded-full bg-blue-400 group-hover/slot:bg-red-400" title={slot.notes}></span>
-                                              )}
-
-                                              {/* Delete 'x' (appears on hover) */}
-                                              <button 
-                                                  onClick={(e) => { e.stopPropagation(); handleDelete(slot.id); }}
-                                                  className="ml-1 -mr-1 p-0.5 rounded-md hover:bg-red-200 text-red-400 hover:text-red-700 opacity-0 group-hover/slot:opacity-100 transition-opacity"
-                                              >
-                                                  <X className="w-3 h-3" />
-                                              </button>
+                                          <div key={slot.id} className="relative group/slot flex items-center gap-2 bg-white border border-slate-200 text-slate-700 text-xs font-bold px-3 py-2 rounded-xl transition-all cursor-default hover:border-red-200 hover:shadow-sm">
+                                              <span>{slot.start_time.slice(0, 5)} - {slot.end_time.slice(0, 5)}</span>
+                                              {slot.notes && <span className="w-2 h-2 rounded-full bg-blue-400" title={slot.notes}></span>}
+                                              <button onClick={(e) => { e.stopPropagation(); handleDelete(slot.id); }} className="ml-1 -mr-1 p-0.5 rounded-md text-slate-300 hover:bg-red-100 hover:text-red-600 transition-colors"><X className="w-3.5 h-3.5" /></button>
                                           </div>
                                       ))}
                                   </div>
@@ -421,7 +396,7 @@ const DoctorSetAvailability = () => {
                       })}
                   </div>
               )}
-          </div>
+            </div>
         </div>
       </div>
     </div>

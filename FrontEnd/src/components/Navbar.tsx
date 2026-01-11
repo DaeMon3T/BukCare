@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -41,9 +41,16 @@ const Navbar: React.FC = () => {
   const [showNotifications, setShowNotifications] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
+  // --- MEMOIZED BADGE COUNTS ---
+  const badgeCounts = useMemo(() => {
+    return {
+        messages: notifications.filter(n => n.type === 'CHAT_MESSAGE' && !n.is_read).length,
+        appointments: notifications.filter(n => ['NEW_APPOINTMENT', 'APPOINTMENT_UPDATE'].includes(n.type) && !n.is_read).length
+    };
+  }, [notifications]);
+
   // --- ACTION HANDLERS ---
-  
-  const handleNotificationClick = async (notif: any) => {
+  const handleNotificationClick = useCallback(async (notif: any) => {
     if (!notif.is_read) {
         markAsRead(Number(notif.id));
     }
@@ -55,51 +62,57 @@ const Navbar: React.FC = () => {
     }
 
     setShowNotifications(false);
-    setSidebarOpen(false); // Close sidebar if navigating from there
-  };
+    setSidebarOpen(false); 
+  }, [navigate, user?.role, markAsRead]);
 
-  const handleLogout = async () => {
+  const handleLogout = useCallback(async () => {
     await logout();
     navigate("/");
-  };
+  }, [logout, navigate]);
+
+  // --- NAVIGATION CONFIG ---
+  const navigationItems = useMemo(() => {
+    const role = user?.role || "patient";
+    let items = [];
+
+    switch (role) {
+      case "admin":
+        items = [
+          { label: "Dashboard", path: "/admin/dashboard", icon: Home },
+          { label: "Users", path: "/admin/users", icon: Users },
+        ];
+        break;
+      case "doctor":
+        items = [
+          { label: "Dashboard", path: "/doctor/dashboard", icon: Home },
+          { label: "Appointments", path: "/doctor/appointments", icon: Calendar, badge: badgeCounts.appointments },
+          { label: "Availability", path: "/doctor/set-availability", icon: ClipboardList },
+          { label: "Messages", path: "/doctor/messages", icon: MessageCircle, badge: badgeCounts.messages },
+        ];
+        break;
+      case "patient":
+      default:
+        items = [
+          { label: "Home", path: "/patient/home", icon: Home },
+          { label: "Find Doctors", path: "/patient/find-doctor", icon: Search },
+          { label: "Appointments", path: "/patient/appointments", icon: ClipboardList, badge: badgeCounts.appointments },
+          { label: "Messages", path: "/patient/messages", icon: MessageCircle, badge: badgeCounts.messages },
+        ];
+        break;
+    }
+    return items;
+  }, [user?.role, badgeCounts]);
 
   if (!user) return null;
 
   const userRole = user.role || "patient";
   const displayName = user.name?.trim() || `${user.fname || ""} ${user.lname || ""}`.trim() || "Guest";
-
-  const getNavigationItems = () => {
-    switch (userRole) {
-      case "admin":
-        return [
-          { label: "Dashboard", path: "/admin/dashboard", icon: Home },
-          { label: "Users", path: "/admin/users", icon: Users },
-        ];
-      case "doctor":
-        return [
-          { label: "Dashboard", path: "/doctor/dashboard", icon: Home },
-          { label: "Appointments", path: "/doctor/appointments", icon: Calendar },
-          { label: "Availability", path: "/doctor/set-availability", icon: ClipboardList },
-          { label: "Messages", path: "/doctor/messages", icon: MessageCircle },
-        ];
-      case "patient":
-      default:
-        return [
-          { label: "Home", path: "/patient/home", icon: Home },
-          { label: "Find Doctors", path: "/patient/find-doctor", icon: Search },
-          { label: "Appointments", path: "/patient/appointments", icon: ClipboardList },
-          { label: "Messages", path: "/patient/messages", icon: MessageCircle },
-        ];
-    }
-  };
-
-  const navigationItems = getNavigationItems();
   const homeLink = `/${userRole === 'patient' ? 'patient/home' : userRole + '/dashboard'}`;
   const profileLink = `/${userRole}/profile`;
 
   return (
     <>
-      <header className="bg-white/80 backdrop-blur-md shadow-sm border-b border-slate-100 sticky top-0 z-40 h-16 md:h-20">
+      <header className="bg-white/80 backdrop-blur-md shadow-sm border-b border-slate-100 sticky top-0 z-40 h-16 md:h-20 transition-all duration-200">
         <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 h-full">
           <div className="flex justify-between items-center h-full">
             
@@ -128,12 +141,18 @@ const Navbar: React.FC = () => {
                   <Link
                     key={item.path}
                     to={item.path}
-                    className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 ${
+                    className={`relative flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 ${
                       isActive ? "bg-white text-blue-600 shadow-sm ring-1 ring-black/5" : "text-slate-500 hover:text-slate-900 hover:bg-white/50"
                     }`}
                   >
                     <Icon className={`w-4 h-4 ${isActive ? "fill-current" : ""}`} />
                     {item.label}
+                    
+                    {(item.badge || 0) > 0 && (
+                        <span className="ml-1 px-1.5 py-0.5 bg-rose-500 text-white text-[10px] font-bold rounded-full min-w-[18px] text-center leading-none shadow-sm animate-in zoom-in duration-200">
+                            {item.badge && item.badge > 9 ? '9+' : item.badge}
+                        </span>
+                    )}
                   </Link>
                 );
               })}
@@ -220,6 +239,7 @@ const Navbar: React.FC = () => {
                                       <button 
                                         onClick={(e) => {
                                             e.stopPropagation();
+                                            // The hook handles the logic. If it shows a toast, you might need to edit the hook itself.
                                             deleteNotification(Number(notif.id));
                                         }}
                                         className="text-slate-300 hover:text-red-500 hover:bg-red-50 p-1 rounded transition-all opacity-100 md:opacity-0 group-hover:opacity-100"
@@ -287,11 +307,9 @@ const Navbar: React.FC = () => {
             </div>
           </div>
         </div>
-      </header> 
-      {/* 👈 HEADER ENDS HERE NOW */}
+      </header>
 
-      {/* 👇 MOBILE SIDEBAR MOVED OUTSIDE HEADER */}
-      {/* This ensures 'fixed' works relative to the entire screen, not just the blurry header */}
+      {/* MOBILE SIDEBAR */}
       <AnimatePresence>
         {sidebarOpen && (
           <>
@@ -327,11 +345,19 @@ const Navbar: React.FC = () => {
                             key={item.path} 
                             to={item.path} 
                             onClick={() => setSidebarOpen(false)} 
-                            className={`flex items-center gap-4 px-4 py-3.5 rounded-xl text-sm font-semibold transition-all ${
+                            className={`flex items-center justify-between px-4 py-3.5 rounded-xl text-sm font-semibold transition-all ${
                               isActive ? "bg-blue-600 text-white shadow-lg shadow-blue-200" : "text-slate-600 hover:bg-slate-50"
                             }`}
                           >
-                              <Icon className="w-5 h-5" /> {item.label}
+                              <div className="flex items-center gap-4">
+                                <Icon className="w-5 h-5" /> {item.label}
+                              </div>
+                              
+                              {(item.badge || 0) > 0 && (
+                                <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${isActive ? 'bg-white text-blue-600' : 'bg-rose-500 text-white'}`}>
+                                    {item.badge && item.badge > 9 ? '9+' : item.badge}
+                                </span>
+                              )}
                           </Link>
                       )
                   })}

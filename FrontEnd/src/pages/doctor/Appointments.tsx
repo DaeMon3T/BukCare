@@ -3,8 +3,22 @@ import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import api from "@/services/api";
 import Navbar from "@/components/Navbar";
-import { Calendar, Clock, User, CheckCircle, XCircle, AlertCircle, Trash2, History } from "lucide-react";
+import { 
+  Calendar, 
+  Clock, 
+  User, 
+  CheckCircle, 
+  XCircle, 
+  AlertCircle, 
+  Trash2, 
+  History, 
+  RefreshCw, 
+  UserPlus,
+  Check
+} from "lucide-react";
 import { useWebSocket } from "@/context/WebSocketContext";
+import RescheduleModal from "@/components/RescheduleModal";
+import FollowUpModal from "@/components/FollowUpModal";
 
 interface Appointment {
   id: number;
@@ -17,6 +31,7 @@ interface Appointment {
   notes: string | null;
   created_at: string;
   updated_at: string;
+  patient_avatar?: string;
 }
 
 const DoctorAppointments = () => {
@@ -25,10 +40,14 @@ const DoctorAppointments = () => {
   
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<"all" | "pending" | "confirmed">("all");
+  const [filter, setFilter] = useState<"all" | "pending" | "confirmed" | "cancelled">("all");
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
 
-  // 1. FETCH APPOINTMENTS
+  // Modal States
+  const [rescheduleData, setRescheduleData] = useState<{id: number, date: string} | null>(null);
+  const [followUpData, setFollowUpData] = useState<{patientId: number, name: string} | null>(null);
+
+  // FETCH APPOINTMENTS
   const fetchAppointments = useCallback(async (isBackground = false) => {
     try {
       if (!isBackground) setLoading(true);
@@ -42,7 +61,7 @@ const DoctorAppointments = () => {
     }
   }, []);
 
-  // 2. WEBSOCKET LISTENER
+  // WEBSOCKET LISTENER (Optimized)
   useEffect(() => {
     if (!lastMessage) return;
 
@@ -51,27 +70,37 @@ const DoctorAppointments = () => {
     }
 
     if (lastMessage.type === "APPOINTMENT_UPDATE") {
-      setAppointments((prev) => 
-        prev.map((appt) => 
-          appt.id === lastMessage.appointment_id 
-            ? { ...appt, status: lastMessage.status } 
-            : appt
-        )
-      );
+      const { appointment_id, status, new_date } = lastMessage;
+
+      if (appointment_id && status) {
+        setAppointments((prev) => 
+          prev.map((appt) => 
+            appt.id === appointment_id 
+              ? { ...appt, status: status }
+              : appt
+          )
+        );
+      }
+      
+      if (new_date) {
+         fetchAppointments(true);
+      }
     }
 
     if (lastMessage.type === "APPOINTMENT_DELETED") {
-      setAppointments((prev) => 
-        prev.filter((appt) => appt.id !== lastMessage.appointment_id)
-      );
+      if (lastMessage.appointment_id) {
+          setAppointments((prev) => 
+            prev.filter((appt) => appt.id !== lastMessage.appointment_id)
+          );
+      }
     }
-  }, [lastMessage, fetchAppointments]);
+  }, [lastMessage, fetchAppointments])
 
   useEffect(() => {
     fetchAppointments();
   }, [fetchAppointments]);
 
-  // 3. UPDATE STATUS (Updated to include "cancelled")
+  // 3. UPDATE STATUS
   const updateStatus = async (id: number, newStatus: "confirmed" | "completed" | "cancelled") => {
     try {
       await api.put(`/appointments/${id}/status`, { status: newStatus });
@@ -116,83 +145,72 @@ const DoctorAppointments = () => {
       return appt.status === filter;
     })
     .sort((a, b) => {
-      // Turn strings into Dates and subtract to sort
-      // (b - a) means Descending Order (Latest First)
       return new Date(b.appointment_date).getTime() - new Date(a.appointment_date).getTime();
     });
 
   const formatDateTime = (dateTimeString: string) => {
     const date = new Date(dateTimeString);
     return {
-      date: date.toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-      }),
-      time: date.toLocaleTimeString("en-US", {
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
+      date: date.toLocaleDateString("en-US", { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }),
+      time: date.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }),
+      displayString: `${date.toLocaleDateString()} at ${date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`,
+      isPast: date < new Date()
     };
   };
 
   const getStatusStyles = (status: string) => {
     switch (status) {
       case "pending":
-        return {
-          badge: "bg-gradient-to-r from-amber-100 to-orange-100 text-amber-800 border-amber-200",
-          icon: <AlertCircle className="w-4 h-4 text-amber-600" />,
-        };
+        return { badge: "bg-amber-100 text-amber-700 border-amber-200", icon: AlertCircle, label: "Pending" };
       case "confirmed":
-        return {
-          badge: "bg-gradient-to-r from-emerald-100 to-teal-100 text-emerald-800 border-emerald-200",
-          icon: <CheckCircle className="w-4 h-4 text-emerald-600" />,
-        };
+        return { badge: "bg-emerald-100 text-emerald-700 border-emerald-200", icon: CheckCircle, label: "Confirmed" };
       case "completed":
-        return {
-          badge: "bg-gradient-to-r from-blue-100 to-cyan-100 text-blue-800 border-blue-200",
-          icon: <CheckCircle className="w-4 h-4 text-blue-600" />,
-        };
+        return { badge: "bg-blue-100 text-blue-700 border-blue-200", icon: CheckCircle, label: "Completed" };
       case "cancelled":
-        return {
-          badge: "bg-gradient-to-r from-red-100 to-rose-100 text-red-800 border-red-200",
-          icon: <XCircle className="w-4 h-4 text-red-600" />,
-        };
+        return { badge: "bg-rose-100 text-rose-700 border-rose-200", icon: XCircle, label: "Cancelled" };
       default:
-        return {
-          badge: "bg-gradient-to-r from-slate-100 to-slate-200 text-slate-800 border-slate-200",
-          icon: <AlertCircle className="w-4 h-4 text-slate-600" />,
-        };
+        return { badge: "bg-slate-100 text-slate-700 border-slate-200", icon: AlertCircle, label: status };
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-slate-600 font-medium">Loading appointments...</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+    <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
       <Navbar />
 
-      <div className="p-6 max-w-7xl mx-auto">
+      <div className="p-6 max-w-7xl mx-auto py-10">
+        
+        {/* Modals */}
+        <RescheduleModal 
+            isOpen={!!rescheduleData}
+            onClose={() => setRescheduleData(null)}
+            appointmentId={rescheduleData?.id || 0}
+            currentDate={rescheduleData?.date || ""}
+            onSuccess={() => {
+                fetchAppointments(); 
+                setRescheduleData(null);
+            }}
+        />
+
+        <FollowUpModal
+            isOpen={!!followUpData}
+            onClose={() => setFollowUpData(null)}
+            patientId={followUpData?.patientId || 0}
+            patientName={followUpData?.name || ""}
+            onSuccess={() => {
+                fetchAppointments(); 
+                setFollowUpData(null);
+            }}
+        />
+
         {/* Header */}
-        <div className="mb-8 flex justify-between items-start">
+        <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h2 className="text-3xl font-bold bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent mb-2">
-              My Appointments
-            </h2>
-            <p className="text-slate-600">View and manage your appointments</p>
+            <h2 className="text-3xl font-bold text-slate-900 tracking-tight">My Appointments</h2>
+            <p className="text-slate-500 mt-1">View and manage your schedule</p>
           </div>
           <button
             onClick={() => navigate("/doctor/appointment-history")}
-            className="px-5 py-2.5 rounded-xl font-semibold bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg shadow-purple-500/30 hover:from-purple-700 hover:to-indigo-700 transition-all flex items-center gap-2"
+            className="px-5 py-2.5 rounded-xl font-semibold bg-white text-slate-700 border border-slate-200 shadow-sm hover:bg-slate-50 hover:text-blue-600 transition-all flex items-center gap-2 self-start md:self-auto"
           >
             <History className="w-5 h-5" />
             View History
@@ -200,204 +218,157 @@ const DoctorAppointments = () => {
         </div>
 
         {/* Filter Tabs */}
-        <div className="flex gap-3 flex-wrap mb-6">
-          {["all", "pending", "confirmed"].map((f) => {
-            const count = f === "all" 
-              ? appointments.length 
-              : appointments.filter((a) => a.status === f).length;
-            
+        <div className="flex overflow-x-auto pb-2 gap-2 mb-6 scrollbar-hide">
+          {["all", "pending", "confirmed", "cancelled"].map((f) => {
+            const count = f === "all" ? appointments.length : appointments.filter((a) => a.status === f).length;
+            const isActive = filter === f;
             return (
               <button
                 key={f}
                 onClick={() => setFilter(f as typeof filter)}
-                className={`px-5 py-2.5 rounded-xl font-semibold transition-all duration-200 flex items-center gap-2 ${
-                  filter === f
-                    ? "bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-lg shadow-blue-500/30 scale-105"
-                    : "bg-white text-slate-700 hover:bg-slate-50 shadow-sm border border-slate-200 hover:shadow-md hover:scale-105"
+                className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap flex-shrink-0 border ${
+                    isActive 
+                        ? "bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-200" 
+                        : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50 hover:border-slate-300"
                 }`}
               >
                 {f.charAt(0).toUpperCase() + f.slice(1)}
-                <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
-                  filter === f ? "bg-white/25" : "bg-slate-100"
-                }`}>
-                  {count}
-                </span>
+                {count > 0 && (
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${isActive ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600"}`}>
+                        {count}
+                    </span>
+                )}
               </button>
             );
           })}
         </div>
 
-        {filteredAppointments.length === 0 ? (
-          <div className="bg-white rounded-2xl shadow-lg border border-slate-200 p-12 text-center">
-            <div className="w-20 h-20 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-4">
-              <Calendar className="w-10 h-10 text-slate-400" />
+        {loading ? (
+            <div className="flex justify-center py-20">
+                <div className="w-10 h-10 border-4 border-slate-200 border-t-blue-600 rounded-full animate-spin"></div>
             </div>
-            <h3 className="text-xl font-semibold text-slate-800 mb-2">No appointments found</h3>
+        ) : filteredAppointments.length === 0 ? (
+          <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center">
+            <div className="w-16 h-16 rounded-full bg-slate-50 flex items-center justify-center mx-auto mb-4">
+              <Calendar className="w-8 h-8 text-slate-300" />
+            </div>
+            <h3 className="text-xl font-semibold text-slate-900 mb-1">No appointments found</h3>
             <p className="text-slate-500">There are no {filter !== "all" ? filter : ""} appointments to display</p>
           </div>
         ) : (
           <>
             {/* Desktop Table */}
-            <div className="hidden md:block bg-white rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
+            <div className="hidden md:block bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
               <table className="min-w-full">
-                {/* HEADER */}
                 <thead>
-                  <tr className="bg-slate-50/50 border-b border-slate-100 text-left">
-                    <th className="py-5 px-6 text-xs font-bold text-slate-400 uppercase tracking-wider">
-                      Patient
-                    </th>
-                    <th className="py-5 px-6 text-xs font-bold text-slate-400 uppercase tracking-wider">
-                      Schedule
-                    </th>
-                    <th className="py-5 px-6 text-xs font-bold text-slate-400 uppercase tracking-wider">
-                      Purpose
-                    </th>
-                    <th className="py-5 px-6 text-xs font-bold text-slate-400 uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th className="py-5 px-6 text-xs font-bold text-slate-400 uppercase tracking-wider text-right">
-                      Actions
-                    </th>
+                  <tr className="bg-slate-50/80 border-b border-slate-100 text-xs uppercase text-slate-400 font-bold tracking-wider text-left">
+                    <th className="py-4 px-6">Patient</th>
+                    <th className="py-4 px-6">Schedule</th>
+                    <th className="py-4 px-6">Reason</th>
+                    <th className="py-4 px-6">Status</th>
+                    <th className="py-4 px-6 text-right">Actions</th>
                   </tr>
                 </thead>
-
-                {/* BODY */}
                 <tbody className="divide-y divide-slate-100">
                   {filteredAppointments.map((appt) => {
-                    const { date, time } = formatDateTime(appt.appointment_date);
+                    const { date, time, displayString, isPast } = formatDateTime(appt.appointment_date);
                     const statusStyle = getStatusStyles(appt.status);
+                    const StatusIcon = statusStyle.icon;
 
                     return (
-                      <tr 
-                        key={appt.id} 
-                        className="group hover:bg-slate-50/80 transition-colors duration-200"
-                      >
-                        {/* 1. Patient Column */}
+                      <tr key={appt.id} className="group hover:bg-slate-50/50 transition-colors">
+                        {/* 1. Patient */}
                         <td className="py-5 px-6">
-                          <div className="flex items-center gap-4">
-                            <div className="relative">
-                              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-500 shadow-sm group-hover:scale-105 transition-transform duration-300">
-                                <User className="w-5 h-5" />
-                              </div>
-                              {/* Online Indicator (Optional decoration) */}
-                              <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-white rounded-full flex items-center justify-center">
-                                <div className="w-2.5 h-2.5 bg-emerald-400 rounded-full border border-white"></div>
-                              </div>
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 flex items-center justify-center text-blue-600 font-bold shadow-sm">
+                                {appt.patient_avatar ? (
+                                    <img src={appt.patient_avatar} alt={appt.patient_name} className="w-full h-full object-cover rounded-full" />
+                                ) : (
+                                    <User className="w-5 h-5" />
+                                )}
                             </div>
                             <div>
-                              <p className="text-sm font-bold text-slate-900 leading-tight">
-                                {appt.patient_name}
-                              </p>
-                              <p className="text-xs font-medium text-slate-400 mt-1">
-                                ID: <span className="font-mono text-slate-500">#{appt.patient_id}</span>
-                              </p>
+                              <p className="text-sm font-bold text-slate-900">{appt.patient_name}</p>
+                              <p className="text-xs text-slate-500">ID: #{appt.patient_id}</p>
                             </div>
                           </div>
                         </td>
 
-                        {/* 2. Date & Time Column */}
+                        {/* 2. Schedule */}
                         <td className="py-5 px-6">
                           <div className="flex flex-col">
-                            <div className="flex items-center gap-2 mb-1">
-                              <Calendar className="w-4 h-4 text-slate-400" />
-                              <span className="text-sm font-bold text-slate-700 group-hover:text-blue-600 transition-colors">
-                                {date}
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Clock className="w-4 h-4 text-slate-300" />
-                              <span className="text-xs font-medium text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">
-                                {time}
-                              </span>
+                            <span className={`text-sm font-bold ${isPast ? 'text-slate-400' : 'text-slate-800'}`}>{date}</span>
+                            <div className="flex items-center gap-1.5 mt-1">
+                                <Clock className="w-3 h-3 text-slate-400" />
+                                <span className="text-xs font-medium text-slate-500">{time}</span>
                             </div>
                           </div>
                         </td>
 
-                        {/* 3. Reason Column */}
-                        <td className="py-5 px-6">
-                          <div className="max-w-[220px]">
-                            <p className={`text-sm leading-relaxed ${appt.reason ? "text-slate-600" : "text-slate-400 italic"}`}>
-                              {appt.reason || "No reason provided"}
-                            </p>
-                            {appt.notes && (
-                              <div className="mt-1.5 flex items-start gap-1.5 text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded-lg w-fit">
-                                <span className="font-bold">Note:</span> {appt.notes}
-                              </div>
-                            )}
-                          </div>
+                        {/* 3. Reason */}
+                        <td className="py-5 px-6 max-w-[250px]">
+                          <p className="text-sm text-slate-600 truncate">{appt.reason || <span className="italic text-slate-400">No reason provided</span>}</p>
+                          {appt.notes && <span className="text-[10px] bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded border border-amber-100 mt-1 inline-block">Note: {appt.notes}</span>}
                         </td>
 
-                        {/* 4. Status Column */}
+                        {/* 4. Status */}
                         <td className="py-5 px-6">
-                          <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border shadow-sm ${statusStyle.badge}`}>
-                            {statusStyle.icon}
-                            {appt.status.charAt(0).toUpperCase() + appt.status.slice(1)}
+                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border ${statusStyle.badge}`}>
+                            <StatusIcon className="w-3.5 h-3.5" />
+                            {statusStyle.label}
                           </span>
                         </td>
 
-                        {/* 5. Actions Column */}
+                        {/* 5. Actions */}
                         <td className="py-5 px-6 text-right">
                           <div className="flex items-center justify-end gap-2 opacity-90 group-hover:opacity-100 transition-opacity">
+                            
+                            {/* PENDING: Confirm / Reschedule / Cancel */}
                             {appt.status === "pending" && (
                               <>
-                                <button
-                                  onClick={() => updateStatus(appt.id, "confirmed")}
-                                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-xs font-bold shadow-md shadow-emerald-200 hover:shadow-lg hover:translate-y-[-1px] transition-all"
-                                >
-                                  Confirm
+                                <button onClick={() => updateStatus(appt.id, "confirmed")} className="p-2 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition-colors" title="Confirm">
+                                    <Check className="w-4 h-4" />
                                 </button>
-                                <button
-                                  onClick={() => updateStatus(appt.id, "cancelled")}
-                                  className="p-2 rounded-xl bg-slate-50 text-slate-400 hover:bg-red-50 hover:text-red-500 border border-slate-200 hover:border-red-100 transition-all"
-                                  title="Decline Appointment"
-                                >
-                                  <XCircle className="w-5 h-5" />
+                                <button onClick={() => setRescheduleData({ id: appt.id, date: displayString })} className="p-2 rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-100 transition-colors" title="Reschedule">
+                                    <RefreshCw className="w-4 h-4" />
+                                </button>
+                                <button onClick={() => updateStatus(appt.id, "cancelled")} className="p-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors" title="Decline">
+                                    <XCircle className="w-4 h-4" />
                                 </button>
                               </>
                             )}
 
+                            {/* CONFIRMED: Complete / Reschedule / Cancel */}
                             {appt.status === "confirmed" && (
                               <>
-                                <button
-                                  onClick={() => updateStatus(appt.id, "completed")}
-                                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-xs font-bold shadow-md shadow-blue-200 hover:shadow-lg hover:translate-y-[-1px] transition-all"
-                                >
-                                  Complete
+                                <button onClick={() => updateStatus(appt.id, "completed")} className="px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-bold hover:bg-blue-700 shadow-sm transition-colors">
+                                    Complete
                                 </button>
-                                <button
-                                  onClick={() => updateStatus(appt.id, "cancelled")}
-                                  className="p-2 rounded-xl bg-slate-50 text-slate-400 hover:bg-slate-100 hover:text-slate-600 border border-slate-200 transition-all"
-                                  title="Cancel Appointment"
-                                >
-                                  <XCircle className="w-5 h-5" />
+                                <button onClick={() => setRescheduleData({ id: appt.id, date: displayString })} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-amber-600 transition-colors" title="Reschedule">
+                                    <RefreshCw className="w-4 h-4" />
+                                </button>
+                                <button onClick={() => updateStatus(appt.id, "cancelled")} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-red-600 transition-colors" title="Cancel">
+                                    <XCircle className="w-4 h-4" />
                                 </button>
                               </>
                             )}
 
+                            {/* COMPLETED/CANCELLED: Delete / Follow-Up */}
                             {(appt.status === "completed" || appt.status === "cancelled") && (
                               <>
+                                {appt.status === "completed" && (
+                                    <button onClick={() => setFollowUpData({ patientId: appt.patient_id, name: appt.patient_name })} className="p-2 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors" title="Follow Up">
+                                        <UserPlus className="w-4 h-4" />
+                                    </button>
+                                )}
+                                
                                 {deleteConfirm === appt.id ? (
-                                  <div className="flex items-center gap-2 bg-red-50 p-1 rounded-xl border border-red-100 animate-fade-in">
-                                    <span className="text-[10px] font-bold text-red-600 px-2">Sure?</span>
-                                    <button
-                                      onClick={() => deleteAppointment(appt.id)}
-                                      className="px-3 py-1.5 rounded-lg bg-red-500 text-white text-xs font-bold hover:bg-red-600"
-                                    >
-                                      Yes
-                                    </button>
-                                    <button
-                                      onClick={() => setDeleteConfirm(null)}
-                                      className="px-3 py-1.5 rounded-lg bg-white text-slate-600 text-xs font-bold border border-slate-200 hover:bg-slate-50"
-                                    >
-                                      No
-                                    </button>
+                                  <div className="flex items-center gap-1 bg-red-50 p-1 rounded-lg border border-red-100">
+                                    <button onClick={() => deleteAppointment(appt.id)} className="text-[10px] font-bold bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600">Yes</button>
+                                    <button onClick={() => setDeleteConfirm(null)} className="text-[10px] font-bold bg-white text-slate-600 px-2 py-1 rounded hover:bg-slate-50 border border-slate-200">No</button>
                                   </div>
                                 ) : (
-                                  <button
-                                    onClick={() => setDeleteConfirm(appt.id)}
-                                    className="p-2 rounded-xl bg-white text-slate-400 border border-slate-200 hover:border-red-200 hover:bg-red-50 hover:text-red-500 transition-all"
-                                    title="Delete from history"
-                                  >
+                                  <button onClick={() => setDeleteConfirm(appt.id)} className="p-2 rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-500 transition-colors" title="Delete Record">
                                     <Trash2 className="w-4 h-4" />
                                   </button>
                                 )}
@@ -415,112 +386,72 @@ const DoctorAppointments = () => {
             {/* Mobile Cards */}
             <div className="md:hidden space-y-4">
               {filteredAppointments.map((appt) => {
-                const { date, time } = formatDateTime(appt.appointment_date);
+                const { date, time, displayString } = formatDateTime(appt.appointment_date);
                 const statusStyle = getStatusStyles(appt.status);
+                const StatusIcon = statusStyle.icon;
                 
                 return (
-                  <div
-                    key={appt.id}
-                    className="bg-white p-5 rounded-2xl shadow-lg border border-slate-200"
-                  >
+                  <div key={appt.id} className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
                     <div className="flex justify-between items-start mb-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-600 flex items-center justify-center shadow-md">
-                          <User className="w-6 h-6 text-white" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-bold text-slate-900">{appt.patient_name}</p>
-                          <p className="text-xs text-slate-500">ID: #{appt.patient_id}</p>
-                        </div>
+                          <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-500">
+                            {appt.patient_avatar ? <img src={appt.patient_avatar} className="w-full h-full rounded-full object-cover"/> : <User className="w-5 h-5" />}
+                          </div>
+                          <div>
+                            <p className="text-sm font-bold text-slate-900">{appt.patient_name}</p>
+                            <p className="text-xs text-slate-500">ID: #{appt.patient_id}</p>
+                          </div>
                       </div>
-                      <span
-                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border ${statusStyle.badge}`}
-                      >
-                        {statusStyle.icon}
-                        {appt.status}
+                      <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold border ${statusStyle.badge}`}>
+                        <StatusIcon className="w-3 h-3" /> {statusStyle.label}
                       </span>
                     </div>
 
-                    <div className="space-y-3 mb-4">
-                      <div className="flex items-center gap-2 text-sm">
-                        <Calendar className="w-4 h-4 text-slate-500" />
-                        <span className="font-medium text-slate-700">Date:</span>
-                        <span className="text-slate-900">{date}</span>
+                    <div className="space-y-2 mb-4 bg-slate-50 p-3 rounded-xl border border-slate-100">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-slate-500">Date:</span>
+                        <span className="font-semibold text-slate-900">{date}</span>
                       </div>
-                      <div className="flex items-center gap-2 text-sm">
-                        <Clock className="w-4 h-4 text-slate-500" />
-                        <span className="font-medium text-slate-700">Time:</span>
-                        <span className="text-slate-900">{time}</span>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-slate-500">Time:</span>
+                        <span className="font-semibold text-slate-900">{time}</span>
                       </div>
-                      <div className="pt-3 border-t border-slate-100">
-                        <p className="text-xs font-semibold text-slate-600 mb-1">Reason:</p>
-                        <p className="text-sm text-slate-700">
-                          {appt.reason || <span className="text-slate-400 italic">No reason provided</span>}
-                        </p>
+                      <div className="pt-2 border-t border-slate-200 mt-2">
+                        <p className="text-xs text-slate-500 italic">"{appt.reason || "No reason provided"}"</p>
                       </div>
                     </div>
 
-                    <div className="flex gap-2">
-                    {appt.status === "pending" && (
-                      <>
-                        <button
-                          onClick={() => updateStatus(appt.id, "confirmed")}
-                          className="flex-1 px-4 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl font-semibold hover:from-emerald-700 hover:to-teal-700 transition-all shadow-md"
-                        >
-                          Confirm
-                        </button>
-                        <button
-                          onClick={() => updateStatus(appt.id, "cancelled")}
-                          className="flex-1 px-4 py-3 bg-red-50 text-red-600 border border-red-100 rounded-xl font-semibold hover:bg-red-100 transition-all"
-                        >
-                          Decline
-                        </button>
-                      </>
-                    )}
-                    {appt.status === "confirmed" && (
-                      <>
-                        <button
-                          onClick={() => updateStatus(appt.id, "completed")}
-                          className="flex-1 px-4 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-xl font-semibold hover:from-blue-700 hover:to-cyan-700 transition-all shadow-md"
-                        >
-                          Complete
-                        </button>
-                        <button
-                          onClick={() => updateStatus(appt.id, "cancelled")}
-                          className="px-4 py-3 bg-slate-100 text-slate-600 rounded-xl font-semibold hover:bg-slate-200 transition-all"
-                        >
-                          Cancel
-                        </button>
-                      </>
-                    )}
-                    {(appt.status === "completed" || appt.status === "cancelled") && (
-                      <>
-                        {deleteConfirm === appt.id ? (
-                          <div className="flex gap-2 w-full">
-                            <button
-                              onClick={() => deleteAppointment(appt.id)}
-                              className="flex-1 px-4 py-3 bg-red-600 text-white rounded-xl font-semibold hover:bg-red-700 transition-all"
-                            >
-                              Confirm
+                    <div className="flex gap-2 flex-wrap">
+                      {/* PENDING MOBILE */}
+                      {appt.status === "pending" && (
+                        <>
+                          <button onClick={() => updateStatus(appt.id, "confirmed")} className="flex-1 py-2.5 bg-emerald-600 text-white rounded-lg text-sm font-bold shadow-sm">Confirm</button>
+                          <button onClick={() => setRescheduleData({ id: appt.id, date: displayString })} className="p-2.5 bg-amber-100 text-amber-700 rounded-lg"><RefreshCw className="w-5 h-5"/></button>
+                          <button onClick={() => updateStatus(appt.id, "cancelled")} className="p-2.5 bg-red-100 text-red-700 rounded-lg"><XCircle className="w-5 h-5"/></button>
+                        </>
+                      )}
+                      
+                      {/* CONFIRMED MOBILE */}
+                      {appt.status === "confirmed" && (
+                        <>
+                          <button onClick={() => updateStatus(appt.id, "completed")} className="flex-1 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-bold shadow-sm">Complete</button>
+                          <button onClick={() => updateStatus(appt.id, "cancelled")} className="p-2.5 bg-slate-100 text-slate-600 rounded-lg border border-slate-200">Cancel</button>
+                        </>
+                      )}
+
+                      {/* DELETE MOBILE */}
+                      {(appt.status === "completed" || appt.status === "cancelled") && (
+                         deleteConfirm === appt.id ? (
+                            <div className="flex gap-2 w-full">
+                                <button onClick={() => deleteAppointment(appt.id)} className="flex-1 py-2 bg-red-600 text-white rounded-lg text-sm font-bold">Yes, Delete</button>
+                                <button onClick={() => setDeleteConfirm(null)} className="flex-1 py-2 bg-slate-200 text-slate-700 rounded-lg text-sm font-bold">Cancel</button>
+                            </div>
+                         ) : (
+                            <button onClick={() => setDeleteConfirm(appt.id)} className="w-full py-2.5 border border-slate-200 text-slate-500 rounded-lg text-sm font-bold hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors flex items-center justify-center gap-2">
+                                <Trash2 className="w-4 h-4" /> Delete Record
                             </button>
-                            <button
-                              onClick={() => setDeleteConfirm(null)}
-                              className="flex-1 px-4 py-3 bg-slate-200 text-slate-700 rounded-xl font-semibold hover:bg-slate-300 transition-all"
-                            >
-                              Back
-                            </button>
-                          </div>
-                        ) : (
-                          <button
-                            onClick={() => setDeleteConfirm(appt.id)}
-                            className="w-full px-4 py-3 bg-slate-100 text-slate-500 rounded-xl font-semibold hover:bg-red-100 hover:text-red-600 transition-all flex items-center justify-center gap-2"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                            Delete Appointment
-                          </button>
-                        )}
-                      </>
-                    )}
+                         )
+                      )}
                     </div>
                   </div>
                 );

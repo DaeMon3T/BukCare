@@ -4,14 +4,14 @@ from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from utils.admin import create_admin_if_not_exists
 from core.config import settings
-from core.database import Base, engine, SessionLocal # 👈 Added SessionLocal
+from core.database import Base, engine, SessionLocal 
 from core.logging_config import setup_logging, get_logger
 from middleware.rate_limiting import rate_limit_middleware, endpoint_rate_limit_middleware
 from middleware.security import security_middleware_handler
 from middleware.request_logging import request_logging_middleware
 import logging
 import traceback
-from sqlalchemy.orm import Session # 👈 Added Session import
+from sqlalchemy.orm import Session
 
 # Router Imports
 from routers.v1 import router as v1_router
@@ -22,7 +22,7 @@ from routers.v1 import reviews
 from routers.v1 import appointments 
 
 # Model Imports for Seeding
-from models.doctor import Specialization # 👈 Added Specialization model
+from models.doctor import Specialization 
 from models.message import Message
 from models.review import Review
 
@@ -73,7 +73,7 @@ def create_app() -> FastAPI:
 
 
     # ============================================================
-    # 🛡️ DATABASE SEEDER FUNCTION
+    # DATABASE SEEDER FUNCTION
     # This runs on startup to ensure "Cardiology" exists (ID 6)
     # instead of creating a specialization literally named "6"
     # ============================================================
@@ -87,7 +87,7 @@ def create_app() -> FastAPI:
             "Dermatology",          # ID 3
             "Neurology",            # ID 4
             "Internal Medicine",    # ID 5
-            "Cardiology",           # ID 6 <--- Now this matches your frontend!
+            "Cardiology",           # ID 6
             "Psychiatry",           # ID 7
             "Surgery",              # ID 8
             "Orthopedics",          # ID 9
@@ -98,15 +98,15 @@ def create_app() -> FastAPI:
         # Check if table is empty
         try:
             if db.query(Specialization).count() == 0:
-                logger.info("🌱 Seeding Specializations database...")
+                logger.info("Seeding Specializations database...")
                 for name in standard_specs:
                     db.add(Specialization(name=name))
                 db.commit()
-                logger.info("✅ Specializations seeded successfully!")
+                logger.info("Specializations seeded successfully!")
             else:
-                logger.info("👌 Specializations already exist. Skipping seed.")
+                logger.info("Specializations already exist. Skipping seed.")
         except Exception as e:
-            logger.error(f"⚠️ Error seeding specializations: {e}")
+            logger.error(f"Error seeding specializations: {e}")
 
 
     # ============================================================
