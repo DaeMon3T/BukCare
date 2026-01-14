@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import toast from "react-hot-toast";
-import { Search, Filter, X, Stethoscope } from "lucide-react";
+import { Search, Filter, X, Stethoscope, Activity } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import DoctorCard, { type Doctor } from "@/components/DoctorCard";
 import GetDoctorAPI from "@/services/patient/GetDoctorAPI";
@@ -45,7 +45,6 @@ const FindDoctor: React.FC = () => {
                 name: doc.name,
                 specializations: cleanSpec, 
                 specialization: cleanSpec,
-                
                 avatar: doc.avatar || "/default-avatar.png",
                 address: doc.address || "No address provided",
                 email: doc.email || "",
@@ -99,115 +98,131 @@ const FindDoctor: React.FC = () => {
   });
 
   return (
-    <div className="min-h-screen bg-slate-50 overflow-hidden flex flex-col">
-      <Navbar />
+    // ✨ GLASSMORPHISM BACKGROUND WRAPPER
+    <div className="min-h-screen bg-[#F0F4F8] relative overflow-hidden font-sans text-slate-800 flex flex-col">
+      
+      {/* 🎨 AMBIENT BACKGROUND BLOBS */}
+      <div className="fixed inset-0 pointer-events-none z-0">
+          <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-blue-400/20 rounded-full blur-[100px] mix-blend-multiply" />
+          <div className="absolute top-[20%] right-[-10%] w-[600px] h-[600px] bg-purple-400/20 rounded-full blur-[100px] mix-blend-multiply" />
+          <div className="absolute bottom-[-10%] left-[20%] w-[500px] h-[500px] bg-emerald-400/20 rounded-full blur-[100px] mix-blend-multiply" />
+      </div>
 
-      <main className="flex-1 overflow-y-auto">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          
-          {/* HERO SEARCH SECTION */}
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-8">
-            <h1 className="text-2xl font-bold text-slate-800 mb-2">Find the right doctor for you</h1>
-            <p className="text-slate-500 mb-6">Search by doctor name or specialization</p>
+      <div className="relative z-10 flex-1 flex flex-col">
+        <Navbar />
+
+        <main className="flex-1 overflow-y-auto">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             
-            <div className="flex flex-col md:flex-row gap-4">
-                {/* Search Bar */}
-                <div className="relative flex-1">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                    <input
-                        type="text"
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        placeholder="e.g. Dr. Smith or Cardiology..."
-                        className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                    />
-                    {search && (
-                        <button 
-                            onClick={() => setSearch("")}
-                            className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                        >
-                            <X className="w-4 h-4" />
-                        </button>
-                    )}
-                </div>
+            {/* HERO SEARCH SECTION (Glass Card) */}
+            <div className="bg-white/40 backdrop-blur-xl rounded-[2rem] border border-white/50 shadow-sm p-8 mb-8 relative overflow-hidden">
+                {/* Decorative Icon Background */}
+                <Stethoscope className="absolute -right-10 -top-10 w-64 h-64 text-blue-600/5 rotate-12 pointer-events-none" />
+                
+                <div className="relative z-10">
+                    <h1 className="text-3xl font-extrabold text-slate-900 mb-2">Find your Specialist</h1>
+                    <p className="text-slate-500 mb-8 max-w-lg font-medium">Search through our network of trusted medical professionals to find the right care for you.</p>
+                    
+                    <div className="flex flex-col md:flex-row gap-4">
+                        {/* Search Bar */}
+                        <div className="relative flex-1">
+                            <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                            <input
+                                type="text"
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                                placeholder="Search by name, specialization, etc..."
+                                className="w-full pl-14 pr-4 py-4 bg-white/60 border border-white/50 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:bg-white transition-all shadow-sm text-slate-700 placeholder:text-slate-400"
+                            />
+                            {search && (
+                                <button 
+                                    onClick={() => setSearch("")}
+                                    className="absolute right-4 top-1/2 -translate-y-1/2 p-1 hover:bg-slate-200/50 rounded-full text-slate-400 hover:text-slate-600 transition-colors"
+                                >
+                                    <X className="w-4 h-4" />
+                                </button>
+                            )}
+                        </div>
+                    </div>
 
-                {/* Filter Pills */}
-                <div className="flex gap-2 overflow-x-auto pb-2 md:pb-0 no-scrollbar items-center">
-                    <Filter className="w-5 h-5 text-slate-400 mr-2 flex-shrink-0 hidden md:block" />
-                    {filters.map(filter => (
-                        <button
-                            key={filter}
-                            onClick={() => handleFilterChange(filter)}
-                            className={`whitespace-nowrap px-4 py-2 rounded-full text-sm font-medium transition-all ${
-                                activeFilter === filter
-                                    ? "bg-blue-600 text-white shadow-md shadow-blue-200"
-                                    : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300"
-                            }`}
-                        >
-                            {filter}
-                        </button>
+                    {/* Filter Pills */}
+                    <div className="mt-6">
+                        <div className="flex items-center gap-2 mb-3 text-sm font-bold text-slate-500 uppercase tracking-wider">
+                            <Filter className="w-4 h-4" /> Filter by Specialization
+                        </div>
+                        <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar items-center">
+                            {filters.map(filter => (
+                                <button
+                                    key={filter}
+                                    onClick={() => handleFilterChange(filter)}
+                                    className={`whitespace-nowrap px-5 py-2.5 rounded-2xl text-sm font-bold transition-all border ${
+                                        activeFilter === filter
+                                            ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white border-transparent shadow-lg shadow-blue-500/30"
+                                            : "bg-white/50 border-white/60 text-slate-600 hover:bg-white hover:border-white hover:shadow-md"
+                                    }`}
+                                >
+                                    {filter}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* RESULTS GRID */}
+            {loading ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {[1, 2, 3, 4, 5, 6].map((n) => (
+                        <DoctorCardSkeleton key={n} />
                     ))}
                 </div>
-            </div>
-          </div>
-
-          {/* RESULTS GRID */}
-          {loading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-            {[1, 2, 3, 4, 5, 6].map((n) => (
-              <DoctorCardSkeleton key={n} />
-            ))}
-          </div>
-        ) : filteredDoctors.length > 0 ? (
-          // 👇 CHANGE THIS LINE
-          // grid-cols-2 (for mobile) | md:grid-cols-2 | lg:grid-cols-3
-          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-6"> 
-            {filteredDoctors.map((doc) => (
-              <Link 
-                to={`/patient/doctor/${doc.doctor_id}`} 
-                key={doc.doctor_id}
-                // Remove 'max-w-sm mx-auto' if you want them to fill the grid cell perfectly
-                className="block transition-transform hover:-translate-y-1"
-              >
-                <DoctorCard doctor={doc} />
-              </Link>
-            ))}
-          </div>
-        ) : (
-            <div className="flex flex-col items-center justify-center py-20 bg-white rounded-2xl border border-dashed border-slate-300">
-                <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mb-4">
-                    <Stethoscope className="w-10 h-10 text-slate-300" />
+            ) : filteredDoctors.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"> 
+                    {filteredDoctors.map((doc) => (
+                        <Link 
+                            to={`/patient/doctor/${doc.doctor_id}`} 
+                            key={doc.doctor_id}
+                            className="block transition-all hover:-translate-y-1 hover:shadow-xl rounded-3xl"
+                        >
+                            <DoctorCard doctor={doc} />
+                        </Link>
+                    ))}
                 </div>
-                <h3 className="text-lg font-semibold text-slate-900">No doctors found</h3>
-                <p className="text-slate-500 max-w-xs text-center mt-1">
-                    We couldn't find any doctors matching "{search}" {activeFilter !== "All" && `in ${activeFilter}`}.
-                </p>
-                <button 
-                    onClick={() => { setSearch(""); handleFilterChange("All"); }}
-                    className="mt-6 px-6 py-2 bg-white border border-slate-300 text-slate-700 font-medium rounded-lg hover:bg-slate-50 transition-colors"
-                >
-                    Clear All Filters
-                </button>
+            ) : (
+                <div className="flex flex-col items-center justify-center py-20 bg-white/40 backdrop-blur-xl rounded-[2rem] border border-white/50 border-dashed">
+                    <div className="w-24 h-24 bg-white/50 rounded-full flex items-center justify-center mb-6 shadow-sm">
+                        <Activity className="w-12 h-12 text-slate-300" />
+                    </div>
+                    <h3 className="text-xl font-bold text-slate-900">No doctors found</h3>
+                    <p className="text-slate-500 max-w-sm text-center mt-2 font-medium">
+                        We couldn't find any doctors matching "{search}" {activeFilter !== "All" && `in ${activeFilter}`}.
+                    </p>
+                    <button 
+                        onClick={() => { setSearch(""); handleFilterChange("All"); }}
+                        className="mt-8 px-8 py-3 bg-white border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-50 transition-all shadow-sm hover:shadow-md"
+                    >
+                        Clear All Filters
+                    </button>
+                </div>
+            )}
             </div>
-          )}
-        </div>
-      </main>
+        </main>
+      </div>
     </div>
   );
 };
 
 const DoctorCardSkeleton = () => (
-    // 👇 FIXED: Matches the real card sizing
-    <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm flex flex-col gap-4 animate-pulse h-full w-full max-w-sm mx-auto sm:max-w-none">
-        <div className="h-24 bg-slate-100 rounded-xl mb-4"></div>
-        <div className="flex justify-center -mt-12">
-            <div className="w-20 h-20 bg-slate-200 rounded-full border-4 border-white"></div>
+    <div className="bg-white/60 backdrop-blur-md rounded-[2rem] p-6 border border-white/50 shadow-sm flex flex-col gap-4 animate-pulse h-full">
+        <div className="h-24 bg-slate-200/50 rounded-2xl mb-4"></div>
+        <div className="flex justify-center -mt-16">
+            <div className="w-24 h-24 bg-slate-200/50 rounded-full border-4 border-white/50"></div>
         </div>
         <div className="space-y-3 text-center mt-2">
-            <div className="h-4 bg-slate-200 rounded w-1/2 mx-auto"></div>
-            <div className="h-3 bg-slate-200 rounded w-1/3 mx-auto"></div>
+            <div className="h-4 bg-slate-200/50 rounded w-1/2 mx-auto"></div>
+            <div className="h-3 bg-slate-200/50 rounded w-1/3 mx-auto"></div>
         </div>
-        <div className="h-10 bg-slate-200 rounded-xl mt-auto"></div>
+        <div className="h-12 bg-slate-200/50 rounded-xl mt-auto"></div>
     </div>
 );
 

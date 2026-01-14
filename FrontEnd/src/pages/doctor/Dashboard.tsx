@@ -14,7 +14,6 @@ import {
   ChevronRight,
   MoreVertical,
   Search,
-  Download,
   Plus,
   QrCode,
 } from "lucide-react";
@@ -39,14 +38,13 @@ import appointmentpic from "@/assets/images/appointment.png";
 import pendingpic from "@/assets/images/pending.png";
 import confirmedpic from "@/assets/images/confirmed.png";
 import patientpic from "@/assets/images/patient.png";
-import availability from "@/assets/images/set_availability.png";
 import history from "@/assets/images/history.png";
 import bukcarelogo from "@/assets/images/bukcare_logo.png";
 import clockpic from "@/assets/images/clock.png";
 import completepic from "@/assets/images/complete.png";
 import cancelpic from "@/assets/images/cancel.png";
 
-// 🩺 Appointment type definition
+// Appointment type definition
 interface Appointment {
   id: number;
   patient_id: number;
@@ -61,7 +59,7 @@ interface Appointment {
   updated_at: string;
 }
 
-// 📊 Dashboard Statistics
+// Dashboard Statistics
 interface DashboardStats {
   totalAppointments: number;
   todayAppointments: number;
@@ -633,6 +631,11 @@ const DoctorDashboard: FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50">
+      <div className="fixed inset-0 pointer-events-none z-0">
+          <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-blue-400/20 rounded-full blur-[100px] mix-blend-multiply" />
+          <div className="absolute top-[20%] right-[-10%] w-[600px] h-[600px] bg-purple-400/20 rounded-full blur-[100px] mix-blend-multiply" />
+          <div className="absolute bottom-[-10%] left-[20%] w-[500px] h-[500px] bg-emerald-400/20 rounded-full blur-[100px] mix-blend-multiply" />
+      </div>
       <Navbar />
 
       <main className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
@@ -804,7 +807,7 @@ const DoctorDashboard: FC = () => {
                   { label: "Confirmed", value: stats.confirmedAppointments, img: confirmedpic, textColor: "text-blue-600" },
                   { label: "Completed", value: stats.completedAppointments, img: completepic, textColor: "text-blue-600" },
                   { label: "Cancelled", value: stats.cancelledAppointments, img: cancelpic, textColor: "text-blue-600" },
-                ].map((stat, index) => (
+                ].map((stat, _index) => (
                   <div key={stat.label} className="flex items-center justify-between py-2">
                     <div className="flex items-center space-x-3">
                       <div>
@@ -1245,7 +1248,7 @@ const DoctorDashboard: FC = () => {
                     return sch.date === today && sch.is_available;
                   })
                   .sort((a, b) => a.start_time.localeCompare(b.start_time))
-                  .map((sch, index) => (
+                  .map((sch, _index) => (
                     <div
                       key={sch.id}
                       className="p-4 rounded-xl bg-gradient-to-r from-emerald-50 to-green-50 border border-emerald-200 hover:shadow-sm transition-all"

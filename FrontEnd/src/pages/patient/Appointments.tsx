@@ -118,7 +118,6 @@ const PatientAppointments = () => {
     
     try {
         setCancelProcessing(true);
-        // 👇 Now sending the reason!
         await api.put(`/appointments/${appointmentToCancel.id}/status`, { 
             status: "cancelled",
             reason: cancellationReason 
@@ -175,6 +174,11 @@ const PatientAppointments = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
+        <div className="fixed inset-0 pointer-events-none z-0">
+          <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-blue-400/20 rounded-full blur-[100px] mix-blend-multiply" />
+          <div className="absolute top-[20%] right-[-10%] w-[600px] h-[600px] bg-purple-400/20 rounded-full blur-[100px] mix-blend-multiply" />
+          <div className="absolute bottom-[-10%] left-[20%] w-[500px] h-[500px] bg-emerald-400/20 rounded-full blur-[100px] mix-blend-multiply" />
+        </div>
       <Navbar />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
@@ -203,8 +207,7 @@ const PatientAppointments = () => {
                             Are you sure you want to cancel your appointment with <span className="font-bold text-slate-700">Dr. {appointmentToCancel.doctor_name}</span>?
                         </p>
                     </div>
-                    
-                    {/* 👇 Added Reason Input */}
+                
                     <div className="p-4 space-y-3">
                         <label className="text-xs font-bold text-slate-500 uppercase">Reason for Cancellation</label>
                         <textarea 
@@ -289,11 +292,11 @@ const PatientAppointments = () => {
                     </p>
                 </div>
             ) : (
-                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <div className="bg-white rounded-2xl shadow-sm border border-slate-400 overflow-hidden">
                     <div className="hidden md:block overflow-x-auto">
                         <table className="w-full text-left border-collapse">
                             <thead>
-                                <tr className="bg-slate-50/80 border-b border-slate-100 text-xs uppercase text-slate-400 font-bold tracking-wider">
+                                <tr className="bg-slate-300 border-b border-slate-100 text-xs uppercase text-black font-bold tracking-wider">
                                     <th className="py-4 px-6">Doctor</th>
                                     <th className="py-4 px-6">Schedule</th>
                                     <th className="py-4 px-6">Status</th>
@@ -301,7 +304,7 @@ const PatientAppointments = () => {
                                     <th className="py-4 px-6 text-right">Actions</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-slate-50">
+                            <tbody className="divide-y divide-slate-300">
                                 {filteredAppointments.map((appt) => {
                                     const { date, time, isPast } = formatDateTime(appt.appointment_date);
                                     const statusMeta = getStatusStyles(appt.status);
