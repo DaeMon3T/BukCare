@@ -383,9 +383,6 @@ export default function Profile() {
                         </div>
                         <h3 className="font-bold text-slate-800 text-lg">Medical Snapshot</h3>
                     </div>
-                    <button onClick={() => navigate('/patient/profile/edit')} className="text-xs font-bold text-rose-600 bg-rose-50 px-3 py-1.5 rounded-full hover:bg-rose-100 transition">
-                        Update
-                    </button>
                 </div>
                 
                 <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-6">
