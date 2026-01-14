@@ -1,26 +1,23 @@
 import React, { useState, useEffect } from "react";
-import { Star, MessageSquare, CheckCircle } from "lucide-react"; // Import CheckCircle here
+import { Star, MessageSquare, CheckCircle } from "lucide-react";
 import reviewsAPI from "@/services/reviews";
 
-// 1. Update Interface to handle both formats
 export interface Review {
   id: number;
   rating: number;
   comment: string;
   created_at: string;
-  // The backend might send ONE of these formats:
   patient_name?: string; 
-  patient?: {
-    fname: string;
-    lname: string;
-  };
+  patient?: { fname: string; lname: string; };
 }
 
 interface Props {
   doctorId: number;
+  // 👇 NEW: Callback to send stats to parent
+  onStatsUpdate?: (stats: { average: number; count: number }) => void;
 }
 
-const DoctorReviews: React.FC<Props> = ({ doctorId }) => {
+const DoctorReviews: React.FC<Props> = ({ doctorId, onStatsUpdate }) => {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
   
@@ -28,12 +25,21 @@ const DoctorReviews: React.FC<Props> = ({ doctorId }) => {
     try {
       const data = await reviewsAPI.getDoctorReviews(doctorId);
       
-      // Ensure data is an array
       if (Array.isArray(data)) {
           setReviews(data);
+          
+          // 👇 NEW: Calculate and send stats immediately
+          const avg = data.length > 0 
+            ? data.reduce((acc, r) => acc + r.rating, 0) / data.length 
+            : 0;
+            
+          if (onStatsUpdate) {
+            onStatsUpdate({ average: avg, count: data.length });
+          }
+
       } else {
-          console.error("API did not return an array:", data);
           setReviews([]);
+          if (onStatsUpdate) onStatsUpdate({ average: 0, count: 0 });
       }
     } catch (err) {
       console.error("Failed to load reviews", err);
@@ -46,12 +52,11 @@ const DoctorReviews: React.FC<Props> = ({ doctorId }) => {
     fetchReviews();
   }, [doctorId]);
 
-  // Calculate Average
+  // Recalculate for local display
   const averageRating = reviews.length > 0 
     ? reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length 
     : 0;
 
-  // Helper to safely get the name
   const getPatientName = (rev: Review) => {
       if (rev.patient_name) return rev.patient_name;
       if (rev.patient) return `${rev.patient.fname} ${rev.patient.lname}`;
@@ -91,7 +96,6 @@ const DoctorReviews: React.FC<Props> = ({ doctorId }) => {
         ) : (
             reviews.map((rev) => {
                 const patientName = getPatientName(rev);
-                
                 return (
                     <div key={rev.id} className="border-b border-slate-100 pb-6 last:border-0 last:pb-0">
                         <div className="flex justify-between items-start mb-3">
@@ -114,9 +118,7 @@ const DoctorReviews: React.FC<Props> = ({ doctorId }) => {
                         </div>
                         <p className="text-slate-600 text-sm leading-relaxed pl-[52px]">{rev.comment}</p>
                         <p className="text-xs text-slate-400 mt-2 pl-[52px]">
-                            {rev.created_at 
-                                ? new Date(rev.created_at).toLocaleDateString() 
-                                : "Recently"}
+                            {rev.created_at ? new Date(rev.created_at).toLocaleDateString() : "Recently"}
                         </p>
                     </div>
                 );

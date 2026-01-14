@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Integer, ForeignKey, Table, Boolean, Time, Text, DateTime
+from sqlalchemy import Column, Numeric, String, Integer, ForeignKey, Table, Boolean, Time, Text, DateTime
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from core.database import Base
@@ -53,6 +53,7 @@ class Doctor(Base):
     
     # Additional doctor information
     bio = Column(Text, nullable=True)
+    consultation_fee = Column(Numeric(10, 2), default=500.00, nullable=True)
     is_accepting_patients = Column(Boolean, default=True)
     
     # ADDED: Timestamps

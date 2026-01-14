@@ -6,8 +6,13 @@ import {
   updateUserProfile,
   updateProfilePicture,
 } from "@/services/users/UsersAPI";
-import { BookUser, Mail, Phone } from "lucide-react";
+import api from "@/services/api"; 
+import { 
+  CalendarRange, MapPin, User, Camera, Mail, Phone, Edit2, 
+  Stethoscope, Award, FileBadge, CheckCircle2, Clock, AlertCircle, Banknote, FileText 
+} from "lucide-react";
 
+// Updated Interface to include Doctor-specific fields for editing
 interface UserProfile {
   fname: string;
   mname?: string;
@@ -17,6 +22,10 @@ interface UserProfile {
   contact_number?: string;
   email: string;
   picture?: string;
+  is_doctor_approved?: boolean;
+  // Doctor specific fields we want to edit:
+  bio?: string;
+  consultation_fee?: number;
   address?: {
     province?: string;
     city?: string;
@@ -24,7 +33,16 @@ interface UserProfile {
   };
 }
 
-// Edit Profile Modal Component
+interface DoctorData {
+    license_number: string;
+    years_of_experience: number;
+    specialization: string;
+    is_doctor_approved: boolean;
+    consultation_fee: number;
+    bio: string;
+}
+
+// --- MODAL COMPONENT ---
 const EditProfileModal = ({
   isOpen,
   onClose,
@@ -36,259 +54,144 @@ const EditProfileModal = ({
   isOpen: boolean;
   onClose: () => void;
   formData: UserProfile;
-  handleChange: (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
+  handleChange: (e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => void;
   handleSave: () => Promise<void>;
   saving: boolean;
 }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-      <div className="bg-white rounded-3xl w-full max-w-2xl max-h-[95vh] overflow-y-auto shadow-2xl">
-        {/* Modal Header */}
-        <div className="sticky top-0 bg-gradient-to-r from- to-blue-50 border-b p-8 rounded-t-3xl">
-          <div className="flex items-center justify-between">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="bg-white rounded-3xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl flex flex-col">
+        <div className="sticky top-0 z-10 bg-white/80 backdrop-blur-md border-b border-slate-100 px-8 py-5 flex justify-between items-center">
             <div>
-              <h2 className="text-2xl font-bold text-gray-800">Edit Profile</h2>
-              <p className="text-gray-600 mt-1">Update your personal information</p>
+              <h2 className="text-xl font-bold text-slate-800">Edit Doctor Profile</h2>
+              <p className="text-slate-500 text-sm">Update your professional details</p>
             </div>
-            <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-gray-700 text-3xl hover:bg-gray-100 w-10 h-10 rounded-full flex items-center justify-center transition"
-            >
-              ✕
-            </button>
-          </div>
+            <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full transition text-slate-400 hover:text-slate-600">✕</button>
         </div>
 
-        {/* Modal Body */}
-        <div className="p-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Left Column */}
-            <div className="space-y-6">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
-                  <span className="bg-blue-100 text-blue-600 p-1.5 rounded-lg">
-                    👤
-                  </span>
-                  Personal Information
-                </label>
-                <div className="space-y-4">
-                  <div>
-                    <div className="text-xs text-gray-500 mb-1.5">First Name</div>
-                    <input
-                      type="text"
-                      name="fname"
-                      value={formData.fname}
-                      onChange={handleChange}
-                      className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-gray-50/50 transition"
-                      placeholder="Enter first name"
+        <div className="p-8 space-y-8">
+          
+          {/* PROFESSIONAL DETAILS (New Section) */}
+          <div className="space-y-5">
+            <h3 className="text-xs font-bold text-teal-600 uppercase tracking-widest flex items-center gap-2">
+                <Stethoscope className="w-4 h-4" /> Professional Details
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-500 ml-1">Consultation Fee (₱)</label>
+                    <div className="relative">
+                        <span className="absolute left-4 top-3.5 text-slate-400 font-bold">₱</span>
+                        <input 
+                            type="number" 
+                            name="consultation_fee" 
+                            value={formData.consultation_fee || ""} 
+                            onChange={handleChange} 
+                            className="w-full pl-8 p-3.5 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-none bg-slate-50/50 font-bold text-slate-700" 
+                            placeholder="e.g. 500"
+                        />
+                    </div>
+                </div>
+                <div className="space-y-1.5 md:col-span-2">
+                    <label className="text-xs font-bold text-slate-500 ml-1">Professional Bio</label>
+                    <textarea 
+                        name="bio" 
+                        rows={4}
+                        value={formData.bio || ""} 
+                        onChange={handleChange} 
+                        className="w-full p-3.5 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-none bg-slate-50/50 transition-all font-medium resize-none" 
+                        placeholder="Tell patients about your experience and specialization..."
                     />
-                  </div>
+                </div>
+            </div>
+          </div>
 
-                  <div>
-                    <div className="text-xs text-gray-500 mb-1.5">Middle Name</div>
-                    <input
-                      type="text"
-                      name="mname"
-                      value={formData.mname || ""}
-                      onChange={handleChange}
-                      className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-gray-50/50 transition"
-                      placeholder="Enter middle name"
-                    />
-                  </div>
+          <hr className="border-slate-100" />
 
-                  <div>
-                    <div className="text-xs text-gray-500 mb-1.5">Last Name</div>
-                    <input
-                      type="text"
-                      name="lname"
-                      value={formData.lname}
-                      onChange={handleChange}
-                      className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-gray-50/50 transition"
-                      placeholder="Enter last name"
-                    />
-                  </div>
-
-                  <div>
-                    <div className="text-xs text-gray-500 mb-1.5">Gender</div>
-                    <select
-                      name="sex"
-                      value={formData.sex === true ? "true" : formData.sex === false ? "false" : ""}
-                      onChange={handleChange}
-                      className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-gray-50/50 transition"
-                    >
-                      <option value="">Select gender</option>
+          {/* Personal Info */}
+          <div className="space-y-5">
+            <h3 className="text-xs font-bold text-blue-600 uppercase tracking-widest flex items-center gap-2">
+                <User className="w-4 h-4" /> Personal Information
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-500 ml-1">First Name</label>
+                    <input type="text" name="fname" value={formData.fname} onChange={handleChange} className="w-full p-3.5 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none bg-slate-50/50" />
+                </div>
+                <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-500 ml-1">Last Name</label>
+                    <input type="text" name="lname" value={formData.lname} onChange={handleChange} className="w-full p-3.5 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none bg-slate-50/50" />
+                </div>
+                <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-500 ml-1">Middle Name</label>
+                    <input type="text" name="mname" value={formData.mname || ""} onChange={handleChange} className="w-full p-3.5 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none bg-slate-50/50" />
+                </div>
+                <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-500 ml-1">Gender</label>
+                    <select name="sex" value={formData.sex === true ? "true" : formData.sex === false ? "false" : ""} onChange={handleChange} className="w-full p-3.5 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none bg-slate-50/50">
+                      <option value="">Select...</option>
                       <option value="true">Male</option>
                       <option value="false">Female</option>
                     </select>
-                  </div>
                 </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
-                  <span className="bg-emerald-100 text-emerald-600 p-1.5 rounded-lg">
-                    📅
-                  </span>
-                  Date of Birth
-                </label>
-                <input
-                  type="date"
-                  name="dob"
-                  value={formData.dob || ""}
-                  onChange={handleChange}
-                  className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-gray-50/50 transition"
-                />
-              </div>
             </div>
+          </div>
 
-            {/* Right Column */}
-            <div className="space-y-6">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
-                  <span className="bg-purple-100 text-purple-600 p-1.5 rounded-lg">
-                    📞
-                  </span>
-                  Contact Information
-                </label>
-                <div className="space-y-4">
-                  <div>
-                    <div className="text-xs text-gray-500 mb-1.5">Email Address</div>
-                    <input
-                      type="email"
-                      name="email"
-                      value={formData.email}
-                      disabled
-                      className="w-full border border-gray-200 rounded-xl px-4 py-3 bg-gray-100 text-gray-600 cursor-not-allowed"
-                    />
-                  </div>
-
-                  <div>
-                    <div className="text-xs text-gray-500 mb-1.5">Phone Number</div>
-                    <input
-                      type="text"
-                      name="contact_number"
-                      value={formData.contact_number || ""}
-                      onChange={handleChange}
-                      className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-gray-50/50 transition"
-                      placeholder="Enter contact number"
-                    />
-                  </div>
+          {/* Contact */}
+          <div className="space-y-5">
+            <h3 className="text-xs font-bold text-blue-600 uppercase tracking-widest flex items-center gap-2">
+                <Phone className="w-4 h-4" /> Contact & Clinic Address
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-500 ml-1">Phone Number</label>
+                    <input type="text" name="contact_number" value={formData.contact_number || ""} onChange={handleChange} className="w-full p-3.5 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none bg-slate-50/50" />
                 </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
-                  <span className="bg-orange-100 text-orange-600 p-1.5 rounded-lg">
-                    🏠
-                  </span>
-                  Address Details
-                </label>
-                <div className="space-y-4">
-                  <div>
-                    <div className="text-xs text-gray-500 mb-1.5">Barangay</div>
-                    <input
-                      type="text"
-                      name="barangay"
-                      value={formData.address?.barangay || ""}
-                      onChange={handleChange}
-                      className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-gray-50/50 transition"
-                      placeholder="Enter barangay"
-                    />
-                  </div>
-
-                  <div>
-                    <div className="text-xs text-gray-500 mb-1.5">City</div>
-                    <input
-                      type="text"
-                      name="city"
-                      value={formData.address?.city || ""}
-                      onChange={handleChange}
-                      className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-gray-50/50 transition"
-                      placeholder="Enter city"
-                    />
-                  </div>
-
-                  <div>
-                    <div className="text-xs text-gray-500 mb-1.5">Province</div>
-                    <input
-                      type="text"
-                      name="province"
-                      value={formData.address?.province || ""}
-                      onChange={handleChange}
-                      className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-gray-50/50 transition"
-                      placeholder="Enter province"
-                    />
-                  </div>
+                <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-500 ml-1">City</label>
+                    <input type="text" name="city" value={formData.address?.city || ""} onChange={handleChange} className="w-full p-3.5 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none bg-slate-50/50" />
                 </div>
-              </div>
+                <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-500 ml-1">Barangay</label>
+                    <input type="text" name="barangay" value={formData.address?.barangay || ""} onChange={handleChange} className="w-full p-3.5 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none bg-slate-50/50" />
+                </div>
+                <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-500 ml-1">Province</label>
+                    <input type="text" name="province" value={formData.address?.province || ""} onChange={handleChange} className="w-full p-3.5 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none bg-slate-50/50" />
+                </div>
             </div>
           </div>
         </div>
 
-        {/* Modal Footer */}
-        <div className="sticky bottom-0 bg-gradient-to-r from-blue-50/50 to-emerald-50/50 border-t p-8 rounded-b-3xl">
-          <div className="flex justify-between items-center">
-            <div className="text-sm text-gray-500">
-              Your profile information is secure and private
-            </div>
-            <div className="flex gap-3">
-              <button
-                onClick={onClose}
-                className="px-6 py-3 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 font-medium transition hover:border-gray-400"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                className="px-6 py-3 bg-gradient-to-r from-blue-600 to-emerald-600 text-white rounded-xl hover:from-blue-700 hover:to-emerald-700 font-medium transition shadow-lg hover:shadow-xl disabled:opacity-60 disabled:cursor-not-allowed"
-              >
-                {saving ? (
-                  <span className="flex items-center gap-2">
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    Saving...
-                  </span>
-                ) : (
-                  "Save Changes"
-                )}
-              </button>
-            </div>
-          </div>
+        <div className="sticky bottom-0 bg-white border-t border-slate-100 p-6 flex justify-end gap-3 rounded-b-3xl">
+            <button onClick={onClose} className="px-6 py-3 text-slate-600 font-bold hover:bg-slate-50 rounded-xl transition">Cancel</button>
+            <button onClick={handleSave} disabled={saving} className="px-8 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition shadow-lg shadow-blue-200 disabled:opacity-50">
+                {saving ? "Saving..." : "Save Changes"}
+            </button>
         </div>
       </div>
     </div>
   );
 };
 
-export default function Profile() {
+// --- MAIN PAGE ---
+export default function DoctorProfile() {
   const { setUser } = useAuth();
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   const [formData, setFormData] = useState<UserProfile>({
-    fname: "",
-    mname: "",
-    lname: "",
-    sex: null,
-    dob: "",
-    contact_number: "",
-    email: "",
-    picture: "",
-    address: {
-      province: "",
-      city: "",
-      barangay: "",
-    },
+    fname: "", mname: "", lname: "", sex: null, dob: "", contact_number: "", email: "", picture: "", 
+    is_doctor_approved: false, bio: "", consultation_fee: 0,
+    address: { province: "", city: "", barangay: "" },
   });
 
+  const [doctorData, setDoctorData] = useState<DoctorData | null>(null);
   const [picture, setPicture] = useState<string>("/assets/react.svg");
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [saving, setSaving] = useState<boolean>(false);
   const [uploadingPic, setUploadingPic] = useState<boolean>(false);
 
-  // Fetch Profile
   useEffect(() => {
     const fetchProfile = async () => {
       setLoading(true);
@@ -296,37 +199,32 @@ export default function Profile() {
         const user = await getUserProfile();
         setFormData(user);
         setPicture(user.picture || "/assets/react.svg");
-      } catch (err) {
-        console.error("Error fetching profile:", err);
-      } finally {
-        setLoading(false);
-      }
+
+        try {
+            const docRes = await api.get('/doctors/profile/me');
+            setDoctorData(docRes.data);
+            setFormData(prev => ({ 
+                ...prev, 
+                is_doctor_approved: docRes.data.is_doctor_approved,
+                consultation_fee: docRes.data.consultation_fee, 
+                bio: docRes.data.bio 
+            }));
+        } catch (e) { console.error("Could not load doctor data", e); }
+
+      } catch (err) { console.error("Error fetching profile:", err); } 
+      finally { setLoading(false); }
     };
     fetchProfile();
   }, []);
 
-  // Handlers
-  const handleChange = (
-    e: ChangeEvent<HTMLInputElement | HTMLSelectElement>
-  ) => {
+  const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-
     if (["province", "city", "barangay"].includes(name)) {
-      setFormData(prev => ({
-        ...prev,
-        address: {
-          ...prev.address,
-          [name]: value,
-        },
-      }));
+      setFormData(prev => ({...prev, address: { ...prev.address, [name]: value }}));
       return;
     }
-
     if (name === "sex") {
-      setFormData((prev) => ({
-        ...prev,
-        sex: value === "true" ? true : value === "false" ? false : null,
-      }));
+      setFormData((prev) => ({...prev, sex: value === "true" ? true : value === "false" ? false : null}));
     } else {
       setFormData((prev) => ({ ...prev, [name]: value }));
     }
@@ -335,12 +233,23 @@ export default function Profile() {
   const handleSave = async () => {
     setSaving(true);
     try {
+      // 1. Update User Table
       const updatedUser = await updateUserProfile(formData);
       setUser(updatedUser);
-      alert("Profile updated successfully!");
+
+      // 2. Update Doctor Table
+      await api.put('/doctors/profile/me', {
+          consultation_fee: formData.consultation_fee,
+          bio: formData.bio
+      });
+
+      setIsEditModalOpen(false);
+      // Reload to reflect
+      const docRes = await api.get('/doctors/profile/me');
+      setDoctorData(docRes.data);
+
     } catch (err) {
       console.error(err);
-      alert("Failed to update profile.");
     } finally {
       setSaving(false);
     }
@@ -349,46 +258,26 @@ export default function Profile() {
   const handleFileSelect = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
-    const previewURL = URL.createObjectURL(file);
-
-    setSelectedFile(file);
-    setPicture(previewURL);
-    setUser(prev => ({ ...prev!, picture: previewURL }));
+    handleUploadPicture(file);
   };
 
-  const handleUploadPicture = async () => {
-    if (!selectedFile) return;
+  const handleUploadPicture = async (file: File) => {
     setUploadingPic(true);
     try {
-      const updatedUser = await updateProfilePicture(selectedFile);
-
-      const newPicture = updatedUser.picture
-        ? `${updatedUser.picture}?t=${Date.now()}`
-        : "/assets/react.svg";
-
+      const previewURL = URL.createObjectURL(file);
+      setPicture(previewURL); 
+      const updatedUser = await updateProfilePicture(file);
+      const newPicture = updatedUser.picture ? `${updatedUser.picture}?t=${Date.now()}` : "/assets/react.svg";
       setPicture(newPicture);
       setFormData(prev => ({ ...prev, picture: newPicture }));
       setUser(prev => ({ ...prev!, picture: newPicture }));
-      setSelectedFile(null);
-      alert("Profile picture updated!");
-    } catch (err) {
-      console.error(err);
-      alert("Failed to update profile picture.");
-    } finally {
-      setUploadingPic(false);
-    }
+    } catch (err) { console.error(err); } 
+    finally { setUploadingPic(false); }
   };
 
-  // Helper functions
   const formatDate = (dateString?: string) => {
     if (!dateString) return "Not specified";
-    return new Date(dateString).toLocaleDateString('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
+    return new Date(dateString).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
   };
 
   const calculateAge = (dob?: string) => {
@@ -407,343 +296,217 @@ export default function Profile() {
     return `${formData.fname.charAt(0)}${formData.lname.charAt(0)}`.toUpperCase();
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-cyan-50 to-cyan-50 flex items-center justify-center">
-        <div className="text-center space-y-6">
-          <div className="relative">
-            <div className="w-24 h-24 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="w-16 h-16 border-4 border-emerald-200 border-t-emerald-600 rounded-full animate-spin" style={{ animationDirection: 'reverse' }}></div>
-            </div>
-          </div>
-          <div>
-            <p className="text-gray-700 font-medium">Loading your profile</p>
-            <p className="text-gray-500 text-sm mt-2">Please wait while we fetch your information...</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  if (loading) return <div className="min-h-screen bg-slate-50 flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-600 border-t-transparent"></div></div>;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-emerald-50 to-purple-50">
-      <Navbar />
+    <div className="min-h-screen bg-[#F8FAFC] pb-20">
+      <Navbar/>
 
-      <main className="max-w-7xl mx-auto px-4 py-8">
-        {/* Top Banner */}
-        <div className="bg-gradient-to-r from-blue-600 via-cyan-500 to-cyan-500 rounded-3xl p-8 mb-8 text-white shadow-xl">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold">Doctor Profile</h1>
-              <p className="text-blue-100 mt-2">Manage your personal and professional information</p>
-            </div>
-            <div className="text-right">
-              <div className="text-2xl font-bold">Medical ID: DR{formData.fname.charAt(0)}-{Date.now().toString().slice(-4)}</div>
-              <div className="text-blue-100 text-sm mt-1">Last updated: Today</div>
-            </div>
-          </div>
+      {/* --- HERO --- */}
+      <div className="bg-white shadow-sm pb-4 relative z-0">
+        <div className="h-40 md:h-60 w-full bg-gradient-to-r from-blue-700 to-[#2dc7f8] relative overflow-hidden">
+            <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/medical-icons.png')] opacity-10"></div>
+            <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/20"></div>
         </div>
 
-        <div className="grid lg:grid-cols-3 gap-8">
-          {/* Left Column - Profile Card */}
-          <div className="lg:col-span-1 space-y-8">
-            {/* Profile Card */}
-            <div className="bg-white rounded-3xl shadow-lg border border-gray-100 overflow-hidden">
-              <div className="relative h-32 bg-gradient-to-r from-blue-600 via-cyan-500 to-cyan-500"></div>
-              
-              <div className="px-6 pb-6 relative -top-12">
-                {/* Profile Picture */}
-                <div className="relative">
-                  <div className="w-40 h-40 mx-auto rounded-full border-8 border-white shadow-xl overflow-hidden">
-                    <img
-                      src={picture}
-                      alt="Profile"
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        e.currentTarget.src = `https://ui-avatars.com/api/?name=${getInitials()}&background=4f46e5&color=ffffff&size=256`;
-                      }}
-                    />
-                  </div>
-                  
-                  {/* Camera Button */}
-                  <label className="absolute bottom-4 right-1/4 bg-white text-blue-600 p-3 rounded-full shadow-lg hover:bg-blue-50 cursor-pointer transition-all hover:scale-110">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M4 5a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V7a2 2 0 00-2-2h-1.586a1 1 0 01-.707-.293l-1.121-1.121A2 2 0 0011.172 3H8.828a2 2 0 00-1.414.586L6.293 4.707A1 1 0 015.586 5H4zm6 9a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
-                    </svg>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={handleFileSelect}
-                    />
-                  </label>
-                </div>
-
-                {/* Profile Info */}
-                <div className="text-center mt-8">
-                  <h2 className="text-2xl font-bold text-gray-800">
-                    Dr. {formData.fname} {formData.lname}
-                  </h2>
-                  <p className="text-gray-600 mt-1">{formData.email}</p>
-                  
-                  <div className="inline-flex items-center gap-2 mt-3 px-4 py-1.5 bg-blue-50 text-blue-700 rounded-full text-sm">
-                    <span className="w-2 h-2 bg-blue-600 rounded-full animate-pulse"></span>
-                    Active Status
-                  </div>
-                </div>
-
-                {/* Upload Button */}
-                {selectedFile && (
-                  <div className="mt-6">
-                    <button
-                      type="button"
-                      onClick={handleUploadPicture}
-                      disabled={uploadingPic}
-                      className="w-full py-3 bg-gradient-to-r from-blue-600 via-cyan-500 to-cyan-500 text-white rounded-xl hover:from-blue-700 hover:to-emerald-700 font-medium transition shadow-lg hover:shadow-xl disabled:opacity-60 flex items-center justify-center gap-2"
-                    >
-                      {uploadingPic ? (
-                        <>
-                          <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                          Uploading...
-                        </>
-                      ) : (
-                        <>
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                            <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
-                          </svg>
-                      Upload New Photo
-                        </>
-                      )}
-                    </button>
-                  </div>
-                )}
-
-                {/* Edit Profile Button */}
-                <button
-                  onClick={() => setIsEditModalOpen(true)}
-                  className="w-full mt-4 py-3 border-2 border-blue-600 text-blue-600 rounded-xl hover:bg-blue-50 font-medium transition flex items-center justify-center gap-2"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                    <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
-                  </svg>
-                  Edit Profile Information
-                </button>
-              </div>
-
-              {/* Quick Stats */}
-              <div className="border-t border-gray-100 grid grid-cols-3 divide-x divide-gray-100">
-                <div className="p-4 text-center hover:bg-gray-50 transition">
-                  <div className="text-xl font-bold text-blue-600">
-                    {calculateAge(formData.dob) || '—'}
-                  </div>
-                  <div className="text-xs text-gray-500 mt-1">Age</div>
-                </div>
-                <div className="p-4 text-center hover:bg-gray-50 transition">
-                  <div className="text-xl font-bold text-blue-600">
-                    {formData.sex === true ? 'M' : formData.sex === false ? 'F' : '—'}
-                  </div>
-                  <div className="text-xs text-gray-500 mt-1">Gender</div>
-                </div>
-                <div className="p-4 text-center hover:bg-gray-50 transition">
-                  <div className="text-xl font-bold text-emerald-600">
-                    {formData.contact_number ? '✓' : '—'}
-                  </div>
-                  <div className="text-xs text-gray-500 mt-1">Contact</div>
-                </div>
-              </div>
-            </div>
-
-            {/* Contact Card */}
-            <div className="bg-white rounded-3xl shadow-lg border border-gray-100 p-6">
-              <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-                <span className="bg-blue-100 text-blue-600 p-2 rounded-lg">
-                  <BookUser />
-                </span>
-                Contact Details
-              </h3>
-              <div className="space-y-4">
-                <div className="flex items-start gap-3">
-                  <div className="bg-blue-100 text-blue-600 p-2 rounded-lg">
-                    <Mail />
-                  </div>
-                  <div>
-                    <div className="text-sm text-gray-500">Email</div>
-                    <div className="font-medium text-gray-800">{formData.email}</div>
-                  </div>
-                </div>
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="relative -mt-16 sm:-mt-20 flex flex-col items-center sm:flex-row sm:items-end sm:space-x-6">
                 
-                {formData.contact_number && (
-                  <div className="flex items-start gap-3">
-                    <div className="bg-blue-100 text-blue-600 p-2 rounded-lg">
-                      <Phone />
+                <div className="relative group">
+                    <div className="h-32 w-32 sm:h-40 sm:w-40 rounded-full ring-4 ring-white bg-white shadow-lg overflow-hidden relative z-10">
+                        <img 
+                            src={picture} 
+                            className={`h-full w-full object-cover transition-opacity ${uploadingPic ? 'opacity-50' : ''}`}
+                            alt="Profile"
+                            onError={(e) => { e.currentTarget.src = `https://ui-avatars.com/api/?name=${getInitials()}&background=0d9488&color=ffffff&size=256`; }}
+                        />
+                        {uploadingPic && <div className="absolute inset-0 flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-2 border-teal-600 border-t-transparent"></div></div>}
                     </div>
-                    <div>
-                      <div className="text-sm text-gray-500">Phone</div>
-                      <div className="font-medium text-gray-800">{formData.contact_number}</div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
+                    <label className="absolute bottom-1 right-1 sm:bottom-2 sm:right-2 z-20 bg-slate-100 p-2.5 rounded-full shadow-md border border-white cursor-pointer hover:bg-teal-50 hover:text-teal-600 transition-all hover:scale-110 active:scale-95">
+                        <Camera className="w-5 h-5 text-slate-600" />
+                        <input type="file" accept="image/*" className="hidden" onChange={handleFileSelect} />
+                    </label>
+                </div>
 
-          {/* Right Column - Details */}
-          <div className="lg:col-span-2 space-y-8">
-            {/* Personal Information Card */}
-            <div className="bg-white rounded-3xl shadow-lg border border-gray-100 p-8">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-bold text-gray-800">Personal Information</h3>
-                <span className="text-xs font-medium bg-blue-100 text-blue-700 px-3 py-1 rounded-full">
-                  COMPLETE PROFILE
-                </span>
-              </div>
-              
-              <div className="grid md:grid-cols-2 gap-6">
-                {/* Column 1 */}
-                <div className="space-y-6">
-                  <div className="bg-gray-50 rounded-2xl p-5 hover:bg-gray-100 transition">
-                    <div className="text-sm text-gray-500 mb-2">Full Name</div>
-                    <div className="text-lg font-semibold text-gray-800">
-                      {formData.fname} {formData.mname && `${formData.mname} `}{formData.lname}
+                <div className="mt-4 sm:mt-0 flex-1 text-center sm:text-left pb-2">
+                    <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+                        <div>
+                            <h1 className="text-3xl font-bold text-slate-900 leading-tight">Dr. {formData.fname} {formData.lname}</h1>
+                            <div className="flex items-center justify-center sm:justify-start gap-3 mt-1 text-slate-500 font-medium">
+                                <span className="flex items-center gap-1">
+                                    <Stethoscope className="w-4 h-4 text-teal-500" /> 
+                                    {doctorData?.specialization || "Medical Specialist"}
+                                </span>
+                                
+                                {formData.is_doctor_approved ? (
+                                    <span className="flex items-center gap-1 bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-md text-xs font-bold border border-emerald-200">
+                                        <CheckCircle2 className="w-3 h-3" /> Authorized
+                                    </span>
+                                ) : (
+                                    <span className="flex items-center gap-1 bg-amber-100 text-amber-700 px-2 py-0.5 rounded-md text-xs font-bold border border-amber-200">
+                                        <Clock className="w-3 h-3" /> Pending Approval
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+                            <button onClick={() => setIsEditModalOpen(true)} className="px-5 py-2.5 bg-white border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-50 hover:border-slate-300 transition shadow-sm flex items-center justify-center gap-2 text-sm">
+                                <Edit2 className="w-4 h-4" /> Edit Profile
+                            </button>
+                        </div>
                     </div>
-                  </div>
-                  
-                  <div className="bg-gray-50 rounded-2xl p-5 hover:bg-gray-100 transition">
-                    <div className="text-sm text-gray-500 mb-2">Gender</div>
-                    <div className="text-lg font-semibold text-gray-800">
-                      {formData.sex === true ? 'Male' : formData.sex === false ? 'Female' : 'Not specified'}
+                </div>
+            </div>
+        </div>
+      </div>
+
+      {/* --- GRID --- */}
+      <main className="max-w-6xl mx-auto px-4 py-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
+        
+        {/* LEFT */}
+        <div className="lg:col-span-1 space-y-6">
+            <div className="lg:sticky lg:top-24 space-y-6">
+                
+                {/* Intro */}
+                <div className="bg-white rounded-2xl shadow-sm p-6 border border-slate-100">
+                    <h3 className="font-bold text-slate-900 mb-4 text-lg">About</h3>
+                    <div className="space-y-4 text-sm text-slate-600">
+                        <div className="flex items-center gap-3">
+                            <Award className="w-5 h-5 text-slate-400 shrink-0" />
+                            <span>{doctorData?.years_of_experience ? `${doctorData.years_of_experience}+ Years Experience` : "Experience not listed"}</span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <CalendarRange className="w-5 h-5 text-slate-400 shrink-0" />
+                            {/* UPDATED: Using calculateAge here */}
+                            <div className="flex flex-col">
+                                <span>Born <strong>{formatDate(formData.dob)}</strong></span>
+                                {calculateAge(formData.dob) !== null && (
+                                    <span className="text-slate-400 text-xs">
+                                        {calculateAge(formData.dob)} years old
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <MapPin className="w-5 h-5 text-slate-400 shrink-0" />
+                            <span className="line-clamp-2">{formData.address?.city || "No city"}, {formData.address?.province || "Philippines"}</span>
+                        </div>
                     </div>
-                  </div>
-                  
-                  <div className="bg-gray-50 rounded-2xl p-5 hover:bg-gray-100 transition">
-                    <div className="text-sm text-gray-500 mb-2">Date of Birth</div>
-                    <div className="text-lg font-semibold text-gray-800">
-                      {formatDate(formData.dob)}
+                </div>
+
+                {/* Contact */}
+                <div className="bg-white rounded-2xl shadow-sm p-6 border border-slate-100">
+                    <h3 className="font-bold text-slate-900 mb-4 text-lg">Contact Info</h3>
+                    <div className="space-y-4">
+                        <div className="group">
+                            <div className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase mb-1"><Mail className="w-3 h-3 group-hover:text-blue-500 transition" /> Email</div>
+                            <p className="text-slate-700 font-medium truncate bg-slate-50 p-2 rounded-lg">{formData.email}</p>
+                        </div>
+                        <div className="group">
+                            <div className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase mb-1"><Phone className="w-3 h-3 group-hover:text-blue-500 transition" /> Clinic Phone</div>
+                            <p className="text-slate-700 font-medium bg-slate-50 p-2 rounded-lg">{formData.contact_number || "Not set"}</p>
+                        </div>
                     </div>
-                    {formData.dob && (
-                      <div className="text-sm text-blue-600 mt-2">
-                        Age: {calculateAge(formData.dob)} years
-                      </div>
+                </div>
+            </div>
+        </div>
+
+        {/* RIGHT */}
+        <div className="lg:col-span-2 space-y-6">
+
+            {/* NEW BIO CARD */}
+            <div className="bg-white rounded-2xl shadow-sm p-6 border border-slate-100">
+                <h3 className="font-bold text-slate-900 mb-4 text-lg flex items-center gap-2">
+                    <FileText className="w-5 h-5 text-teal-500" /> Professional Biography
+                </h3>
+                <div className="text-slate-600 leading-relaxed whitespace-pre-wrap">
+                    {formData.bio || (
+                        <span className="text-slate-400 italic">No biography provided yet. Click "Edit Profile" to add your professional background.</span>
                     )}
-                  </div>
                 </div>
-                
-                {/* Column 2 */}
-                <div className="space-y-6">
-                  <div className="bg-gray-50 rounded-2xl p-5 hover:bg-gray-100 transition">
-                    <div className="text-sm text-gray-500 mb-2">Email Address</div>
-                    <div className="text-lg font-semibold text-gray-800">{formData.email}</div>
-                    <div className="text-xs text-emerald-600 mt-2 flex items-center gap-1">
-                      <span className="w-2 h-2 bg-emerald-500 rounded-full"></span>
-                      Verified
+            </div>
+            
+            {/* CREDENTIALS CARD */}
+            <div className="bg-white rounded-2xl shadow-sm overflow-hidden border border-slate-100 hover:shadow-md transition-shadow">
+                <div className="bg-gradient-to-r from-teal-50 to-white p-5 border-b border-teal-100 flex justify-between items-center">
+                    <div className="flex items-center gap-3">
+                        <div className="bg-teal-100 p-2 rounded-lg text-teal-600">
+                            <Award className="w-5 h-5" />
+                        </div>
+                        <h3 className="font-bold text-slate-800 text-lg">Credentials & Licensing</h3>
                     </div>
-                  </div>
-                  
-                  <div className="bg-gray-50 rounded-2xl p-5 hover:bg-gray-100 transition">
-                    <div className="text-sm text-gray-500 mb-2">Phone Number</div>
-                    <div className="text-lg font-semibold text-gray-800">
-                      {formData.contact_number || 'Not specified'}
-                    </div>
-                    {!formData.contact_number && (
-                      <div className="text-xs text-orange-600 mt-2">
-                        Add phone number for emergency contact
-                      </div>
+                    
+                    {formData.is_doctor_approved ? (
+                        <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-100 flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3" /> Verified
+                        </span>
+                    ) : (
+                        <span className="text-xs font-bold text-amber-700 bg-amber-50 px-3 py-1.5 rounded-full border border-amber-100 flex items-center gap-1">
+                            <AlertCircle className="w-3 h-3" /> Verification Pending
+                        </span>
                     )}
-                  </div>
-                  
-                  <div className="bg-gray-50 rounded-2xl p-5 hover:bg-gray-100 transition">
-                    <div className="text-sm text-gray-500 mb-2">Profile Completion</div>
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span>Profile Details</span>
-                        <span className="font-semibold">85%</span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div className="bg-gradient-to-r from-blue-600 via-cyan-500 to-cyan-500 h-2 rounded-full w-4/5"></div>
-                      </div>
+                </div>
+                
+                <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                        <p className="text-xs font-bold text-slate-400 uppercase mb-1 tracking-wider">Medical License Number</p>
+                        <div className="flex items-center gap-2">
+                            <FileBadge className="w-5 h-5 text-teal-600" />
+                            <p className="text-xl font-mono font-bold text-slate-800 tracking-wide">
+                                {doctorData?.license_number || "PENDING"}
+                            </p>
+                        </div>
                     </div>
-                  </div>
+                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                        <p className="text-xs font-bold text-slate-400 uppercase mb-1 tracking-wider">Primary Specialization</p>
+                        <p className="text-lg font-bold text-slate-700">
+                            {doctorData?.specialization || "General Practice"}
+                        </p>
+                    </div>
+                    
+                    {/* CONSULTATION FEE DISPLAY */}
+                    <div className="sm:col-span-2 bg-blue-50/50 p-4 rounded-2xl border border-blue-100 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <div className="bg-blue-100 p-2 rounded-full text-blue-600">
+                                <Banknote className="w-5 h-5" />
+                            </div>
+                            <div>
+                                <p className="text-sm font-bold text-slate-800">Consultation Fee</p>
+                                <p className="text-xs text-slate-500">Standard rate per visit</p>
+                            </div>
+                        </div>
+                        <p className="text-2xl font-black text-slate-800">
+                            ₱ {formData.consultation_fee || doctorData?.consultation_fee || "500"}
+                        </p>
+                    </div>
                 </div>
-              </div>
             </div>
 
-            {/* Address Information Card */}
-            <div className="bg-white rounded-3xl shadow-lg border border-gray-100 p-8">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-bold text-gray-800">Address Information</h3>
-                <span className="text-xs font-medium bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full">
-                  PHILIPPINES
-                </span>
-              </div>
-              
-              <div className="grid md:grid-cols-3 gap-6 mb-8">
-                <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl p-5">
-                  <div className="text-sm text-blue-600 mb-2">Barangay</div>
-                  <div className="text-lg font-semibold text-gray-800">
-                    {formData.address?.barangay || 'Not specified'}
-                  </div>
+            {/* Clinic Address Card */}
+            <div className="bg-white rounded-2xl shadow-sm p-6 border border-slate-100">
+                <h3 className="font-bold text-slate-900 mb-6 text-lg flex items-center gap-2">
+                    <MapPin className="w-5 h-5 text-blue-500" /> Clinic / Practice Address
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                        <p className="text-xs text-slate-400 font-bold uppercase">Barangay</p>
+                        <p className="font-medium text-slate-700 text-lg">{formData.address?.barangay || "-"}</p>
+                    </div>
+                    <div className="space-y-1">
+                        <p className="text-xs text-slate-400 font-bold uppercase">City</p>
+                        <p className="font-medium text-slate-700 text-lg">{formData.address?.city || "-"}</p>
+                    </div>
+                    <div className="space-y-1 sm:col-span-2 pt-2 border-t border-slate-50">
+                        <p className="text-xs text-slate-400 font-bold uppercase">Province</p>
+                        <p className="font-medium text-slate-700 text-lg">{formData.address?.province || "-"}</p>
+                    </div>
                 </div>
-                
-                <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl p-5">
-                  <div className="text-sm text-blue-600 mb-2">City</div>
-                  <div className="text-lg font-semibold text-gray-800">
-                    {formData.address?.city || 'Not specified'}
-                  </div>
-                </div>
-                
-                <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl p-5">
-                  <div className="text-sm text-blue-600 mb-2">Province</div>
-                  <div className="text-lg font-semibold text-gray-800">
-                    {formData.address?.province || 'Not specified'}
-                  </div>
-                </div>
-              </div>
-              
-              <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-2xl p-6">
-                <div className="text-sm text-gray-500 mb-3">Complete Address</div>
-                <div className="text-lg font-semibold text-gray-800">
-                  {[formData.address?.barangay, formData.address?.city, formData.address?.province]
-                    .filter(Boolean)
-                    .join(', ') || 'No address information provided'}
-                </div>
-              </div>
             </div>
 
-            {/* Save Button Section */}
-            <div className="bg-gradient-to-r from-blue-600/10 via-emerald-600/10 to-purple-600/10 rounded-3xl border border-gray-200 p-8">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="font-bold text-gray-800">Ready to update your profile?</h4>
-                  <p className="text-gray-600 text-sm mt-1">Click save to apply all changes</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleSave}
-                  disabled={saving}
-                  className="px-8 py-4 bg-gradient-to-r from-blue-600 via-cyan-500 to-cyan-500 text-white rounded-xl hover:from-blue-700 hover:to-emerald-700 font-semibold transition-all shadow-lg hover:shadow-xl hover:scale-105 disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2"
-                >
-                  {saving ? (
-                    <>
-                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                      Saving Changes...
-                    </>
-                  ) : (
-                    <>
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                      </svg>
-                      Save All Changes
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>
         </div>
       </main>
 
-      {/* Edit Profile Modal */}
       <EditProfileModal
         isOpen={isEditModalOpen}
         onClose={() => setIsEditModalOpen(false)}

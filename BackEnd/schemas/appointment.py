@@ -46,3 +46,15 @@ class Appointment(AppointmentBase):
     created_at: datetime
     updated_at: datetime
     status: AppointmentStatus
+
+class AppointmentSchema(BaseModel):
+    id: int
+    doctor_id: int
+    patient_id: int
+    appointment_date: datetime
+    status: str
+    reason: Optional[str] = None
+    notes: Optional[str] = None
+
+    class Config:
+        from_attributes = True 

@@ -3,7 +3,6 @@ import type { FC } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Clock,
-  Users,
   Eye,
   CheckCircle,
   XCircle,
@@ -15,9 +14,9 @@ import {
   ChevronRight,
   MoreVertical,
   Search,
-  Filter,
   Download,
   Plus,
+  QrCode,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import {
@@ -645,10 +644,14 @@ const DoctorDashboard: FC = () => {
               <p className="text-slate-600 mt-2">Welcome back! Here's what's happening today.</p>
             </div>
             <div className="mt-4 sm:mt-0 flex items-center space-x-3">
-              <button className="px-4 py-2 bg-white border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-50 transition-colors flex items-center space-x-2">
-                <Download className="w-4 h-4" />
-                <span>Export</span>
+              <button 
+                  onClick={() => navigate('/doctor/scan')}
+                  className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition shadow-sm"
+              >
+                  <QrCode className="w-5 h-5" />
+                  <span>Scan Patient ID</span>
               </button>
+              
               <button 
                 onClick={() => navigate('/doctor/set-availability')}
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"

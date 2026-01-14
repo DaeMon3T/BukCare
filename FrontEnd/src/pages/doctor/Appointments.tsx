@@ -1,5 +1,4 @@
 import { useEffect, useState, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import api from "@/services/api";
 import Navbar from "@/components/Navbar";
@@ -11,7 +10,6 @@ import {
   XCircle, 
   AlertCircle, 
   Trash2, 
-  History, 
   RefreshCw, 
   UserPlus,
   Check
@@ -35,7 +33,6 @@ interface Appointment {
 }
 
 const DoctorAppointments = () => {
-  const navigate = useNavigate();
   const { lastMessage } = useWebSocket();
   
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -208,13 +205,6 @@ const DoctorAppointments = () => {
             <h2 className="text-3xl font-bold text-slate-900 tracking-tight">My Appointments</h2>
             <p className="text-slate-500 mt-1">View and manage your schedule</p>
           </div>
-          <button
-            onClick={() => navigate("/doctor/appointment-history")}
-            className="px-5 py-2.5 rounded-xl font-semibold bg-white text-slate-700 border border-slate-200 shadow-sm hover:bg-slate-50 hover:text-blue-600 transition-all flex items-center gap-2 self-start md:self-auto"
-          >
-            <History className="w-5 h-5" />
-            View History
-          </button>
         </div>
 
         {/* Filter Tabs */}
