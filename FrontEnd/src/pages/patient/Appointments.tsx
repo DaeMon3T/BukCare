@@ -47,6 +47,7 @@ const PatientAppointments = () => {
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
   const [appointmentToCancel, setAppointmentToCancel] = useState<Appointment | null>(null);
   const [cancelProcessing, setCancelProcessing] = useState(false);
+  const [cancellationReason, setCancellationReason] = useState(""); // 👈 Added State
 
   // 1. FETCH APPOINTMENTS
   const fetchAppointments = useCallback(async (isBackground = false) => {
@@ -104,16 +105,23 @@ const PatientAppointments = () => {
   // --- CANCEL HANDLERS ---
   const initiateCancel = (appt: Appointment) => {
     setAppointmentToCancel(appt);
+    setCancellationReason(""); // Reset reason
     setIsCancelModalOpen(true);
   };
 
   const confirmCancellation = async () => {
     if (!appointmentToCancel) return;
+    if (!cancellationReason.trim()) {
+        toast.error("Please provide a reason for cancellation");
+        return;
+    }
     
     try {
         setCancelProcessing(true);
+        // 👇 Now sending the reason!
         await api.put(`/appointments/${appointmentToCancel.id}/status`, { 
-            status: "cancelled" 
+            status: "cancelled",
+            reason: cancellationReason 
         });
         
         toast.success("Appointment cancelled");
@@ -124,8 +132,8 @@ const PatientAppointments = () => {
         
         setIsCancelModalOpen(false);
         setAppointmentToCancel(null);
-    } catch (err) {
-        toast.error("Failed to cancel appointment");
+    } catch (err: any) {
+        toast.error(err?.response?.data?.detail || "Failed to cancel appointment");
     } finally {
         setCancelProcessing(false);
     }
@@ -182,7 +190,7 @@ const PatientAppointments = () => {
             />
         )}
 
-        {/* CANCEL MODAL */}
+        {/* CANCEL MODAL (Updated with Input) */}
         {isCancelModalOpen && appointmentToCancel && (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
                 <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden transform transition-all scale-100">
@@ -195,7 +203,20 @@ const PatientAppointments = () => {
                             Are you sure you want to cancel your appointment with <span className="font-bold text-slate-700">Dr. {appointmentToCancel.doctor_name}</span>?
                         </p>
                     </div>
-                    <div className="p-4 flex gap-3 bg-white">
+                    
+                    {/* 👇 Added Reason Input */}
+                    <div className="p-4 space-y-3">
+                        <label className="text-xs font-bold text-slate-500 uppercase">Reason for Cancellation</label>
+                        <textarea 
+                            className="w-full p-3 text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-rose-200 focus:border-rose-400 outline-none resize-none"
+                            rows={3}
+                            placeholder="Please tell us why..."
+                            value={cancellationReason}
+                            onChange={(e) => setCancellationReason(e.target.value)}
+                        />
+                    </div>
+
+                    <div className="p-4 flex gap-3 bg-white pt-0">
                         <button
                             onClick={() => setIsCancelModalOpen(false)}
                             disabled={cancelProcessing}
@@ -205,8 +226,8 @@ const PatientAppointments = () => {
                         </button>
                         <button
                             onClick={confirmCancellation}
-                            disabled={cancelProcessing}
-                            className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white bg-rose-600 hover:bg-rose-700 shadow-lg shadow-rose-200 transition-all flex items-center justify-center gap-2"
+                            disabled={cancelProcessing || !cancellationReason.trim()}
+                            className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white bg-rose-600 hover:bg-rose-700 shadow-lg shadow-rose-200 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             {cancelProcessing ? (
                                 <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>

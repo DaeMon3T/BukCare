@@ -12,7 +12,8 @@ import {
   Trash2, 
   RefreshCw, 
   UserPlus,
-  Check
+  Check,
+  AlertTriangle
 } from "lucide-react";
 import { useWebSocket } from "@/context/WebSocketContext";
 import RescheduleModal from "@/components/RescheduleModal";
@@ -44,6 +45,11 @@ const DoctorAppointments = () => {
   const [rescheduleData, setRescheduleData] = useState<{id: number, date: string} | null>(null);
   const [followUpData, setFollowUpData] = useState<{patientId: number, name: string} | null>(null);
 
+  // CANCEL MODAL STATE (New!)
+  const [cancelData, setCancelData] = useState<{id: number, patientName: string} | null>(null);
+  const [cancellationReason, setCancellationReason] = useState("");
+  const [cancelProcessing, setCancelProcessing] = useState(false);
+
   // FETCH APPOINTMENTS
   const fetchAppointments = useCallback(async (isBackground = false) => {
     try {
@@ -58,7 +64,7 @@ const DoctorAppointments = () => {
     }
   }, []);
 
-  // WEBSOCKET LISTENER (Optimized)
+  // WEBSOCKET LISTENER
   useEffect(() => {
     if (!lastMessage) return;
 
@@ -97,24 +103,21 @@ const DoctorAppointments = () => {
     fetchAppointments();
   }, [fetchAppointments]);
 
-  // 3. UPDATE STATUS
-  const updateStatus = async (id: number, newStatus: "confirmed" | "completed" | "cancelled") => {
+  // 3. UPDATE STATUS (General)
+  const updateStatus = async (id: number, newStatus: "confirmed" | "completed") => {
     try {
       await api.put(`/appointments/${id}/status`, { status: newStatus });
       
       const statusMessages = {
         confirmed: "Appointment confirmed",
-        completed: "Appointment marked completed",
-        cancelled: "Appointment cancelled"
+        completed: "Appointment marked completed"
       };
       
       toast.success(statusMessages[newStatus]);
 
       setAppointments((prev) => 
         prev.map((appt) => 
-          appt.id === id 
-            ? { ...appt, status: newStatus } 
-            : appt
+          appt.id === id ? { ...appt, status: newStatus } : appt
         )
       );
     } catch (err: any) {
@@ -123,7 +126,46 @@ const DoctorAppointments = () => {
     }
   };
 
-  // 4. DELETE
+  // 4. HANDLE CANCELLATION (With Modal)
+  const openCancelModal = (id: number, patientName: string) => {
+      setCancelData({ id, patientName });
+      setCancellationReason(""); // Reset input
+  };
+
+  const confirmCancellation = async () => {
+      if (!cancelData) return;
+      if (!cancellationReason.trim()) {
+          toast.error("Please provide a reason for cancellation");
+          return;
+      }
+
+      try {
+          setCancelProcessing(true);
+          await api.put(`/appointments/${cancelData.id}/status`, { 
+              status: "cancelled", 
+              reason: cancellationReason 
+          });
+
+          toast.success("Appointment cancelled");
+
+          // Update UI
+          setAppointments((prev) => 
+            prev.map((appt) => 
+              appt.id === cancelData.id ? { ...appt, status: "cancelled" } : appt
+            )
+          );
+          
+          // Close Modal
+          setCancelData(null);
+      } catch (err: any) {
+          console.error("Cancel failed:", err);
+          toast.error(err?.response?.data?.detail || "Failed to cancel");
+      } finally {
+          setCancelProcessing(false);
+      }
+  };
+
+  // 5. DELETE
   const deleteAppointment = async (id: number) => {
     try {
       await api.delete(`/appointments/${id}/permanent`);
@@ -176,7 +218,9 @@ const DoctorAppointments = () => {
 
       <div className="p-6 max-w-7xl mx-auto py-10">
         
-        {/* Modals */}
+        {/* === MODALS === */}
+        
+        {/* 1. Reschedule Modal */}
         <RescheduleModal 
             isOpen={!!rescheduleData}
             onClose={() => setRescheduleData(null)}
@@ -188,6 +232,7 @@ const DoctorAppointments = () => {
             }}
         />
 
+        {/* 2. Follow Up Modal */}
         <FollowUpModal
             isOpen={!!followUpData}
             onClose={() => setFollowUpData(null)}
@@ -198,6 +243,54 @@ const DoctorAppointments = () => {
                 setFollowUpData(null);
             }}
         />
+
+        {/* 3. NEW CANCEL MODAL (Replaces window.prompt) */}
+        {cancelData && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+                <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden transform transition-all scale-100">
+                    <div className="bg-rose-50 p-6 flex flex-col items-center text-center border-b border-rose-100">
+                        <div className="w-12 h-12 bg-rose-100 rounded-full flex items-center justify-center mb-3 text-rose-600">
+                            <AlertTriangle className="w-6 h-6" />
+                        </div>
+                        <h3 className="text-lg font-bold text-slate-900">Decline Appointment</h3>
+                        <p className="text-sm text-slate-500 mt-2">
+                            You are about to cancel the appointment with <span className="font-bold text-slate-700">{cancelData.patientName}</span>.
+                        </p>
+                    </div>
+                    
+                    <div className="p-4 space-y-3">
+                        <label className="text-xs font-bold text-slate-500 uppercase">Reason for Cancellation</label>
+                        <textarea 
+                            className="w-full p-3 text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-rose-200 focus:border-rose-400 outline-none resize-none"
+                            rows={3}
+                            placeholder="e.g. Unforeseen emergency, Out of office..."
+                            value={cancellationReason}
+                            onChange={(e) => setCancellationReason(e.target.value)}
+                            autoFocus
+                        />
+                    </div>
+
+                    <div className="p-4 flex gap-3 bg-white pt-0">
+                        <button
+                            onClick={() => setCancelData(null)}
+                            disabled={cancelProcessing}
+                            className="flex-1 py-2.5 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-50 border border-slate-200 transition-all"
+                        >
+                            Go Back
+                        </button>
+                        <button
+                            onClick={confirmCancellation}
+                            disabled={cancelProcessing || !cancellationReason.trim()}
+                            className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white bg-rose-600 hover:bg-rose-700 shadow-lg shadow-rose-200 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            {cancelProcessing ? (
+                                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                            ) : "Confirm Cancel"}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        )}
 
         {/* Header */}
         <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -322,7 +415,7 @@ const DoctorAppointments = () => {
                                 <button onClick={() => setRescheduleData({ id: appt.id, date: displayString })} className="p-2 rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-100 transition-colors" title="Reschedule">
                                     <RefreshCw className="w-4 h-4" />
                                 </button>
-                                <button onClick={() => updateStatus(appt.id, "cancelled")} className="p-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors" title="Decline">
+                                <button onClick={() => openCancelModal(appt.id, appt.patient_name)} className="p-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors" title="Decline">
                                     <XCircle className="w-4 h-4" />
                                 </button>
                               </>
@@ -337,7 +430,7 @@ const DoctorAppointments = () => {
                                 <button onClick={() => setRescheduleData({ id: appt.id, date: displayString })} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-amber-600 transition-colors" title="Reschedule">
                                     <RefreshCw className="w-4 h-4" />
                                 </button>
-                                <button onClick={() => updateStatus(appt.id, "cancelled")} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-red-600 transition-colors" title="Cancel">
+                                <button onClick={() => openCancelModal(appt.id, appt.patient_name)} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-red-600 transition-colors" title="Cancel">
                                     <XCircle className="w-4 h-4" />
                                 </button>
                               </>
@@ -417,7 +510,7 @@ const DoctorAppointments = () => {
                         <>
                           <button onClick={() => updateStatus(appt.id, "confirmed")} className="flex-1 py-2.5 bg-emerald-600 text-white rounded-lg text-sm font-bold shadow-sm">Confirm</button>
                           <button onClick={() => setRescheduleData({ id: appt.id, date: displayString })} className="p-2.5 bg-amber-100 text-amber-700 rounded-lg"><RefreshCw className="w-5 h-5"/></button>
-                          <button onClick={() => updateStatus(appt.id, "cancelled")} className="p-2.5 bg-red-100 text-red-700 rounded-lg"><XCircle className="w-5 h-5"/></button>
+                          <button onClick={() => openCancelModal(appt.id, appt.patient_name)} className="p-2.5 bg-red-100 text-red-700 rounded-lg"><XCircle className="w-5 h-5"/></button>
                         </>
                       )}
                       
@@ -425,22 +518,22 @@ const DoctorAppointments = () => {
                       {appt.status === "confirmed" && (
                         <>
                           <button onClick={() => updateStatus(appt.id, "completed")} className="flex-1 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-bold shadow-sm">Complete</button>
-                          <button onClick={() => updateStatus(appt.id, "cancelled")} className="p-2.5 bg-slate-100 text-slate-600 rounded-lg border border-slate-200">Cancel</button>
+                          <button onClick={() => openCancelModal(appt.id, appt.patient_name)} className="p-2.5 bg-slate-100 text-slate-600 rounded-lg border border-slate-200">Cancel</button>
                         </>
                       )}
 
                       {/* DELETE MOBILE */}
                       {(appt.status === "completed" || appt.status === "cancelled") && (
-                         deleteConfirm === appt.id ? (
+                          deleteConfirm === appt.id ? (
                             <div className="flex gap-2 w-full">
                                 <button onClick={() => deleteAppointment(appt.id)} className="flex-1 py-2 bg-red-600 text-white rounded-lg text-sm font-bold">Yes, Delete</button>
                                 <button onClick={() => setDeleteConfirm(null)} className="flex-1 py-2 bg-slate-200 text-slate-700 rounded-lg text-sm font-bold">Cancel</button>
                             </div>
-                         ) : (
+                          ) : (
                             <button onClick={() => setDeleteConfirm(appt.id)} className="w-full py-2.5 border border-slate-200 text-slate-500 rounded-lg text-sm font-bold hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors flex items-center justify-center gap-2">
                                 <Trash2 className="w-4 h-4" /> Delete Record
                             </button>
-                         )
+                          )
                       )}
                     </div>
                   </div>

@@ -1,7 +1,7 @@
 # schemas/appointment.py
 from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, date, time
 from models.appointment import AppointmentStatus
 
 class AppointmentBase(BaseModel):
@@ -58,3 +58,8 @@ class AppointmentSchema(BaseModel):
 
     class Config:
         from_attributes = True 
+
+class RescheduleRequest(BaseModel):
+    new_date: date
+    new_time: time
+    reason: Optional[str] = None
