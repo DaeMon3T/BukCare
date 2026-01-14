@@ -119,6 +119,11 @@ const Messages: React.FC = () => {
 
   return (
     <div className="h-screen flex flex-col bg-[#F8FAFC] overflow-hidden">
+      <div className="fixed inset-0 pointer-events-none z-0">
+          <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-blue-400/20 rounded-full blur-[100px] mix-blend-multiply" />
+          <div className="absolute top-[20%] right-[-10%] w-[600px] h-[600px] bg-purple-400/20 rounded-full blur-[100px] mix-blend-multiply" />
+          <div className="absolute bottom-[-10%] left-[20%] w-[500px] h-[500px] bg-emerald-400/20 rounded-full blur-[100px] mix-blend-multiply" />
+      </div>
       <Navbar />
 
       <div className="flex-1 flex max-w-[1600px] w-full mx-auto p-4 gap-6 h-[calc(100vh-80px)]">

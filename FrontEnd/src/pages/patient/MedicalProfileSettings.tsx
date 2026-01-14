@@ -2,7 +2,18 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../services/api'; 
 import toast from 'react-hot-toast';
-import { Save, ArrowLeft, Heart, Phone, FileText } from 'lucide-react';
+import { 
+    Save, 
+    ArrowLeft, 
+    Heart, 
+    Phone, 
+    FileText, 
+    Droplet, 
+    ShieldAlert, 
+    User, 
+    Stethoscope, 
+    Pill 
+} from 'lucide-react';
 import Navbar from '../../components/Navbar'; 
 
 const MedicalProfileSettings = () => {
@@ -19,11 +30,9 @@ const MedicalProfileSettings = () => {
         current_medications: ''
     });
 
-    // 1. Load existing data when page opens
     useEffect(() => {
         const fetchData = async () => {
             try {
-                // This hits your existing GET /me endpoint
                 const res = await api.get('/medical-profile/me');
                 setFormData({
                     blood_type: res.data.blood_type || '',
@@ -44,7 +53,6 @@ const MedicalProfileSettings = () => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
     };
 
-    // 2. Send Update to Backend (Hits your PUT /me endpoint)
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
@@ -60,130 +68,186 @@ const MedicalProfileSettings = () => {
     };
 
     return (
-        <div className="min-h-screen bg-slate-50 pb-20">
-            <Navbar />
+        <div className="min-h-screen bg-slate-50 relative overflow-hidden font-sans text-slate-900 pb-20">
             
-            <div className="max-w-2xl mx-auto px-4 py-8">
-                <button onClick={() => navigate('/patient/profile')} className="flex items-center gap-2 text-slate-500 hover:text-slate-800 mb-6 transition">
-                    <ArrowLeft className="w-5 h-5" /> Back to profile
-                </button>
+            {/*DECORATIVE BACKGROUND BLOBS */}
+            <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
+                {/* Top Right: Soft Blue */}
+                <div className="absolute top-[-10%] right-[-5%] w-[600px] h-[600px] bg-blue-100/50 rounded-full blur-3xl opacity-70 mix-blend-multiply" />
+                
+                {/* Bottom Left: Soft Indigo */}
+                <div className="absolute bottom-[-10%] left-[-10%] w-[500px] h-[500px] bg-indigo-100/50 rounded-full blur-3xl opacity-70 mix-blend-multiply" />
+                
+                {/* Center: Very subtle Rose tint for warmth */}
+                <div className="absolute top-[20%] left-[30%] w-[400px] h-[400px] bg-rose-50/60 rounded-full blur-3xl opacity-50 mix-blend-multiply" />
+            </div>
 
-                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                    <div className="bg-slate-900 p-6 text-white">
-                        <h1 className="text-xl font-bold flex items-center gap-2">
-                            <Heart className="w-6 h-6 text-rose-500 fill-current" /> 
-                            Edit Medical Profile
-                        </h1>
-                        <p className="text-slate-400 text-sm mt-1">This info will appear when a doctor scans your QR code.</p>
-                    </div>
-
-                    <form onSubmit={handleSubmit} className="p-6 space-y-6">
+            {/* CONTENT WRAPPER (z-10 ensures it sits above the blobs) */}
+            <div className="relative z-10">
+                <Navbar />
+                
+                <div className="max-w-3xl mx-auto px-4 py-8">
+                    {/* Header Section */}
+                    <div className="mb-8">
+                        <button 
+                            onClick={() => navigate('/patient/profile')} 
+                            className="group flex items-center gap-2 text-slate-500 hover:text-blue-600 mb-4 transition-colors font-medium"
+                        >
+                            <div className="p-1.5 rounded-full bg-white/80 border border-slate-200 group-hover:border-blue-200 group-hover:bg-blue-50 transition-colors backdrop-blur-sm">
+                                <ArrowLeft className="w-4 h-4" />
+                            </div>
+                            Back to Profile
+                        </button>
                         
-                        {/* BLOOD & ALLERGIES */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-sm font-bold text-slate-700 mb-1">Blood Type</label>
-                                <select 
-                                    name="blood_type" 
-                                    value={formData.blood_type} 
-                                    onChange={handleChange}
-                                    className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
-                                >
-                                    <option value="">Select...</option>
-                                    <option value="A+">A+</option>
-                                    <option value="A-">A-</option>
-                                    <option value="B+">B+</option>
-                                    <option value="B-">B-</option>
-                                    <option value="O+">O+</option>
-                                    <option value="O-">O-</option>
-                                    <option value="AB+">AB+</option>
-                                    <option value="AB-">AB-</option>
-                                </select>
+                        <div className="flex items-start gap-4">
+                            <div className="p-3 bg-white/80 backdrop-blur-md text-rose-600 rounded-2xl shadow-sm border border-white/50">
+                                <Heart className="w-8 h-8 fill-rose-600" />
                             </div>
                             <div>
-                                <label className="block text-sm font-bold text-slate-700 mb-1">Allergies</label>
-                                <input 
-                                    name="allergies" 
-                                    value={formData.allergies} 
-                                    onChange={handleChange}
-                                    placeholder="e.g. Peanuts, Penicillin"
-                                    className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
-                                />
+                                <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Medical Profile</h1>
+                                <p className="text-slate-500 mt-1">
+                                    Crucial health information accessible by doctors via QR code.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <form onSubmit={handleSubmit} className="space-y-6">
+                        
+                        {/* Card 1: Critical Vitals */}
+                        <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/60 overflow-hidden">
+                            <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center gap-2">
+                                <Droplet className="w-5 h-5 text-blue-500" />
+                                <h2 className="font-bold text-slate-800">Critical Information</h2>
+                            </div>
+                            <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {/* Blood Type */}
+                                <div className="space-y-2">
+                                    <label className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                                        Blood Type
+                                    </label>
+                                    <div className="relative">
+                                        <select 
+                                            name="blood_type" 
+                                            value={formData.blood_type} 
+                                            onChange={handleChange}
+                                            className="w-full pl-4 pr-10 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:bg-white focus:border-transparent outline-none transition-all font-medium text-slate-700 appearance-none cursor-pointer"
+                                        >
+                                            <option value="">Select Type...</option>
+                                            {['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'].map(type => (
+                                                <option key={type} value={type}>{type}</option>
+                                            ))}
+                                        </select>
+                                        <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                                            <svg className="w-4 h-4 fill-current" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/></svg>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Allergies */}
+                                <div className="space-y-2">
+                                    <label className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                                        <ShieldAlert className="w-4 h-4 text-amber-500" />
+                                        Allergies
+                                    </label>
+                                    <input 
+                                        name="allergies" 
+                                        value={formData.allergies} 
+                                        onChange={handleChange}
+                                        placeholder="e.g. Peanuts, Penicillin"
+                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:bg-white focus:border-transparent outline-none transition-all placeholder:text-slate-400"
+                                    />
+                                </div>
                             </div>
                         </div>
 
-                        <hr className="border-slate-100" />
-
-                        {/* EMERGENCY CONTACT */}
-                        <div>
-                            <h3 className="text-sm font-bold text-slate-400 uppercase mb-4 flex items-center gap-2">
-                                <Phone className="w-4 h-4" /> Emergency Contact
-                            </h3>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm font-bold text-slate-700 mb-1">Contact Name</label>
+                        {/* Card 2: Emergency Contact */}
+                        <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/60 overflow-hidden">
+                            <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center gap-2">
+                                <Phone className="w-5 h-5 text-green-500" />
+                                <h2 className="font-bold text-slate-800">Emergency Contact</h2>
+                            </div>
+                            <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="space-y-2">
+                                    <label className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                                        <User className="w-4 h-4 text-slate-400" />
+                                        Contact Name
+                                    </label>
                                     <input 
                                         name="emergency_contact_name" 
                                         value={formData.emergency_contact_name} 
                                         onChange={handleChange}
                                         placeholder="Full Name"
-                                        className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
+                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:bg-white focus:border-transparent outline-none transition-all placeholder:text-slate-400"
                                     />
                                 </div>
-                                <div>
-                                    <label className="block text-sm font-bold text-slate-700 mb-1">Phone Number</label>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                                        <Phone className="w-4 h-4 text-slate-400" />
+                                        Phone Number
+                                    </label>
                                     <input 
                                         name="emergency_contact_number" 
                                         value={formData.emergency_contact_number} 
                                         onChange={handleChange}
                                         placeholder="0912..."
-                                        className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
+                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:bg-white focus:border-transparent outline-none transition-all placeholder:text-slate-400"
                                     />
                                 </div>
                             </div>
                         </div>
 
-                        <hr className="border-slate-100" />
-
-                        {/* MEDICAL HISTORY */}
-                        <div>
-                            <h3 className="text-sm font-bold text-slate-400 uppercase mb-4 flex items-center gap-2">
-                                <FileText className="w-4 h-4" /> Medical History (Optional)
-                            </h3>
-                            <div className="space-y-4">
-                                <div>
-                                    <label className="block text-sm font-bold text-slate-700 mb-1">Chronic Conditions</label>
+                        {/* Card 3: Medical History */}
+                        <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/60 overflow-hidden">
+                            <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center gap-2">
+                                <FileText className="w-5 h-5 text-indigo-500" />
+                                <h2 className="font-bold text-slate-800">Medical History <span className="text-slate-400 font-normal text-sm ml-2">(Optional)</span></h2>
+                            </div>
+                            <div className="p-6 space-y-6">
+                                <div className="space-y-2">
+                                    <label className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                                        <Stethoscope className="w-4 h-4 text-slate-400" />
+                                        Chronic Conditions
+                                    </label>
                                     <textarea 
                                         name="chronic_conditions" 
                                         value={formData.chronic_conditions} 
                                         onChange={handleChange}
                                         rows={2}
-                                        placeholder="e.g. Asthma, Hypertension"
-                                        className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none resize-none"
+                                        placeholder="e.g. Asthma, Hypertension, Diabetes"
+                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:bg-white focus:border-transparent outline-none transition-all placeholder:text-slate-400 resize-none"
                                     />
                                 </div>
-                                <div>
-                                    <label className="block text-sm font-bold text-slate-700 mb-1">Current Medications</label>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                                        <Pill className="w-4 h-4 text-slate-400" />
+                                        Current Medications
+                                    </label>
                                     <textarea 
                                         name="current_medications" 
                                         value={formData.current_medications} 
                                         onChange={handleChange}
                                         rows={2}
-                                        placeholder="e.g. Losartan 50mg"
-                                        className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none resize-none"
+                                        placeholder="e.g. Losartan 50mg, Metformin 500mg"
+                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:bg-white focus:border-transparent outline-none transition-all placeholder:text-slate-400 resize-none"
                                     />
                                 </div>
                             </div>
                         </div>
 
-                        {/* SUBMIT */}
-                        <div className="pt-4">
+                        {/* Submit Button */}
+                        <div className="pt-4 flex justify-end">
                             <button 
                                 type="submit" 
                                 disabled={loading}
-                                className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg shadow-blue-200 flex items-center justify-center gap-2 transition disabled:opacity-50"
+                                className="w-full md:w-auto px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg shadow-blue-200 flex items-center justify-center gap-2 transition-all transform active:scale-95 disabled:opacity-50 disabled:scale-100"
                             >
-                                {loading ? "Saving..." : <><Save className="w-5 h-5" /> Save Changes</>}
+                                {loading ? (
+                                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                ) : (
+                                    <Save className="w-5 h-5" />
+                                )}
+                                {loading ? "Saving Changes..." : "Save Medical Profile"}
                             </button>
                         </div>
 

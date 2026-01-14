@@ -76,13 +76,18 @@ const ViewDoctorProfile: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
+        <div className="fixed inset-0 pointer-events-none z-0">
+          <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-blue-400/20 rounded-full blur-[100px] mix-blend-multiply" />
+          <div className="absolute top-[20%] right-[-10%] w-[600px] h-[600px] bg-purple-400/20 rounded-full blur-[100px] mix-blend-multiply" />
+          <div className="absolute bottom-[-10%] left-[20%] w-[500px] h-[500px] bg-emerald-400/20 rounded-full blur-[100px] mix-blend-multiply" />
+        </div>
       <Navbar />
 
       {/* --- HERO SECTION --- */}
       <div className="bg-white shadow-sm pb-4 relative z-0">
         <div className="h-40 md:h-60 w-full bg-gradient-to-r from-blue-600 via-cyan-600 to-cyan-600 relative overflow-hidden">
             <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/medical-icons.png')] opacity-10"></div>
-            <button onClick={() => navigate(-1)} className="absolute top-4 left-4 z-10 bg-black/20 hover:bg-black/40 text-white p-2 rounded-full backdrop-blur-sm transition">
+            <button onClick={() => navigate("/patient/find-doctor")} className="absolute top-4 left-4 z-10 bg-black/20 hover:bg-black/40 text-white p-2 rounded-full backdrop-blur-sm transition">
                 <ArrowLeft className="w-6 h-6" />
             </button>
         </div>

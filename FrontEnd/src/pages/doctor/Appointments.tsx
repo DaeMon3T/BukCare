@@ -214,6 +214,11 @@ const DoctorAppointments = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
+      <div className="fixed inset-0 pointer-events-none z-0">
+          <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-blue-400/20 rounded-full blur-[100px] mix-blend-multiply" />
+          <div className="absolute top-[20%] right-[-10%] w-[600px] h-[600px] bg-purple-400/20 rounded-full blur-[100px] mix-blend-multiply" />
+          <div className="absolute bottom-[-10%] left-[20%] w-[500px] h-[500px] bg-emerald-400/20 rounded-full blur-[100px] mix-blend-multiply" />
+      </div>
       <Navbar />
 
       <div className="p-6 max-w-7xl mx-auto py-10">
@@ -341,10 +346,10 @@ const DoctorAppointments = () => {
         ) : (
           <>
             {/* Desktop Table */}
-            <div className="hidden md:block bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <div className="hidden md:block bg-white rounded-2xl shadow-sm border border-slate-400 overflow-hidden">
               <table className="min-w-full">
                 <thead>
-                  <tr className="bg-slate-50/80 border-b border-slate-100 text-xs uppercase text-slate-400 font-bold tracking-wider text-left">
+                  <tr className="bg-slate-300 border-b border-slate-100 text-xs uppercase text-black font-bold tracking-wider text-left">
                     <th className="py-4 px-6">Patient</th>
                     <th className="py-4 px-6">Schedule</th>
                     <th className="py-4 px-6">Reason</th>
@@ -352,7 +357,7 @@ const DoctorAppointments = () => {
                     <th className="py-4 px-6 text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-slate-300">
                   {filteredAppointments.map((appt) => {
                     const { date, time, displayString, isPast } = formatDateTime(appt.appointment_date);
                     const statusStyle = getStatusStyles(appt.status);
