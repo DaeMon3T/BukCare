@@ -174,3 +174,12 @@ class User(Base):
 
         self.last_login = datetime.utcnow()
         return updated
+    
+    
+    # Relationships - Medical Profile (The "Golden Record" & QR Key)
+    medical_profile = relationship(
+        "MedicalProfile",
+        back_populates="user",
+        uselist=False,  # One-to-One: A user has only one Medical Profile
+        cascade="all, delete-orphan"
+    )

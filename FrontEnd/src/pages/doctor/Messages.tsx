@@ -7,8 +7,6 @@ import ChatList from "@/components/chat/ChatList";
 import ChatWindow from "@/components/chat/ChatWindow";
 import { MessageSquare } from "lucide-react";
 
-// 🗑️ Removed: notificationSound import
-
 const Messages: React.FC = () => {
   const { user } = useAuth();
   const { lastMessage } = useWebSocket();
@@ -18,8 +16,6 @@ const Messages: React.FC = () => {
   const [isMobileChatOpen, setIsMobileChatOpen] = useState(false);
   
   const [typingUsers, setTypingUsers] = useState<Set<number>>(new Set());
-  
-  // 🗑️ Removed: audioRef
 
   useEffect(() => {
     loadConversations();
@@ -38,8 +34,6 @@ const Messages: React.FC = () => {
     }
   };
 
-  // 🗑️ Removed: playNotification helper
-
   // WEBSOCKET LISTENER 
   useEffect(() => {
     if (!lastMessage) return;
@@ -51,15 +45,13 @@ const Messages: React.FC = () => {
       const senderId = incomingMsg.sender_id;
       const isActiveChat = activeChat?.user_id === senderId;
 
-      // 🗑️ Removed: Local Sound Effect (Handled Globally)
-
       setConversations(prev => {
         const exists = prev.find(c => c.user_id === senderId || c.user_id === incomingMsg.receiver_id);
         const otherUserId = senderId === currentUserId ? incomingMsg.receiver_id : senderId;
 
         // Preview Logic
         let preview = incomingMsg.content;
-        if (incomingMsg.message_type === "appointment_reminder") preview = "📅 Appointment Reminder";
+        if (incomingMsg.message_type === "appointment_reminder") preview = "Appointment Reminder";
         if (incomingMsg.content.includes("video_call")) preview = "📞 Video Call";
 
         if (exists) {
@@ -80,7 +72,7 @@ const Messages: React.FC = () => {
       });
     }
 
-    // B. HANDLE TYPING INDICATORS
+    // HANDLE TYPING INDICATORS
     if (lastMessage.type === "TYPING_START" && lastMessage.sender_id) {
        const senderId = lastMessage.sender_id;
        setTypingUsers(prev => new Set(prev).add(senderId));
@@ -95,9 +87,9 @@ const Messages: React.FC = () => {
        });
     }
 
-  }, [lastMessage, activeChat, user]); // 🗑️ Removed: playNotification from dependency
+  }, [lastMessage, activeChat, user]); 
 
-  // 4. Handlers
+  // Handlers
   const handleStartNewChat = (userResult: any) => {
     const existing = conversations.find(c => c.user_id === userResult.id);
     if (existing) {

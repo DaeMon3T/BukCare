@@ -45,7 +45,7 @@ const DoctorSetAvailability = () => {
   // --- GENERATOR STATE ---
   const [dateRange, setDateRange] = useState({
     start: getLocalToday(), 
-    end: getFutureDate(30)
+    end: getFutureDate(1)
   });
   
   const [timeRange, setTimeRange] = useState({
@@ -55,7 +55,7 @@ const DoctorSetAvailability = () => {
   });
 
   // Default: All days selected. If user clears this, we assume "Specific Dates Only"
-  const [selectedDays, setSelectedDays] = useState<number[]>([1, 2, 3, 4, 5]); 
+  const [selectedDays, setSelectedDays] = useState<number[]>([]); 
   const [notes, setNotes] = useState("");
 
   const daysOfWeek = [
@@ -109,8 +109,7 @@ const DoctorSetAvailability = () => {
 
       // Loop through dates
       for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-        
-        // 🛠️ LOGIC FIX: 
+    
         // If selectedDays is empty (length 0), we treat it as "Generate for ALL dates in range".
         // Otherwise, we strictly filter by the selected weekdays.
         const isDayIncluded = selectedDays.length === 0 || selectedDays.includes(d.getDay());

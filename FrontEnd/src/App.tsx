@@ -39,8 +39,9 @@ import DoctorDashboard from './pages/doctor/Dashboard';
 import DoctorAppointments from './pages/doctor/Appointments';
 import DoctorProfile from './pages/doctor/Profile';
 import DoctorSetAvailability from './pages/doctor/SetAvailability';
-import DoctorAppointmentHistory from './pages/doctor/AppointmentHistory';
 import Messages from './pages/doctor/Messages';
+import ScanPatient from './pages/doctor/ScanPatient';
+import PatientDetails from './pages/doctor/PatientDetails';
 
 // Patient Pages
 import PatientDashboard from './pages/patient/Dashboard';
@@ -51,6 +52,7 @@ import BookAppointment from './pages/patient/BookAppointment';
 import PatientAppointmentHistory from './pages/patient/AppointmentHistory';
 import PatientMessages from './pages/patient/Messages';
 import ViewDoctorProfile from "./pages/patient/ViewDoctorProfile";
+import MedicalProfileSettings from './pages/patient/MedicalProfileSettings';
 
 // --------------------
 // App Component
@@ -110,8 +112,9 @@ const App: FC = () => {
                   <Route path="/doctor/appointments" element={<DoctorAppointments />} />
                   <Route path="/doctor/set-availability" element={<DoctorSetAvailability />} />
                   <Route path="/doctor/profile" element={<DoctorProfile />} />
-                  <Route path="/doctor/appointment-history" element={<DoctorAppointmentHistory />} />
                   <Route path="/doctor/messages" element={<Messages />} />
+                  <Route path="/doctor/scan" element={<ScanPatient />} />
+                  <Route path="/doctor/patient/:id" element={<PatientDetails />} />
                 </Route>
 
                 {/* -------------------- Patient Routes -------------------- */}
@@ -146,6 +149,10 @@ const App: FC = () => {
                 <Route
                   path="/patient/doctor/:id"
                   element={<PatientRoute><ViewDoctorProfile /></PatientRoute>}
+                />
+                <Route
+                  path="/patient/profile/edit" 
+                  element={<PatientRoute><MedicalProfileSettings/></PatientRoute>}
                 />
                 
 

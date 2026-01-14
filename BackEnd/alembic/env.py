@@ -4,6 +4,7 @@ from alembic import context
 import os
 import sys
 from dotenv import load_dotenv
+from core.database import Base
 # You can keep or remove the top-level imports, but the manual load below is what matters for Alembic here
 # from models.users import User 
 # from models.review import Review 
@@ -33,6 +34,7 @@ users_mod = load_module_directly('users', os.path.join(models_path, 'users.py'))
 doctor_mod = load_module_directly('doctor', os.path.join(models_path, 'doctor.py'))
 appointment_mod = load_module_directly('appointment', os.path.join(models_path, 'appointment.py'))
 notification_mod = load_module_directly('notification', os.path.join(models_path, 'notification.py'))
+medical_profile_mod = load_module_directly('medical_profile', os.path.join(models_path, 'medical_profile.py'))
 
 # ADDED THIS LINE
 review_mod = load_module_directly('review', os.path.join(models_path, 'review.py'))

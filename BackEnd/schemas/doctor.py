@@ -43,11 +43,10 @@ class Specialization(SpecializationBase):
 # ---------------------------
 class DoctorBase(BaseModel):
     user_id: int
-    # REMOVED: province_id, city_id, barangay_id (these are in User model)
     license_number: Optional[str] = None
     years_of_experience: Optional[int] = None
     bio: Optional[str] = None
-    consultation_fee: Optional[int] = None
+    consultation_fee: Optional[float] = None 
     is_accepting_patients: bool = True
 
 
@@ -59,11 +58,10 @@ class DoctorCreate(DoctorBase):
 
 
 class DoctorUpdate(BaseModel):
-    # REMOVED: province_id, city_id, barangay_id
     license_number: Optional[str] = None
     years_of_experience: Optional[int] = None
     bio: Optional[str] = None
-    consultation_fee: Optional[int] = None
+    consultation_fee: Optional[float] = None
     is_accepting_patients: Optional[bool] = None
     prc_license_front: Optional[str] = None
     prc_license_back: Optional[str] = None
@@ -72,6 +70,8 @@ class DoctorUpdate(BaseModel):
 
 
 class DoctorResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     doctor_id: int
     user_id: int
     name: str
@@ -81,7 +81,7 @@ class DoctorResponse(BaseModel):
     license_number: Optional[str] = None
     years_of_experience: Optional[int] = None
     bio: Optional[str] = None
-    consultation_fee: Optional[int] = None
+    consultation_fee: Optional[float] = None
     is_accepting_patients: Optional[bool] = None
     is_verified: bool
     is_doctor_approved: bool
@@ -89,8 +89,6 @@ class DoctorResponse(BaseModel):
     avatar: Optional[str] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
-
-    model_config = ConfigDict(from_attributes=True)
 
 
 class Doctor(BaseModel):

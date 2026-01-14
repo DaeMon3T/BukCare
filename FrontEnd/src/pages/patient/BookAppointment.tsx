@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, useNavigate} from "react-router-dom";
 import toast from "react-hot-toast";
 import Navbar from "@/components/Navbar";
 import api from "@/services/api";
@@ -56,7 +56,6 @@ const BookAppointment: React.FC = () => {
     const slots = [];
     for (let i = 8; i <= 16; i++) {
         if (i === 12) continue;
-
         const hour = i < 10 ? `0${i}` : `${i}`;
         slots.push(`${hour}:00:00`);
     }
@@ -67,7 +66,6 @@ const BookAppointment: React.FC = () => {
     if (!timeStr) return "";
     let timePart = timeStr;
     if (timeStr.includes("T")) timePart = timeStr.split("T")[1] || "";
-    if (!timePart.includes(":")) return timePart;
     
     const [hoursStr, minutesStr] = timePart.split(":");
     let hours = parseInt(hoursStr || "0", 10);
@@ -105,7 +103,6 @@ const BookAppointment: React.FC = () => {
         
         if (validAvailabilities.length > 0) {
             const firstSlot = validAvailabilities[0];
-            // 🛡️ FIX: Added optional chaining here to prevent 'undefined' error
             const firstDate = firstSlot?.date ? firstSlot.date.split('T')[0] : ""; 
             if (firstDate) {
                 setActiveDateTab(firstDate);
@@ -157,6 +154,7 @@ const BookAppointment: React.FC = () => {
     }
   }, [selectedDate, bookingMode]);
 
+  // === FIXED CONFIRM BOOKING FUNCTION ===
   const handleConfirmBooking = async () => {
     if (!doctorId) return;
     let appointmentDateTime: string;
@@ -169,6 +167,7 @@ const BookAppointment: React.FC = () => {
       const slot = availabilities.find((a) => a.id === selectedAvailabilitySlot);
       if (!slot) return;
       const safeDate = (slot.date.split('T')[0] ?? "");
+      // Construct proper ISO format
       appointmentDateTime = `${safeDate}T${slot.start_time}`;
     } else {
       if (!selectedCustomSlot) {
@@ -182,15 +181,20 @@ const BookAppointment: React.FC = () => {
 
     try {
       setSubmitting(true);
-      await api.post("/appointments", {
+      
+      // FIXED: Removed "/v1" prefix to match your axios config
+      await api.post("/appointments", { 
         doctor_id: doctorId,
         appointment_date: appointmentDateTime,
         reason: reason || null,
       });
       
       toast.success("Appointment booked successfully!");
-      navigate("/patient/appointments");
+      // FIXED: Navigate to appointments list
+      navigate("/patient/appointments"); 
+      
     } catch (err: any) {
+      console.error("Booking Error:", err);
       if (err?.response?.status === 409) {
         toast.error("This time slot is already booked.");
       } else {
@@ -203,12 +207,12 @@ const BookAppointment: React.FC = () => {
 
   const isFormValid = () => {
     if (bookingMode === "availability") return selectedAvailabilitySlot !== null;
-    return selectedCustomSlot !== null;
+    return selectedDate !== "" && selectedCustomSlot !== null;
   };
 
   const avatarSrc = doctor?.avatar && doctor.avatar.trim() !== "" ? doctor.avatar : "/default-avatar.png";
 
-  // === DERIVED STATE (Optimized Filtering) ===
+  // === DERIVED STATE ===
   const uniqueDates = useMemo(() => {
     const dates = new Set<string>();
     availabilities.forEach(slot => {
@@ -225,10 +229,8 @@ const BookAppointment: React.FC = () => {
     const currentMinute = now.getMinutes();
 
     return availabilities.filter(slot => {
-        // A. Match Date Tab
         if (!slot.date.startsWith(activeDateTab)) return false;
 
-        // B. Time Check (Past)
         if (activeDateTab === todayStr) {
              const [hStr, mStr] = slot.start_time.split(":");
              const h = parseInt(hStr || "0", 10);
@@ -237,23 +239,14 @@ const BookAppointment: React.FC = () => {
              if (h === currentHour && m <= currentMinute) return false;
         }
 
-        // C. INVENTORY CHECK (Fixed)
-        // Only filter if we actually have data from the server.
-        // If serverAvailableSlots is empty, we assume the API isn't filtering, so we show the slot.
         if (serverAvailableSlots.length > 0) {
             const cleanSlotTime = slot.start_time.length === 5 ? slot.start_time + ":00" : slot.start_time;
-            // Check if server list contains this time
             const isAvailable = serverAvailableSlots.some(t => t.startsWith(cleanSlotTime.substring(0, 5)));
-            
             if (!isAvailable) return false; 
         } 
-        
-        // ❌ DELETED the "else if (!loadingSlots)" block here.
-        // This prevents the "Invisible Slots" bug when the API returns an empty array.
-
         return true;
     });
-  }, [availabilities, activeDateTab, serverAvailableSlots, loadingSlots]);
+  }, [availabilities, activeDateTab, serverAvailableSlots]);
 
   const groupedSlots = useMemo(() => {
     const morning: DoctorAvailability[] = [];
@@ -272,7 +265,7 @@ const BookAppointment: React.FC = () => {
       </div>
   );
 
-  if (!doctor) return null;
+  if (!doctor) return <div className="p-8 text-center text-red-500">Doctor not found</div>;
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] pb-20">
@@ -280,11 +273,12 @@ const BookAppointment: React.FC = () => {
       
       <main className="max-w-3xl mx-auto px-4 py-8">
         <div className="mb-6">
-            <Link to="/patient/find-doctor" className="inline-flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-slate-800 transition-colors">
-                <ArrowLeft className="w-4 h-4" /> Back to Directory
-            </Link>
+            <button onClick={() => navigate(-1)} className="inline-flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-slate-800 transition-colors">
+                <ArrowLeft className="w-4 h-4" /> Cancel Booking
+            </button>
         </div>
         
+        {/* DOCTOR CARD */}
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-6">
             <div className="flex flex-col sm:flex-row gap-6 items-start sm:items-center">
                 <div className="relative">
@@ -301,6 +295,7 @@ const BookAppointment: React.FC = () => {
             </div>
         </div>
 
+        {/* BOOKING SECTION */}
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
             <div className="p-6 border-b border-slate-100">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
@@ -383,7 +378,7 @@ const BookAppointment: React.FC = () => {
                         {selectedDate && (
                             <div>
                                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-3 flex items-center gap-2">
-                                    <Clock className="w-4 h-4"/> Select Time (Anytime)
+                                    <Clock className="w-4 h-4"/> Select Time
                                 </label>
                                 <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3 max-h-[300px] overflow-y-auto pr-2 scrollbar-thin">
                                     {customTimeSlots.map((slot) => (
@@ -392,7 +387,6 @@ const BookAppointment: React.FC = () => {
                                         </button>
                                     ))}
                                 </div>
-                                <p className="text-xs text-slate-400 mt-2 italic">* You can select times outside the doctor's standard schedule.</p>
                             </div>
                         )}
                     </div>

@@ -12,6 +12,7 @@ from middleware.request_logging import request_logging_middleware
 import logging
 import traceback
 from sqlalchemy.orm import Session
+from routers.v1 import medical_profile
 
 # Router Imports
 from routers.v1 import router as v1_router
@@ -72,6 +73,7 @@ def create_app() -> FastAPI:
     app.include_router(appointments.router, prefix="/v1/appointments", tags=["Appointments"])
     app.include_router(messages.router, prefix="/v1")
     app.include_router(v1_router, prefix="/v1")
+    app.include_router(medical_profile.router, prefix="/v1")
 
 
 
