@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from utils.admin import create_admin_if_not_exists
 from core.config import settings
-from core.database import SessionLocal
+from core.database import engine, SessionLocal, Base
 from core.logging_config import setup_logging, get_logger
 
 from middleware.rate_limiting import (
