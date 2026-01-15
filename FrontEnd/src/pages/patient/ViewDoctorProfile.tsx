@@ -126,7 +126,7 @@ const ViewDoctorProfile: React.FC = () => {
                                 {/* Dynamic Review Stats */}
                                 <span className="flex items-center gap-1 text-sm font-bold text-slate-700">
                                     <Star className="w-4 h-4 text-orange-400 fill-current" /> 
-                                    {reviewStats.count > 0 ? reviewStats.average.toFixed(1) : "New"} 
+                                    {reviewStats.count > 0 ? reviewStats.average.toFixed(1) : "0.0"} 
                                     <span className="font-normal text-slate-500 ml-1">
                                         ({reviewStats.count} Reviews)
                                     </span>

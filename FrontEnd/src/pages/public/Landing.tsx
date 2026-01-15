@@ -1,6 +1,6 @@
 import React, { useState, useRef, useLayoutEffect } from "react";
 import { Link, useLocation } from "react-router-dom"; // Added useLocation
-import { Menu, X } from "lucide-react"; // Added Icons for Mobile Menu
+import { Globe, Menu, X } from "lucide-react"; // Added Icons for Mobile Menu
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import logo from "@/assets/images/bukcare_logo.png"
@@ -481,8 +481,9 @@ const Landing: React.FC = () => {
             <div>
                 <h4 className="font-bold text-xs uppercase tracking-widest mb-6 text-slate-500">Contact</h4>
                 <div className="text-slate-400 text-sm space-y-4">
-                    <div className="flex items-center gap-3"><IconMapPin /> Malaybalay, Bukidnon</div>
-                    <div className="flex items-center gap-3"><IconPhone /> support@bukcare.app</div>
+                    <div className="flex items-center gap-3"><IconMapPin /> Maramag, Bukidnon</div>
+                    <div className="flex items-center gap-3"><IconPhone /> bukcare.app@gmail.com </div>
+                    <div className="flex items-center gap-3"><Globe/> www.bukcare.com </div>
                 </div>
             </div>
         </div>

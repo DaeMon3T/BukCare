@@ -83,25 +83,17 @@ const FindDoctor: React.FC = () => {
 
   const filteredDoctors = allDoctors.filter((doc) => {
     const query = search.toLowerCase();
-    
     const docName = doc.name?.toLowerCase() || "";
-    
     const specStr = (doc.specializations || doc.specializations || "").toString().toLowerCase();
-
     const matchesSearch = docName.includes(query) || specStr.includes(query);
-    
-    const matchesFilter = 
-        activeFilter === "All" || 
-        specStr.includes(activeFilter.toLowerCase());
-
+    const matchesFilter = activeFilter === "All" || specStr.includes(activeFilter.toLowerCase());
     return matchesSearch && matchesFilter;
   });
 
   return (
-    // ✨ GLASSMORPHISM BACKGROUND WRAPPER
     <div className="min-h-screen bg-[#F0F4F8] relative overflow-hidden font-sans text-slate-800 flex flex-col">
       
-      {/* 🎨 AMBIENT BACKGROUND BLOBS */}
+      {/* AMBIENT BACKGROUND BLOBS */}
       <div className="fixed inset-0 pointer-events-none z-0">
           <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-blue-400/20 rounded-full blur-[100px] mix-blend-multiply" />
           <div className="absolute top-[20%] right-[-10%] w-[600px] h-[600px] bg-purple-400/20 rounded-full blur-[100px] mix-blend-multiply" />
@@ -114,17 +106,16 @@ const FindDoctor: React.FC = () => {
         <main className="flex-1 overflow-y-auto">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             
-            {/* HERO SEARCH SECTION (Glass Card) */}
-            <div className="bg-white/40 backdrop-blur-xl rounded-[2rem] border border-white/50 shadow-sm p-8 mb-8 relative overflow-hidden">
-                {/* Decorative Icon Background */}
-                <Stethoscope className="absolute -right-10 -top-10 w-64 h-64 text-blue-600/5 rotate-12 pointer-events-none" />
+            {/* HERO SEARCH SECTION */}
+            <div className="bg-white/40 backdrop-blur-xl rounded-[2rem] border border-white/50 shadow-sm p-6 sm:p-8 mb-8 relative overflow-hidden">
+                <Stethoscope className="absolute -right-10 -top-10 w-48 h-48 sm:w-64 sm:h-64 text-blue-600/5 rotate-12 pointer-events-none" />
                 
                 <div className="relative z-10">
-                    <h1 className="text-3xl font-extrabold text-slate-900 mb-2">Find your Specialist</h1>
-                    <p className="text-slate-500 mb-8 max-w-lg font-medium">Search through our network of trusted medical professionals to find the right care for you.</p>
+                    <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 mb-2">Find your Specialist</h1>
+                    <p className="text-slate-500 mb-6 sm:mb-8 max-w-lg font-medium text-sm sm:text-base">Search through our network of trusted medical professionals to find the right care for you.</p>
                     
+                    {/* Search Bar */}
                     <div className="flex flex-col md:flex-row gap-4">
-                        {/* Search Bar */}
                         <div className="relative flex-1">
                             <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                             <input
@@ -132,7 +123,7 @@ const FindDoctor: React.FC = () => {
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
                                 placeholder="Search by name, specialization, etc..."
-                                className="w-full pl-14 pr-4 py-4 bg-white/60 border border-white/50 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:bg-white transition-all shadow-sm text-slate-700 placeholder:text-slate-400"
+                                className="w-full pl-14 pr-10 py-3 sm:py-4 bg-white/60 border border-white/50 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:bg-white transition-all shadow-sm text-slate-700 placeholder:text-slate-400 text-sm sm:text-base"
                             />
                             {search && (
                                 <button 
@@ -147,17 +138,17 @@ const FindDoctor: React.FC = () => {
 
                     {/* Filter Pills */}
                     <div className="mt-6">
-                        <div className="flex items-center gap-2 mb-3 text-sm font-bold text-slate-500 uppercase tracking-wider">
-                            <Filter className="w-4 h-4" /> Filter by Specialization
+                        <div className="flex items-center gap-2 mb-3 text-xs sm:text-sm font-bold text-slate-500 uppercase tracking-wider">
+                            <Filter className="w-3 h-3 sm:w-4 sm:h-4" /> Filter by Specialization
                         </div>
-                        <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar items-center">
+                        <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar items-center mask-image-gradient-r">
                             {filters.map(filter => (
                                 <button
                                     key={filter}
                                     onClick={() => handleFilterChange(filter)}
-                                    className={`whitespace-nowrap px-5 py-2.5 rounded-2xl text-sm font-bold transition-all border ${
+                                    className={`whitespace-nowrap px-4 sm:px-5 py-2 sm:py-2.5 rounded-2xl text-xs sm:text-sm font-bold transition-all border ${
                                         activeFilter === filter
-                                            ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white border-transparent shadow-lg shadow-blue-500/30"
+                                            ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white border-transparent shadow-lg shadow-blue-500/30 scale-105"
                                             : "bg-white/50 border-white/60 text-slate-600 hover:bg-white hover:border-white hover:shadow-md"
                                     }`}
                                 >
@@ -169,20 +160,22 @@ const FindDoctor: React.FC = () => {
                 </div>
             </div>
 
-            {/* RESULTS GRID */}
+            {/* RESULTS GRID - FIX APPLIED HERE */}
             {loading ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                // FIX: Changed grid-cols-1 to grid-cols-2 on mobile, added smaller gap-4
+                <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                     {[1, 2, 3, 4, 5, 6].map((n) => (
                         <DoctorCardSkeleton key={n} />
                     ))}
                 </div>
             ) : filteredDoctors.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"> 
+                // FIX: Changed grid-cols-1 to grid-cols-2 on mobile, added smaller gap-4
+                <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6"> 
                     {filteredDoctors.map((doc) => (
                         <Link 
                             to={`/patient/doctor/${doc.doctor_id}`} 
                             key={doc.doctor_id}
-                            className="block transition-all hover:-translate-y-1 hover:shadow-xl rounded-3xl"
+                            className="block transition-all hover:-translate-y-1 hover:shadow-xl rounded-[2rem]"
                         >
                             <DoctorCard doctor={doc} />
                         </Link>
@@ -190,11 +183,11 @@ const FindDoctor: React.FC = () => {
                 </div>
             ) : (
                 <div className="flex flex-col items-center justify-center py-20 bg-white/40 backdrop-blur-xl rounded-[2rem] border border-white/50 border-dashed">
-                    <div className="w-24 h-24 bg-white/50 rounded-full flex items-center justify-center mb-6 shadow-sm">
-                        <Activity className="w-12 h-12 text-slate-300" />
+                    <div className="w-20 h-20 sm:w-24 sm:h-24 bg-white/50 rounded-full flex items-center justify-center mb-6 shadow-sm">
+                        <Activity className="w-10 h-10 sm:w-12 sm:h-12 text-slate-300" />
                     </div>
-                    <h3 className="text-xl font-bold text-slate-900">No doctors found</h3>
-                    <p className="text-slate-500 max-w-sm text-center mt-2 font-medium">
+                    <h3 className="text-xl font-bold text-slate-900 text-center px-4">No doctors found</h3>
+                    <p className="text-slate-500 max-w-sm text-center mt-2 font-medium px-4 text-sm sm:text-base">
                         We couldn't find any doctors matching "{search}" {activeFilter !== "All" && `in ${activeFilter}`}.
                     </p>
                     <button 

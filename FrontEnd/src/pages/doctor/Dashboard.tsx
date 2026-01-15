@@ -169,26 +169,33 @@ const DoctorDashboard: FC = () => {
     setStats(stats);
   };
 
-  // Generate weekly trend data from actual appointments
   const getWeeklyTrendData = () => {
     const today = new Date();
+    const currentDayOfWeek = today.getDay(); 
+    
+    // Calculate the start of the week (Sunday)
+    const startOfWeek = new Date(today);
+    startOfWeek.setDate(today.getDate() - currentDayOfWeek);
+    startOfWeek.setHours(0, 0, 0, 0);
+
     const weekData = [];
     
-    for (let i = 6; i >= 0; i--) {
-      const date = new Date(today);
-      date.setDate(date.getDate() - i);
-      date.setHours(0, 0, 0, 0);
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(startOfWeek);
+      date.setDate(startOfWeek.getDate() + i);
       
+      // Define the end of the day for comparison
       const nextDate = new Date(date);
       nextDate.setDate(nextDate.getDate() + 1);
       
+      // Filter appointments that fall on this specific day
       const dayAppointments = appointments.filter((apt) => {
         const aptDate = new Date(apt.appointment_date);
         return aptDate >= date && aptDate < nextDate;
       });
       
       weekData.push({
-        name: date.toLocaleDateString("en-US", { weekday: "short" }),
+        name: date.toLocaleDateString("en-US", { weekday: "short" }), // "Sun", "Mon", etc.
         pending: dayAppointments.filter(a => a.status === "pending").length,
         confirmed: dayAppointments.filter(a => a.status === "confirmed").length,
         completed: dayAppointments.filter(a => a.status === "completed").length,
@@ -416,7 +423,7 @@ const DoctorDashboard: FC = () => {
           <div className="relative z-10 flex justify-between items-start">
             <div className="flex items-center gap-4">
               {/* Icon placeholder - replace with your image */}
-              <div className="w-16 h-16 bg-white backdrop-blur-lg rounded-2xl flex items-center justify-center border border-white/30 shadow-xl">
+              <div className="w-16 h-16 bg-white backdrop-blur-lg rounded-2xl flex items-center justify-center border border-white/30 shadow-xl hidden sm:flex">
                 <img 
                   src={bukcarelogo} 
                   alt="Appointment" 
@@ -424,7 +431,7 @@ const DoctorDashboard: FC = () => {
                 />
               </div>
               <div>
-                <h2 className="text-3xl font-bold text-white mb-1 tracking-tight">
+                <h2 className="text-2xl sm:text-3xl font-bold text-white mb-1 tracking-tight">
                   Appointment Details
                 </h2>
                 <p className="text-blue-100 text-sm font-medium">Complete appointment information</p>
@@ -439,13 +446,13 @@ const DoctorDashboard: FC = () => {
           </div>
         </div>
 
-        <div className="p-8 space-y-6 overflow-y-auto max-h-[calc(95vh-140px)]">
+        <div className="p-6 sm:p-8 space-y-6 overflow-y-auto max-h-[calc(95vh-140px)]">
           {/* Patient Information - Premium Card */}
           <div className="relative bg-gradient-to-br from-emerald-50 to-teal-50/50 rounded-2xl p-6 border-2 border-slate-200/60 shadow-lg hover:shadow-xl transition-all duration-300 group overflow-hidden">
             {/* Subtle shine effect */}
             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 transform -skew-x-12 group-hover:translate-x-full" 
                  style={{width: '50%', transition: 'transform 0.8s ease'}}></div>
-            <div className="relative z-10 flex items-center gap-5">
+            <div className="relative z-10 flex flex-col sm:flex-row items-center sm:items-start gap-5 text-center sm:text-left">
               <div className="relative">
                 <div className="w-20 h-20 bg-gradient-to-br from-blue-500 via-cyan-500 to-blue-600 rounded-2xl flex items-center justify-center text-white font-bold text-2xl shadow-xl border-4 border-white">
                   {selectedAppointment.patient_name.split(' ').map(n => n[0]).join('')}
@@ -455,7 +462,7 @@ const DoctorDashboard: FC = () => {
               <div className="flex-1">
                 <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Patient Information</h3>
                 <p className="text-2xl font-bold text-slate-900 mb-1">{selectedAppointment.patient_name}</p>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center justify-center sm:justify-start gap-2">
                   <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-semibold">
                     Patient ID: {selectedAppointment.patient_id}
                   </span>
@@ -532,7 +539,7 @@ const DoctorDashboard: FC = () => {
           {selectedAppointment.reason && (
             <div className="relative bg-gradient-to-br from-blue-50 via-cyan-50/50 to-blue-50/30 rounded-2xl p-6 border-2 border-blue-200/70 shadow-md hover:shadow-lg transition-all duration-300 group overflow-hidden">
               <div className="absolute top-0 right-0 w-32 h-32 bg-blue-400/10 rounded-full blur-3xl"></div>
-              <div className="relative z-10 flex items-start gap-4">
+              <div className="relative z-10 flex flex-col sm:flex-row items-start gap-4">
                 <div className="w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg group-hover:scale-110 transition-transform">
                   {/* Icon placeholder */}
                   <img 
@@ -556,7 +563,7 @@ const DoctorDashboard: FC = () => {
           {selectedAppointment.notes && (
             <div className="relative bg-gradient-to-br from-purple-50 via-fuchsia-50/50 to-purple-50/30 rounded-2xl p-6 border-2 border-purple-200/70 shadow-md hover:shadow-lg transition-all duration-300 group overflow-hidden">
               <div className="absolute top-0 right-0 w-32 h-32 bg-purple-400/10 rounded-full blur-3xl"></div>
-              <div className="relative z-10 flex items-start gap-4">
+              <div className="relative z-10 flex flex-col sm:flex-row items-start gap-4">
                 <div className="w-14 h-14 bg-gradient-to-br from-purple-500 to-fuchsia-600 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg group-hover:scale-110 transition-transform">
                   {/* Icon placeholder */}
                   <img 
@@ -577,7 +584,7 @@ const DoctorDashboard: FC = () => {
           )}
 
           {/* Action Buttons - Premium Style */}
-          <div className="flex gap-4 pt-6 border-t-2 border-slate-200">
+          <div className="flex flex-col sm:flex-row gap-4 pt-6 border-t-2 border-slate-200">
             {selectedAppointment.status === "pending" && (
               <>
                 <button
@@ -642,14 +649,14 @@ const DoctorDashboard: FC = () => {
         {/* Header Section */}
         <div className="mb-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-slate-900">Dashboard</h1>
-              <p className="text-slate-600 mt-2">Welcome back! Here's what's happening today.</p>
+            <div className="mb-4 sm:mb-0">
+              <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">Dashboard</h1>
+              <p className="text-slate-600 mt-2 text-sm sm:text-base">Welcome back! Here's what's happening today.</p>
             </div>
-            <div className="mt-4 sm:mt-0 flex items-center space-x-3">
+            <div className="flex flex-wrap items-center gap-3">
               <button 
                   onClick={() => navigate('/doctor/scan')}
-                  className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition shadow-sm"
+                  className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition shadow-sm text-sm sm:text-base"
               >
                   <QrCode className="w-5 h-5" />
                   <span>Scan Patient ID</span>
@@ -657,7 +664,7 @@ const DoctorDashboard: FC = () => {
               
               <button 
                 onClick={() => navigate('/doctor/set-availability')}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2 text-sm sm:text-base"
               >
                 <Plus className="w-4 h-4" />
                 <span>New Schedule</span>
@@ -667,157 +674,166 @@ const DoctorDashboard: FC = () => {
         </div>
 
         {/* Statistics Cards Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 mb-5">
+        {/* CHANGED: grid-cols-2 on mobile instead of 1 to fit side-by-side */}
+        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-2 sm:gap-3 mb-5">
+          
           {/* TODAY'S APPOINTMENTS */}
-          <div className="relative bg-white/40 backdrop-blur-2xl rounded-3xl p-6 border border-white/40 shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 group overflow-hidden">
+          <div className="relative bg-white/40 backdrop-blur-2xl rounded-2xl sm:rounded-3xl p-3 sm:p-6 border border-white/40 shadow-md sm:shadow-xl hover:shadow-2xl transition-all duration-300 group overflow-hidden">
             {/* Glass reflection effect */}
             <div className="absolute inset-0 bg-gradient-to-br from-white/30 via-white/10 to-transparent opacity-50"></div>
-            {/* Hover glow */}
-            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 bg-gradient-to-br from-white/20 to-transparent transition duration-500 pointer-events-none" />
+            
             <div className="relative z-10">
-              <div className="flex items-center justify-between mb-5">
-                <div className="w-6 h-6 bg-white/30 backdrop-blur-lg border border-white/40 rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 group-hover:bg-white/40 transition-all duration-300">
-                  <img src={appointmentpic} alt="Icon" className="w-7 h-7 object-contain" />
+              <div className="flex items-center justify-between mb-2 sm:mb-5">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 bg-white/30 backdrop-blur-lg border border-white/40 rounded-xl sm:rounded-2xl flex items-center justify-center shadow-lg">
+                  {/* Smaller icon on mobile */}
+                  <img src={appointmentpic} alt="Icon" className="w-5 h-5 sm:w-7 sm:h-7 object-contain" />
                 </div>
-                <div className="w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center border border-white/30">
+                {/* Hidden on mobile to save space */}
+                <div className="hidden sm:flex w-10 h-10 bg-white/20 backdrop-blur-md rounded-full items-center justify-center border border-white/30">
                   <TrendingUp className="w-5 h-5 text-slate-700" />
                 </div>
               </div>
-              <p className="text-xs uppercase tracking-wider font-bold text-slate-600/90 mb-2">
-                Today's Appointments
+              
+              {/* Smaller text labels */}
+              <p className="text-[10px] sm:text-xs uppercase tracking-wider font-bold text-slate-600/90 mb-1 sm:mb-2 truncate">
+                Today
               </p>
-              <p className="text-5xl font-bold text-slate-900 leading-tight mb-3">
+              
+              {/* Drastically smaller number font on mobile */}
+              <p className="text-2xl sm:text-5xl font-bold text-slate-900 leading-tight mb-0 sm:mb-3">
                 {stats.todayAppointments}
               </p>
-              <div className="mt-3 w-full bg-slate-300/30 backdrop-blur-sm rounded-full h-2 overflow-hidden border border-white/20">
+
+              {/* Hide progress bar and capacity text on mobile to keep it compact */}
+              <div className="hidden sm:block mt-3 w-full bg-slate-300/30 backdrop-blur-sm rounded-full h-2 overflow-hidden border border-white/20">
                 <div 
                   className="bg-gradient-to-r from-green-500 via-amber-500 to-red-500 h-full rounded-full transition-all duration-700 ease-out shadow-sm" 
                   style={{ width: `${Math.min((stats.todayAppointments / 10) * 100, 100)}%` }}
                 />
               </div>
-              <p className="text-xs text-slate-500 mt-2 font-medium">
+              <p className="hidden sm:block text-xs text-slate-500 mt-2 font-medium">
                 {Math.min(Math.round((stats.todayAppointments / 10) * 100), 100)}% capacity
               </p>
             </div>
           </div>
 
           {/* PENDING */}
-          <div className="relative bg-white/40 backdrop-blur-2xl rounded-3xl p-6 border border-white/40 shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 group overflow-hidden">
+          <div className="relative bg-white/40 backdrop-blur-2xl rounded-2xl sm:rounded-3xl p-3 sm:p-6 border border-white/40 shadow-md sm:shadow-xl hover:shadow-2xl transition-all duration-300 group overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-br from-white/30 via-white/10 to-transparent opacity-50"></div>
-            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 bg-gradient-to-br from-white/20 to-transparent transition duration-500 pointer-events-none" />
             
             <div className="relative z-10">
-              <div className="flex items-center justify-between mb-5">
-                <div className="w-10 h-10 bg-white/30 backdrop-blur-lg border border-white/40 rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 group-hover:bg-white/40 transition-all duration-300">
-                  <img src={pendingpic} alt="Pending" className="w-7 h-7 object-contain" />
+              <div className="flex items-center justify-between mb-2 sm:mb-5">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 bg-white/30 backdrop-blur-lg border border-white/40 rounded-xl sm:rounded-2xl flex items-center justify-center shadow-lg">
+                  <img src={pendingpic} alt="Pending" className="w-5 h-5 sm:w-7 sm:h-7 object-contain" />
                 </div>
-                <div className="w-3 h-3 bg-slate-400 rounded-full animate-pulse shadow-lg"></div>
+                <div className="hidden sm:block w-3 h-3 bg-slate-400 rounded-full animate-pulse shadow-lg"></div>
               </div>
-              <p className="text-xs uppercase tracking-wider font-bold text-slate-600/90 mb-2">
+              <p className="text-[10px] sm:text-xs uppercase tracking-wider font-bold text-slate-600/90 mb-1 sm:mb-2 truncate">
                 Pending
               </p>
-              <p className="text-5xl font-bold text-slate-900 leading-tight mb-3">
+              <p className="text-2xl sm:text-5xl font-bold text-slate-900 leading-tight mb-0 sm:mb-3">
                 {stats.pendingAppointments}
               </p>
-              <div className="mt-3 w-full bg-slate-300/30 backdrop-blur-sm rounded-full h-2 overflow-hidden border border-white/20">
+              
+              <div className="hidden sm:block mt-3 w-full bg-slate-300/30 backdrop-blur-sm rounded-full h-2 overflow-hidden border border-white/20">
                 <div 
                   className="bg-gradient-to-r from-green-500 via-amber-500 to-red-500 h-full rounded-full transition-all duration-700 ease-out shadow-sm" 
                   style={{ width: `${Math.min((stats.pendingAppointments / 10) * 100, 100)}%` }}
                 />
               </div>
-              <p className="text-xs text-slate-500 mt-2 font-medium">
+              <p className="hidden sm:block text-xs text-slate-500 mt-2 font-medium">
                 {Math.min(Math.round((stats.pendingAppointments / 10) * 100), 100)}% capacity
               </p>
             </div>
           </div>
 
           {/* CONFIRMED */}
-          <div className="relative bg-white/40 backdrop-blur-2xl rounded-3xl p-6 border border-white/40 shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 group overflow-hidden">
+          <div className="relative bg-white/40 backdrop-blur-2xl rounded-2xl sm:rounded-3xl p-3 sm:p-6 border border-white/40 shadow-md sm:shadow-xl hover:shadow-2xl transition-all duration-300 group overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-br from-white/30 via-white/10 to-transparent opacity-50"></div>
-            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 bg-gradient-to-br from-white/20 to-transparent transition duration-500 pointer-events-none" />
             
             <div className="relative z-10">
-              <div className="flex items-center justify-between mb-5">
-                <div className="w-10 h-10 bg-white/30 backdrop-blur-lg border border-white/40 rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 group-hover:bg-white/40 transition-all duration-300">
-                  <img src={confirmedpic} alt="Confirmed" className="w-7 h-7 object-contain" />
+              <div className="flex items-center justify-between mb-2 sm:mb-5">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 bg-white/30 backdrop-blur-lg border border-white/40 rounded-xl sm:rounded-2xl flex items-center justify-center shadow-lg">
+                  <img src={confirmedpic} alt="Confirmed" className="w-5 h-5 sm:w-7 sm:h-7 object-contain" />
                 </div>
-                <div className="w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center border border-white/30">
+                <div className="hidden sm:flex w-10 h-10 bg-white/20 backdrop-blur-md rounded-full items-center justify-center border border-white/30">
                   <CheckCircle className="w-5 h-5 text-slate-700" />
                 </div>
               </div>
-              <p className="text-xs uppercase tracking-wider font-bold text-slate-600/90 mb-2">
+              <p className="text-[10px] sm:text-xs uppercase tracking-wider font-bold text-slate-600/90 mb-1 sm:mb-2 truncate">
                 Confirmed
               </p>
-              <p className="text-5xl font-bold text-slate-900 leading-tight mb-3">
+              <p className="text-2xl sm:text-5xl font-bold text-slate-900 leading-tight mb-0 sm:mb-3">
                 {stats.confirmedAppointments}
               </p>
-              <div className="mt-3 w-full bg-slate-300/30 backdrop-blur-sm rounded-full h-2 overflow-hidden border border-white/20">
+              
+              <div className="hidden sm:block mt-3 w-full bg-slate-300/30 backdrop-blur-sm rounded-full h-2 overflow-hidden border border-white/20">
                 <div 
                   className="bg-gradient-to-r from-green-500 via-amber-500 to-red-500 h-full rounded-full transition-all duration-700 ease-out shadow-sm" 
                   style={{ width: `${Math.min((stats.confirmedAppointments / 10) * 100, 100)}%` }}
                 />
               </div>
-              <p className="text-xs text-slate-500 mt-2 font-medium">
+              <p className="hidden sm:block text-xs text-slate-500 mt-2 font-medium">
                 {Math.min(Math.round((stats.confirmedAppointments / 10) * 100), 100)}% capacity
               </p>
             </div>
           </div>
 
           {/* TOTAL APPOINTMENTS */}
-          <div className="relative bg-white/40 backdrop-blur-2xl rounded-3xl p-6 border border-white/40 shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 group overflow-hidden">
+          <div className="relative bg-white/40 backdrop-blur-2xl rounded-2xl sm:rounded-3xl p-3 sm:p-6 border border-white/40 shadow-md sm:shadow-xl hover:shadow-2xl transition-all duration-300 group overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-br from-white/30 via-white/10 to-transparent opacity-50"></div>
-            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 bg-gradient-to-br from-white/20 to-transparent transition duration-500 pointer-events-none" />
             
             <div className="relative z-10">
-              <div className="flex items-center justify-between mb-5">
-                <div className="w-10 h-10 bg-white/30 backdrop-blur-lg border border-white/40 rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 group-hover:bg-white/40 transition-all duration-300">
-                  <img src={patientpic} alt="Total" className="w-7 h-7 object-contain" />
+              <div className="flex items-center justify-between mb-2 sm:mb-5">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 bg-white/30 backdrop-blur-lg border border-white/40 rounded-xl sm:rounded-2xl flex items-center justify-center shadow-lg">
+                  <img src={patientpic} alt="Total" className="w-5 h-5 sm:w-7 sm:h-7 object-contain" />
                 </div>
-                <div className="w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center border border-white/30">
+                <div className="hidden sm:flex w-10 h-10 bg-white/20 backdrop-blur-md rounded-full items-center justify-center border border-white/30">
                   <span className="text-xs font-bold text-slate-700">All</span>
                 </div>
               </div>
-              <p className="text-xs uppercase tracking-wider font-bold text-slate-600/90 mb-2">
-                Total Appointments
+              <p className="text-[10px] sm:text-xs uppercase tracking-wider font-bold text-slate-600/90 mb-1 sm:mb-2 truncate">
+                Total
               </p>
-              <p className="text-5xl font-bold text-slate-900 leading-tight mb-3">
+              <p className="text-2xl sm:text-5xl font-bold text-slate-900 leading-tight mb-0 sm:mb-3">
                 {stats.totalAppointments}
               </p>
-              <div className="mt-3 w-full bg-slate-300/30 backdrop-blur-sm rounded-full h-2 overflow-hidden border border-white/20">
+              
+              <div className="hidden sm:block mt-3 w-full bg-slate-300/30 backdrop-blur-sm rounded-full h-2 overflow-hidden border border-white/20">
                 <div 
                   className="bg-gradient-to-r from-green-500 via-amber-500 to-red-500 h-full rounded-full transition-all duration-700 ease-out shadow-sm" 
                   style={{ width: '100%' }}
                 />
               </div>
-              <p className="text-xs text-slate-500 mt-2 font-medium">
+              <p className="hidden sm:block text-xs text-slate-500 mt-2 font-medium">
                 Complete overview
               </p>
             </div>
           </div>
 
-          {/* Overview Stats */}
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4">
-              <h3 className="text-lg font-semibold text-slate-900 mb-6 flex items-center">
-                <Activity className="w-5 h-5 mr-2 text-blue-600" />
+          {/* Overview Stats - Make this span full width on mobile or 2 columns if you prefer */}
+            <div className="col-span-2 sm:col-span-1 bg-white rounded-2xl shadow-sm border border-slate-200 p-3 sm:p-4">
+              <h3 className="text-sm sm:text-lg font-semibold text-slate-900 mb-3 sm:mb-6 flex items-center">
+                <Activity className="w-4 h-4 sm:w-5 sm:h-5 mr-2 text-blue-600" />
                 Overview
               </h3>
-              <div className="space-y-4">
+              <div className="space-y-2 sm:space-y-4">
                 {[
                   { label: "Pending", value: stats.pendingAppointments, img: pendingpic, textColor: "text-blue-600" },
                   { label: "Confirmed", value: stats.confirmedAppointments, img: confirmedpic, textColor: "text-blue-600" },
                   { label: "Completed", value: stats.completedAppointments, img: completepic, textColor: "text-blue-600" },
                   { label: "Cancelled", value: stats.cancelledAppointments, img: cancelpic, textColor: "text-blue-600" },
                 ].map((stat, _index) => (
-                  <div key={stat.label} className="flex items-center justify-between py-2">
-                    <div className="flex items-center space-x-3">
+                  <div key={stat.label} className="flex items-center justify-between py-1 sm:py-2">
+                    <div className="flex items-center space-x-2 sm:space-x-3">
                       <div>
                         <img
-                          src={stat.img} alt={stat.label} className="w-5 h-5 object-contain"
+                          src={stat.img} alt={stat.label} className="w-4 h-4 sm:w-5 sm:h-5 object-contain"
                         />
                       </div>
-                      <span className="text-sm font-bold text-slate-700">{stat.label}</span>
+                      <span className="text-xs sm:text-sm font-bold text-slate-700">{stat.label}</span>
                     </div>
-                    <span className={`font-bold ${stat.textColor}`}>
+                    <span className={`text-xs sm:text-base font-bold ${stat.textColor}`}>
                       {stat.value}
                     </span>
                   </div>
@@ -828,17 +844,18 @@ const DoctorDashboard: FC = () => {
 
 
         {/* Charts and Main Content Grid */}
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-8">
           {/* Left Column - Charts */}
-          <div className="xl:col-span-2 space-y-8">
+          <div className="lg:col-span-2 space-y-8">
             {/* Charts Row */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Weekly Trends Chart */}
-              <div className="bg-gradient-to-br from-white to-slate-50/50 rounded-2xl shadow-lg border border-slate-200/60 p-6 relative overflow-hidden">
+              <div className="bg-gradient-to-br from-white to-slate-50/50 rounded-2xl shadow-lg border border-slate-200/60 p-4 sm:p-6 relative overflow-hidden">
                 {/* Subtle decorative gradient */}
                 <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-500/5 to-indigo-500/5 rounded-full blur-2xl"></div>
                 
                 <div className="relative z-10">
+                  {/* Header: Kept Original Layout (Left Aligned) */}
                   <div className="flex items-center justify-between mb-6">
                     <div>
                       <h3 className="text-lg font-bold text-slate-900">Weekly Trends</h3>
@@ -846,7 +863,7 @@ const DoctorDashboard: FC = () => {
                     </div>
                   </div>
 
-                  {/* Legend */}
+                  {/* Legend: Kept Original Layout (Left Aligned) */}
                   <div className="flex gap-3 mb-4 flex-wrap">
                     <div className="flex items-center gap-1.5 text-xs">
                       <span className="w-3 h-3 rounded bg-gradient-to-br from-amber-400 to-orange-500"></span>
@@ -862,80 +879,98 @@ const DoctorDashboard: FC = () => {
                     </div>
                   </div>
 
-                  <ResponsiveContainer width="100%" height={250}>
-                    <BarChart data={weeklyTrendData}>
-                      <defs>
-                        <linearGradient id="pendingGradient" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="#fbbf24" stopOpacity={0.9} />
-                          <stop offset="100%" stopColor="#f97316" stopOpacity={0.7} />
-                        </linearGradient>
-                        <linearGradient id="confirmedGradient" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.9} />
-                          <stop offset="100%" stopColor="#06b6d4" stopOpacity={0.7} />
-                        </linearGradient>
-                        <linearGradient id="completedGradient" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="#10b981" stopOpacity={0.9} />
-                          <stop offset="100%" stopColor="#14b8a6" stopOpacity={0.7} />
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#b4b8bcff" strokeOpacity={5} />
-                      <XAxis 
-                        dataKey="name" 
-                        stroke="#000000ff" 
-                        fontSize={12}
-                        tick={{ fill: '#000000ff' }}
-                        tickLine={{ stroke: '#030303ff' }}
-                      />
-                      <YAxis 
-                        stroke="#000000ff" 
-                        fontSize={12}
-                        tick={{ fill: '#000000ff' }}
-                        tickLine={{ stroke: '#010101ff' }}
-                        domain={[0, 10]}
-                        ticks={[0, 2, 4, 6, 8, 10]}
-                      />
-                      <Tooltip 
-                        contentStyle={{ 
-                          backgroundColor: 'rgba(15, 23, 42, 0.95)',
-                          backdropFilter: 'blur(8px)',
-                          border: '1px solid rgba(148, 163, 184, 0.2)',
-                          borderRadius: '12px',
-                          boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.3)',
-                          padding: '12px',
-                          color: 'white'
-                        }}
-                        labelStyle={{ 
-                          color: 'white', 
-                          fontWeight: 600,
-                          marginBottom: '8px'
-                        }}
-                        itemStyle={{ 
-                          color: 'white',
-                          fontSize: '13px',
-                          padding: '2px 0'
-                        }}
-                        cursor={{ fill: 'rgba(148, 163, 184, 0.08)' }}
-                      />
-                      <Bar 
-                        dataKey="pending" 
-                        fill="url(#pendingGradient)" 
-                        radius={[6, 6, 0, 0]}
-                        animationDuration={800}
-                      />
-                      <Bar 
-                        dataKey="confirmed" 
-                        fill="url(#confirmedGradient)" 
-                        radius={[6, 6, 0, 0]}
-                        animationDuration={800}
-                      />
-                      <Bar 
-                        dataKey="completed" 
-                        fill="url(#completedGradient)" 
-                        radius={[6, 6, 0, 0]}
-                        animationDuration={800}
-                      />
-                    </BarChart>
-                  </ResponsiveContainer>
+                  {/* Chart Container */}
+                  <div className="w-full h-[250px] flex justify-center">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart 
+                          data={weeklyTrendData} 
+                          margin={{ top: 0, right: 10, left: -20, bottom: 0 }}
+                      >
+                        <defs>
+                          <linearGradient id="pendingGradient" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#fbbf24" stopOpacity={0.9} />
+                            <stop offset="100%" stopColor="#f97316" stopOpacity={0.7} />
+                          </linearGradient>
+                          <linearGradient id="confirmedGradient" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.9} />
+                            <stop offset="100%" stopColor="#06b6d4" stopOpacity={0.7} />
+                          </linearGradient>
+                          <linearGradient id="completedGradient" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#10b981" stopOpacity={0.9} />
+                            <stop offset="100%" stopColor="#14b8a6" stopOpacity={0.7} />
+                          </linearGradient>
+                        </defs>
+                        
+                        <CartesianGrid 
+                          strokeDasharray="3 3" 
+                          stroke="#0e0e0f" 
+                          vertical={false} 
+                          strokeOpacity={1}
+                        />
+                        <XAxis 
+                          dataKey="name" 
+                          stroke="#0e0e0f" 
+                          fontSize={12}
+                          tick={{ fill: '#0e0e0f' }}
+                          tickLine={false}
+                          axisLine={false}
+                          dy={10}
+                        />
+                        <YAxis 
+                          stroke="#0e0e0f" 
+                          fontSize={12}
+                          tick={{ fill: '#0e0e0f' }}
+                          tickLine={false}
+                          axisLine={false}
+                          domain={[0, 10]}
+                          ticks={[0, 2, 4, 6, 8, 10]}
+                        />
+                        <Tooltip 
+                          contentStyle={{ 
+                            backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                            backdropFilter: 'blur(8px)',
+                            border: '1px solid rgba(14, 14, 15, 0.2)',
+                            borderRadius: '12px',
+                            boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.3)',
+                            padding: '12px',
+                            color: 'white'
+                          }}
+                          labelStyle={{ 
+                            color: 'white', 
+                            fontWeight: 600,
+                            marginBottom: '8px'
+                          }}
+                          itemStyle={{ 
+                            color: 'white',
+                            fontSize: '13px',
+                            padding: '2px 0'
+                          }}
+                          cursor={{ fill: 'rgba(148, 163, 184, 0.1)', radius: 4 }}
+                        />
+                        <Bar 
+                          dataKey="pending" 
+                          fill="url(#pendingGradient)" 
+                          radius={[4, 4, 0, 0]}
+                          animationDuration={800}
+                          barSize={12}
+                        />
+                        <Bar 
+                          dataKey="confirmed" 
+                          fill="url(#confirmedGradient)" 
+                          radius={[4, 4, 0, 0]}
+                          animationDuration={800}
+                          barSize={12}
+                        />
+                        <Bar 
+                          dataKey="completed" 
+                          fill="url(#completedGradient)" 
+                          radius={[4, 4, 0, 0]}
+                          animationDuration={800}
+                          barSize={12}
+                        />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
                 </div>
               </div>
 
@@ -1049,7 +1084,7 @@ const DoctorDashboard: FC = () => {
               <div className="p-6 border-b border-slate-200">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
                   <h2 className="text-xl font-semibold text-slate-900">Appointments</h2>
-                  <div className="flex items-center space-x-4">
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-3 sm:space-y-0 sm:space-x-4">
                     <div className="relative">
                       <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" />
                       <input
@@ -1057,13 +1092,13 @@ const DoctorDashboard: FC = () => {
                         placeholder="Search appointments..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="pl-10 pr-4 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full sm:w-auto pl-10 pr-4 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                     </div>
-                    <div className="flex space-x-1 bg-slate-100 rounded-lg p-1">
+                    <div className="flex space-x-1 bg-slate-100 rounded-lg p-1 overflow-x-auto">
                       <button
                         onClick={() => setActiveTab("today")}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                        className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
                           activeTab === "today"
                             ? "bg-white text-blue-600 shadow-sm"
                             : "text-slate-600 hover:text-slate-800"
@@ -1073,7 +1108,7 @@ const DoctorDashboard: FC = () => {
                       </button>
                       <button
                         onClick={() => setActiveTab("upcoming")}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                        className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
                           activeTab === "upcoming"
                             ? "bg-white text-blue-600 shadow-sm"
                             : "text-slate-600 hover:text-slate-800"
@@ -1083,7 +1118,7 @@ const DoctorDashboard: FC = () => {
                       </button>
                       <button
                         onClick={() => setActiveTab("all")}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                        className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
                           activeTab === "all"
                             ? "bg-white text-blue-600 shadow-sm"
                             : "text-slate-600 hover:text-slate-800"
@@ -1118,20 +1153,20 @@ const DoctorDashboard: FC = () => {
                       <div className="flex justify-between items-start">
                         <div className="flex-1">
                           <div className="flex items-center space-x-3 mb-3">
-                            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
+                            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">
                               {appointment.patient_name.split(' ').map(n => n[0]).join('')}
                             </div>
-                            <div>
-                              <h3 className="font-semibold text-slate-800 text-base">
+                            <div className="min-w-0">
+                              <h3 className="font-semibold text-slate-800 text-base truncate">
                                 {appointment.patient_name}
                               </h3>
-                              <div className="flex items-center space-x-4 text-sm text-slate-600 mt-1">
+                              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-600 mt-1">
                                 <span className="flex items-center">
-                                  <Calendar className="w-4 h-4 mr-1.5" />
+                                  <Calendar className="w-4 h-4 mr-1.5 flex-shrink-0" />
                                   {formatDate(appointment.appointment_date)}
                                 </span>
                                 <span className="flex items-center">
-                                  <Clock className="w-4 h-4 mr-1.5" />
+                                  <Clock className="w-4 h-4 mr-1.5 flex-shrink-0" />
                                   {formatTime(appointment.appointment_date)}
                                 </span>
                               </div>
@@ -1150,7 +1185,7 @@ const DoctorDashboard: FC = () => {
                             )}`}
                           >
                             {getStatusIcon(appointment.status)}
-                            <span className="capitalize">{appointment.status}</span>
+                            <span className="capitalize hidden sm:inline">{appointment.status}</span>
                           </div>
                           <button
                             onClick={(e) => {
@@ -1158,7 +1193,7 @@ const DoctorDashboard: FC = () => {
                               setSelectedAppointment(appointment);
                               setShowAppointmentDetails(true);
                             }}
-                            className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                            className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100 hidden sm:block"
                             title="View Details"
                           >
                             <Eye className="w-5 h-5" />

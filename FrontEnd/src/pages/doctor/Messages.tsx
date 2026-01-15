@@ -5,7 +5,7 @@ import { useWebSocket } from "@/context/WebSocketContext";
 import messagesAPI, { type Conversation } from "@/services/messages";
 import ChatList from "@/components/chat/ChatList";
 import ChatWindow from "@/components/chat/ChatWindow";
-import { MessageSquare } from "lucide-react";
+import { MessageSquare, Sparkles, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 
 const Messages: React.FC = () => {
   const { user } = useAuth();
@@ -13,7 +13,12 @@ const Messages: React.FC = () => {
   
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeChat, setActiveChat] = useState<Conversation | null>(null);
+  
+  // Mobile View Control
   const [isMobileChatOpen, setIsMobileChatOpen] = useState(false);
+
+  // Desktop Sidebar Control
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   
   const [typingUsers, setTypingUsers] = useState<Set<number>>(new Set());
 
@@ -24,7 +29,6 @@ const Messages: React.FC = () => {
   const loadConversations = async () => {
     try {
       const data = await messagesAPI.getConversations();
-      // Robust Sort
       const sorted = data.sort((a: any, b: any) => 
         new Date(b.last_message_time || 0).getTime() - new Date(a.last_message_time || 0).getTime()
       );
@@ -38,7 +42,6 @@ const Messages: React.FC = () => {
   useEffect(() => {
     if (!lastMessage) return;
 
-    // A. HANDLE MESSAGES
     if (lastMessage.type === "CHAT_MESSAGE" && lastMessage.message) {
       const incomingMsg = lastMessage.message;
       const currentUserId = Number(user?.id);
@@ -49,7 +52,6 @@ const Messages: React.FC = () => {
         const exists = prev.find(c => c.user_id === senderId || c.user_id === incomingMsg.receiver_id);
         const otherUserId = senderId === currentUserId ? incomingMsg.receiver_id : senderId;
 
-        // Preview Logic
         let preview = incomingMsg.content;
         if (incomingMsg.message_type === "appointment_reminder") preview = "Appointment Reminder";
         if (incomingMsg.content.includes("video_call")) preview = "📞 Video Call";
@@ -72,7 +74,6 @@ const Messages: React.FC = () => {
       });
     }
 
-    // HANDLE TYPING INDICATORS
     if (lastMessage.type === "TYPING_START" && lastMessage.sender_id) {
        const senderId = lastMessage.sender_id;
        setTypingUsers(prev => new Set(prev).add(senderId));
@@ -118,52 +119,101 @@ const Messages: React.FC = () => {
   };
 
   return (
-    <div className="h-screen flex flex-col bg-[#F8FAFC] overflow-hidden">
+    <div className="h-screen flex flex-col bg-[#F8FAFC] relative overflow-hidden font-sans text-slate-800">
+      
+      {/* Background Blobs */}
       <div className="fixed inset-0 pointer-events-none z-0">
           <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-blue-400/20 rounded-full blur-[100px] mix-blend-multiply" />
           <div className="absolute top-[20%] right-[-10%] w-[600px] h-[600px] bg-purple-400/20 rounded-full blur-[100px] mix-blend-multiply" />
           <div className="absolute bottom-[-10%] left-[20%] w-[500px] h-[500px] bg-emerald-400/20 rounded-full blur-[100px] mix-blend-multiply" />
       </div>
-      <Navbar />
 
-      <div className="flex-1 flex max-w-[1600px] w-full mx-auto p-4 gap-6 h-[calc(100vh-80px)]">
-        
-        {/* SIDEBAR */}
-        <div className={`w-full md:w-80 lg:w-96 bg-white rounded-2xl shadow-lg shadow-slate-200/50 border border-slate-100 flex flex-col transition-all duration-300 ${isMobileChatOpen ? 'hidden md:flex' : 'flex'}`}>
-          <ChatList 
-            conversations={conversations}
-            activeChat={activeChat}
-            onSelectChat={(chat) => { 
-                setActiveChat(chat); 
-                setIsMobileChatOpen(true); 
-                setConversations(prev => prev.map(c => c.user_id === chat.user_id ? {...c, unread_count: 0} : c));
-            }}
-            onStartNewChat={handleStartNewChat}
-            typingUsers={typingUsers} 
-          />
-        </div>
+      <div className="relative z-10 flex flex-col h-full">
+        <Navbar />
 
-        {/* CHAT WINDOW */}
-        <div className={`flex-1 bg-white rounded-2xl shadow-lg shadow-slate-200/50 border border-slate-100 flex flex-col overflow-hidden transition-all duration-300 ${!isMobileChatOpen ? 'hidden md:flex' : 'flex'}`}>
-          {activeChat ? (
-            <ChatWindow 
-              activeChat={activeChat}
-              onBack={() => setIsMobileChatOpen(false)}
-              onMessageSent={handleMessageSent}
-              isTyping={typingUsers.has(activeChat.user_id)} 
-            />
-          ) : (
-            // Empty State
-            <div className="flex-1 flex flex-col items-center justify-center text-slate-400 bg-slate-50/30">
-              <div className="w-24 h-24 bg-slate-100 rounded-full flex items-center justify-center mb-6 animate-pulse-slow">
-                <MessageSquare className="w-10 h-10 text-slate-300" />
-              </div>
-              <h3 className="text-xl font-bold text-slate-700">Doctor Messages</h3>
-              <p className="text-sm text-slate-500 mt-2">Select a conversation to start chatting</p>
+        <div className="flex-1 flex max-w-[1920px] w-full mx-auto p-0 md:p-6 md:gap-6 h-[calc(100vh-64px)] md:h-[calc(100vh-80px)] relative">
+            
+            {/* --- SIDEBAR (CHAT LIST) --- */}
+            <div 
+                className={`
+                    ${isMobileChatOpen ? 'hidden md:block' : 'block'}
+                    relative z-20
+                    transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]
+                    ${isSidebarOpen 
+                        ? 'w-full md:w-80 lg:w-96 opacity-100 translate-x-0' 
+                        : 'w-0 opacity-0 -translate-x-4 pointer-events-none overflow-hidden md:w-0'
+                    }
+                `}
+            >
+                {/* CLOSE BUTTON: Positioned inside sidebar, top right */}
+                <div className="hidden md:block absolute top-4 right-4 z-50">
+                    <button 
+                        onClick={() => setIsSidebarOpen(false)}
+                        className="bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 p-1.5 rounded-lg transition-colors"
+                        title="Collapse sidebar"
+                    >
+                        <PanelLeftClose className="w-4 h-4" />
+                    </button>
+                </div>
+
+                <div className="h-full w-full md:w-80 lg:w-96 min-w-[20rem] bg-white rounded-2xl shadow-lg shadow-slate-200/50 border border-slate-100 flex flex-col overflow-hidden">
+                    <ChatList 
+                        conversations={conversations}
+                        activeChat={activeChat}
+                        onSelectChat={(chat) => { 
+                            setActiveChat(chat); 
+                            setIsMobileChatOpen(true); 
+                            setConversations(prev => prev.map(c => c.user_id === chat.user_id ? {...c, unread_count: 0} : c));
+                        }}
+                        onStartNewChat={handleStartNewChat}
+                        typingUsers={typingUsers} 
+                    />
+                </div>
             </div>
-          )}
-        </div>
 
+            {/* --- CHAT WINDOW (MAIN CONTENT) --- */}
+            <div className={`flex-1 bg-white rounded-2xl shadow-lg shadow-slate-200/50 border border-slate-100 flex flex-col overflow-hidden transition-all duration-300 relative ${!isMobileChatOpen ? 'hidden md:flex' : 'flex'}`}>
+                
+                {/* OPEN BUTTON: Positioned as a "Tab" on the left edge when sidebar is closed */}
+                {!isSidebarOpen && (
+                    <div className="hidden md:block absolute top-20 left-0 z-50">
+                        <button 
+                            onClick={() => setIsSidebarOpen(true)}
+                            className="bg-white border border-l-0 border-slate-200 text-slate-500 hover:text-blue-600 p-2 rounded-r-xl shadow-md hover:pl-3 transition-all"
+                            title="Open sidebar"
+                        >
+                            <PanelLeftOpen className="w-5 h-5" />
+                        </button>
+                    </div>
+                )}
+
+                {activeChat ? (
+                    <ChatWindow 
+                        activeChat={activeChat}
+                        onBack={() => setIsMobileChatOpen(false)}
+                        onMessageSent={handleMessageSent}
+                        isTyping={typingUsers.has(activeChat.user_id)} 
+                    />
+                ) : (
+                    // Empty State
+                    <div className="flex-1 flex flex-col items-center justify-center text-slate-400 relative overflow-hidden">
+                        <div className="absolute inset-0 bg-gradient-to-b from-white/0 to-white/40 pointer-events-none" />
+                        <div className="relative z-10 flex flex-col items-center p-8 text-center animate-in fade-in zoom-in duration-500">
+                            <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center mb-6 shadow-xl shadow-slate-200 ring-8 ring-white/60">
+                                <MessageSquare className="w-10 h-10 text-blue-500" />
+                            </div>
+                            <h3 className="text-2xl font-bold text-slate-700 mb-2 flex items-center gap-2">
+                                Doctor Messages <Sparkles className="w-5 h-5 text-amber-400 fill-amber-400" />
+                            </h3>
+                            <p className="text-slate-500 max-w-xs leading-relaxed font-medium">
+                                Select a conversation from the sidebar or start a new chat with a patient.
+                            </p>
+                        </div>
+                    </div>
+                )}
+            </div>
+
+        </div>
       </div>
     </div>
   );
