@@ -4,6 +4,7 @@ import { Globe, Menu, X } from "lucide-react"; // Added Icons for Mobile Menu
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import logo from "@/assets/images/bukcare_logo.png"
+import preview from "@/assets/images/preview.png"
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -406,17 +407,21 @@ const Landing: React.FC = () => {
                 </div>
             </div>
 
-            {/* Right Visual (Placeholder Card) */}
-            <div className="step-item relative h-full min-h-[500px] bg-slate-50 rounded-[2.5rem] overflow-hidden border border-slate-100 shadow-2xl shadow-slate-200/50 flex items-center justify-center">
-                 <div className="text-center p-8">
-                      <div className="w-20 h-20 bg-blue-100 rounded-full mx-auto mb-4 flex items-center justify-center text-[#00aeef]">
-                         <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                      </div>
-                      <h3 className="text-xl font-bold text-slate-400">`App Interface Preview`</h3>
-                 </div>
-                 {/* Decorative Blobs */}
-                 <div className="absolute -bottom-20 -right-20 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl"></div>
-                 <div className="absolute top-10 left-10 w-40 h-40 bg-cyan-400/10 rounded-full blur-2xl"></div>
+            {/* Right Visual (Height Reduced) */}
+            <div className="relative min-h-[100px] h-auto rounded-[2.5rem] overflow-hidden flex items-center justify-center">
+
+                {/* Subtle Ambient Glow */}
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3/4 h-3/4 bg-blue-400/10 rounded-[2.5rem] blur-[80px]"></div>
+
+                {/* The Image */}
+                <div className="relative z-10 w-full h-full flex items-center justify-center">
+                    <img
+                        src={preview}
+                        alt="BukCare App Interface"
+                        className="w-auto h-auto rounded-[2.5rem] max-h-[40%] md:max-w-[80%] object-contain drop-shadow-2xl"
+                    />
+                </div>
+
             </div>
 
          </div>
