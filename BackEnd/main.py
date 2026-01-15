@@ -110,17 +110,22 @@ def create_app() -> FastAPI:
     # ============================================================
     @app.on_event("startup")
     def startup_tasks():
-        logger.info("Starting application startup tasks...")
+        # 1. Create tables
+        Base.metadata.create_all(bind=engine)
+        logger.info("Database tables verified/created successfully")
 
+        # 2. Seed data
         db = SessionLocal()
         try:
             seed_specializations(db)
-            create_admin_if_not_exists(db)
-            logger.info("Startup tasks completed successfully")
-        except Exception as e:
-            logger.error(f"Startup task failed: {e}", exc_info=True)
         finally:
             db.close()
+
+        # 3. Create default admin
+        create_admin_if_not_exists()
+
+        logger.info("Startup tasks completed")
+
 
     # ============================================================
     # Exception Handlers
