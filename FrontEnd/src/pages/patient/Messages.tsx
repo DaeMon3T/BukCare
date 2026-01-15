@@ -131,20 +131,9 @@ const PatientMessages: React.FC = () => {
       <div className="relative z-10 flex flex-col h-full">
         <Navbar />
 
-        <div className="flex-1 flex max-w-[1600px] w-full mx-auto p-0 md:p-6 md:gap-6 h-[calc(100vh-64px)] md:h-[calc(100vh-80px)] relative">
+        <div className="flex-1 flex max-w-[1920px] w-full mx-auto p-0 md:p-6 md:gap-6 h-[calc(100vh-64px)] md:h-[calc(100vh-80px)] relative">
             
-            {/* COLLAPSE TOGGLE BUTTON (Floating/Integrated) */}
-            <div className={`hidden md:block absolute z-50 transition-all duration-300 ease-in-out ${isSidebarOpen ? 'left-[20rem] lg:left-[24rem]' : 'left-2'} top-8`}>
-                <button 
-                    onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                    className="bg-white/80 backdrop-blur-md p-1.5 rounded-full shadow-md text-slate-500 hover:text-blue-600 hover:bg-white transition-all border border-slate-200"
-                    title={isSidebarOpen ? "Collapse sidebar" : "`Expand si`debar"}
-                >
-                    {isSidebarOpen ? <PanelLeftClose className="w-5 h-5" /> : <PanelLeftOpen className="w-5 h-5" />}
-                </button>
-            </div>
-
-            {/* SIDEBAR (CHAT LIST) - COLLAPSIBLE */}
+            {/* SIDEBAR (CHAT LIST) */}
             <div 
                 className={`
                     ${isMobileChatOpen ? 'hidden md:flex' : 'flex'}
@@ -152,11 +141,22 @@ const PatientMessages: React.FC = () => {
                     bg-white/70 backdrop-blur-xl md:rounded-[2rem] 
                     shadow-none md:shadow-xl md:shadow-blue-900/5 
                     border-r md:border border-white/50 
-                    transition-all duration-300 ease-in-out overflow-hidden
+                    transition-all duration-300 ease-in-out overflow-hidden relative
                     ${isSidebarOpen ? 'w-full md:w-80 lg:w-96 opacity-100 translate-x-0' : 'w-0 opacity-0 -translate-x-10 md:border-none'}
                 `}
             >
-                <div className="h-full w-full md:w-80 lg:w-96 min-w-[20rem]"> {/* Inner container ensures content doesn't squash during transition */}
+                {/* CLOSE BUTTON: Positioned inside sidebar, top right */}
+                <div className="hidden md:block absolute top-4 right-4 z-50">
+                    <button 
+                        onClick={() => setIsSidebarOpen(false)}
+                        className="bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 p-1.5 rounded-lg transition-colors"
+                        title="Collapse sidebar"
+                    >
+                        <PanelLeftClose className="w-4 h-4" />
+                    </button>
+                </div>
+
+                <div className="h-full w-full md:w-80 lg:w-96 min-w-[20rem]">
                     <ChatList 
                         conversations={conversations}
                         activeChat={activeChat}
@@ -171,8 +171,22 @@ const PatientMessages: React.FC = () => {
                 </div>
             </div>
 
-            {/* CHAT WINDOW (MAIN CONTENT) */}
+            {/* CHAT WINDOW */}
             <div className={`flex-1 bg-white/70 backdrop-blur-xl md:rounded-[2rem] shadow-none md:shadow-xl md:shadow-blue-900/5 border-l md:border border-white/50 flex flex-col overflow-hidden transition-all duration-300 relative ${!isMobileChatOpen ? 'hidden md:flex' : 'flex'}`}>
+                
+                {/* OPEN BUTTON: Positioned as a "Tab" on the left edge when sidebar is closed */}
+                {!isSidebarOpen && (
+                    <div className="hidden md:block absolute top-20 left-0 z-50">
+                        <button 
+                            onClick={() => setIsSidebarOpen(true)}
+                            className="bg-white border border-l-0 border-slate-200 text-slate-500 hover:text-blue-600 p-2 rounded-r-xl shadow-md hover:pl-3 transition-all"
+                            title="Open sidebar"
+                        >
+                            <PanelLeftOpen className="w-5 h-5" />
+                        </button>
+                    </div>
+                )}
+
                 {activeChat ? (
                     <ChatWindow 
                         activeChat={activeChat}
