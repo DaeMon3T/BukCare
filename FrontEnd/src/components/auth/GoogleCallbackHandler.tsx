@@ -19,12 +19,6 @@ const GoogleCallbackHandler: React.FC = () => {
     hasProcessed.current = true;
 
     const handleGoogleCallback = async () => {
-      console.log('========================================');
-      console.log('Google OAuth Callback Handler Started');
-      console.log('========================================');
-      console.log('Current URL:', window.location.href);
-      console.log('Pathname:', location.pathname);
-      console.log('Search:', location.search);
       
       const searchParams = new URLSearchParams(location.search);
       const hashParams = new URLSearchParams(location.hash.substring(1));
@@ -39,10 +33,6 @@ const GoogleCallbackHandler: React.FC = () => {
       const refresh = getParam('refresh') || getParam('refresh_token');
       const error = getParam('error');
 
-      console.log('📦 Extracted Parameters:');
-      console.log('  ✓ Has Access Token:', !!token);
-      console.log('  ✓ Has Refresh Token:', !!refresh);
-      console.log('  ✓ Error:', error || 'None');
       
       if (token) {
         console.log('  ✓ Token Preview:', token.substring(0, 20) + '...');
@@ -179,7 +169,6 @@ const GoogleCallbackHandler: React.FC = () => {
         }
 
         console.log('🔀 Redirecting to:', redirectPath);
-        console.log('========================================');
         
         // Navigate after a short delay to ensure state is updated
         setTimeout(() => {
@@ -229,10 +218,10 @@ const GoogleCallbackHandler: React.FC = () => {
         {/* Additional Info */}
         <div className="mt-8 p-4 bg-white/10 rounded-lg backdrop-blur-sm">
           <p className="text-sm text-white/70">
-            🔐 Securely authenticating your account
+            Securely authenticating your account
           </p>
           <p className="text-sm text-white/70 mt-1">
-            📝 Preparing your profile
+            Preparing your profile
           </p>
         </div>
 

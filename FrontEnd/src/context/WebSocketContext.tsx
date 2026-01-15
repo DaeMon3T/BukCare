@@ -83,7 +83,7 @@ export const WebSocketProvider = ({ children }: { children: React.ReactNode }) =
     const ws = new WebSocket(url);
 
     ws.onopen = () => {
-      console.log("🟢 WS Connected");
+      console.log("WS Connected");
       setIsConnected(true);
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
@@ -108,7 +108,7 @@ export const WebSocketProvider = ({ children }: { children: React.ReactNode }) =
     };
 
     ws.onclose = () => {
-      console.log("🔴 WS Disconnected");
+      console.log("WS Disconnected");
       setIsConnected(false);
       socketRef.current = null;
       if (!reconnectTimeoutRef.current) {

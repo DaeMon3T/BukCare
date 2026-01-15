@@ -221,7 +221,7 @@ const DoctorAppointments = () => {
       </div>
       <Navbar />
 
-      <div className="p-6 max-w-7xl mx-auto py-10">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 relative z-10">
         
         {/* === MODALS === */}
         
@@ -349,7 +349,7 @@ const DoctorAppointments = () => {
             <div className="hidden md:block bg-white rounded-2xl shadow-sm border border-slate-400 overflow-hidden">
               <table className="min-w-full">
                 <thead>
-                  <tr className="bg-slate-300 border-b border-slate-100 text-xs uppercase text-black font-bold tracking-wider text-left">
+                  <tr className="bg-slate-50/50 border-b border-slate-100 text-xs uppercase text-black font-bold tracking-wider text-left">
                     <th className="py-4 px-6">Patient</th>
                     <th className="py-4 px-6">Schedule</th>
                     <th className="py-4 px-6">Reason</th>
@@ -364,7 +364,7 @@ const DoctorAppointments = () => {
                     const StatusIcon = statusStyle.icon;
 
                     return (
-                      <tr key={appt.id} className="group hover:bg-slate-50/50 transition-colors">
+                      <tr key={appt.id} className="group hover:bg-blue-50 transition-colors">
                         {/* 1. Patient */}
                         <td className="py-5 px-6">
                           <div className="flex items-center gap-3">

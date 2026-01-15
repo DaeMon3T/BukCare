@@ -110,7 +110,7 @@ const DoctorCard: React.FC<DoctorCardProps> = ({ doctor }) => {
       </div>
 
       {/* 4. BUTTON */}
-      <div className="p-3 md:p-4 bg-slate-50 border-t border-slate-100">
+      <div className="px-3 pb-3 md:px-4 md:pb-4 md:pt-0">
         <button
           onClick={() => navigate(`/patient/book/${doctor.doctor_id}`)}
           className="w-full bg-gradient-to-r from-blue-700 to-[#2dc7f8] text-white font-bold py-2 md:py-3 text-xs md:text-base rounded-lg md:rounded-xl shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-1.5 md:gap-2"
