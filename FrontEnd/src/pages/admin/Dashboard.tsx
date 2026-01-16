@@ -3,13 +3,12 @@ import { useNavigate } from "react-router-dom";
 import {
   TrendingUp,
   Clock,
-  CheckCircle,
   AlertCircle,
   Download,
   Plus,
   Users,
   UserCog,
-  Shield,
+  Activity
 } from "lucide-react";
 import {
   BarChart,
@@ -27,7 +26,6 @@ import {
 
 import Navbar from "@/components/Navbar";
 import Notification from "@/components/Notification";
-// FIXED: Separated the default import (value) from named imports (types)
 import adminAPI from "@/services/admin/AdminAPI";
 import type { DashboardStats, SystemHealth } from "@/services/admin/AdminAPI";
 import { useAuth } from "@/context/AuthContext";
@@ -46,10 +44,10 @@ interface NotificationData {
 }
 
 const CHART_COLORS = {
-  patients: "#3B82F6",
-  doctors: "#10B981",
-  admins: "#8B5CF6",
-  appointments: "#F59E0B",
+  patients: "#3B82F6", // Blue
+  doctors: "#10B981",  // Emerald
+  admins: "#8B5CF6",   // Purple
+  appointments: "#F59E0B", // Amber
 };
 
 const AdminDashboard: React.FC = () => {
@@ -66,7 +64,7 @@ const AdminDashboard: React.FC = () => {
     uptime: "0s",
   });
 
-  // Dashboard Stats State (Dynamic)
+  // Dashboard Stats State
   const [stats, setStats] = useState<DashboardStats>({
     totalUsers: 0,
     totalPatients: 0,
@@ -76,7 +74,7 @@ const AdminDashboard: React.FC = () => {
     pendingDoctorApprovals: 0,
     activeUsers: 0,
     newUsersThisWeek: 0,
-    weeklyGrowth: [], // Data for Bar Chart
+    weeklyGrowth: [],
   });
 
   const [loading, setLoading] = useState<boolean>(true);
@@ -87,23 +85,19 @@ const AdminDashboard: React.FC = () => {
 
   const closeNotification = () => setNotification(null);
 
-  // Fetch Real Data from API
+  // Fetch Data
   const loadDashboardData = async () => {
     try {
       setLoading(true);
-      
-      // Fetch both Health and Stats in parallel
       const [healthData, statsData] = await Promise.all([
         adminAPI.getSystemHealth(),
         adminAPI.getDashboardStats(),
       ]);
-
       setSystemHealth(healthData);
       setStats(statsData);
-      
     } catch (error) {
       console.error(error);
-      showNotification("error", "Failed to load dashboard data. Please check your connection.");
+      showNotification("error", "Failed to load dashboard data.");
     } finally {
       setLoading(false);
     }
@@ -113,7 +107,6 @@ const AdminDashboard: React.FC = () => {
     loadDashboardData();
   }, []);
 
-  // Prepare Pie Chart Data dynamically based on stats
   const userDistributionData = [
     { name: "Patients", value: stats.totalPatients, color: CHART_COLORS.patients },
     { name: "Doctors", value: stats.totalDoctors, color: CHART_COLORS.doctors },
@@ -122,347 +115,352 @@ const AdminDashboard: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="h-screen bg-gradient-to-r from-blue-700 to-[#2dc7f8] flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto"></div>
-          <p className="text-slate-600 mt-4">Loading analytics...</p>
+      <div className="h-screen flex items-center justify-center bg-slate-100">
+        <div className="flex flex-col items-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-600 border-t-transparent mb-4"></div>
+            <p className="text-slate-500 font-medium">Loading analytics...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-white/50">
-      {notification && (
-        <Notification
-          type={notification.type}
-          message={notification.message}
-          onClose={closeNotification}
-        />
-      )}
+    // ✨ BACKGROUND: Slate-100 (Softer than white)
+    <div className="min-h-screen bg-slate-100 relative overflow-hidden font-sans text-slate-800 flex flex-col">
+      
+      {/* 🎨 AMBIENT BLOBS (Opacity Reduced to 10% for less glare) */}
+      <div className="fixed inset-0 pointer-events-none z-0">
+          <div className="absolute top-[-10%] right-[-5%] w-[500px] h-[500px] bg-blue-400/10 rounded-full blur-[100px] mix-blend-multiply" />
+          <div className="absolute bottom-[-10%] left-[-5%] w-[600px] h-[600px] bg-purple-400/10 rounded-full blur-[100px] mix-blend-multiply" />
+      </div>
 
-      <Navbar />
-
-      <main className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {/* Header Section */}
-        <div className="mb-4">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-slate-900">Admin Dashboard</h1>
-              <p className="text-slate-600 mt-2">System overview and management center</p>
+      <div className="relative z-10 flex-1 flex flex-col h-full">
+        {notification && (
+            <div className="fixed top-4 right-4 z-50 animate-in slide-in-from-right duration-300">
+                <Notification
+                type={notification.type}
+                message={notification.message}
+                onClose={closeNotification}
+                />
             </div>
-            <div className="mt-4 sm:mt-0 flex items-center space-x-3">
-              <button className="px-4 py-2 bg-white border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-50 transition-colors flex items-center space-x-2">
-                <Download className="w-4 h-4" />
-                <span>Export Report</span>
-              </button>
-              <button 
-                onClick={() => navigate('/admin/users')}
-                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center space-x-2"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Manage Users</span>
-              </button>
-            </div>
-          </div>
-        </div>
+        )}
 
-        {/* Statistics Cards Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 mb-5">
-          {/* TOTAL USERS */}
-          <div className="relative bg-white/40 backdrop-blur-2xl rounded-3xl p-6 border border-white/40 shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 group overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-br from-white/30 via-white/10 to-transparent opacity-50"></div>
-            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 bg-gradient-to-br from-white/20 to-transparent transition duration-500 pointer-events-none" />
-            <div className="relative z-10">
-              <div className="flex items-center justify-between mb-5">
-                <div className="w-14 h-14 backdrop-blur-lg border border-black rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-all duration-300">
-                  <img src={totalPatientIcon} alt="Total Users" className="w-8 h-8" />
-                </div>
-                <div className="w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center border border-white/30">
-                  <TrendingUp className="w-5 h-5 text-slate-700" />
-                </div>
-              </div>
-              <p className="text-xs uppercase tracking-wider font-bold text-slate-600/90 mb-2">Total Users</p>
-              <p className="text-5xl font-bold text-slate-900 leading-tight mb-3">{stats.totalUsers}</p>
-              <p className="text-xs text-slate-500 font-medium">+{stats.newUsersThisWeek} this week</p>
-            </div>
-          </div>
+        <Navbar />
 
-          {/* TOTAL PATIENTS */}
-          <div className="relative bg-white/40 backdrop-blur-2xl rounded-3xl p-6 border border-white/40 shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 group overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-br from-white/30 via-white/10 to-transparent opacity-50"></div>
-            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 bg-gradient-to-br from-white/20 to-transparent transition duration-500 pointer-events-none" />
-            <div className="relative z-10">
-              <div className="flex items-center justify-between mb-5">
-                <div className="w-14 h-14 backdrop-blur-lg border border-black rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-all duration-300">
-                  <img src={patientIcon} alt="Total Users" className="w-8 h-8" />
-                </div>
-                <div className="w-3 h-3 bg-cyan-400 rounded-full animate-pulse shadow-lg"></div>
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+          <div className="max-w-[1600px] mx-auto">
+            
+            {/* Header Section */}
+            <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between mb-8 gap-4">
+              <div>
+                <h1 className="text-3xl font-extrabold text-slate-800 mb-2 tracking-tight">Admin Dashboard</h1>
+                <p className="text-slate-500 font-medium">System overview and management center</p>
               </div>
-              <p className="text-xs uppercase tracking-wider font-bold text-slate-600/90 mb-2">Patients</p>
-              <p className="text-5xl font-bold text-slate-900 leading-tight mb-3">{stats.totalPatients}</p>
-              <p className="text-xs text-slate-500 font-medium">
-                {stats.totalUsers > 0 ? ((stats.totalPatients / stats.totalUsers) * 100).toFixed(1) : 0}% of users
-              </p>
-            </div>
-          </div>
-
-          {/* TOTAL DOCTORS */}
-          <div className="relative bg-white/40 backdrop-blur-2xl rounded-3xl p-6 border border-white/40 shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 group overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-br from-white/30 via-white/10 to-transparent opacity-50"></div>
-            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 bg-gradient-to-br from-white/20 to-transparent transition duration-500 pointer-events-none" />
-            <div className="relative z-10">
-              <div className="flex items-center justify-between mb-5">
-                <div className="w-14 h-14 backdrop-blur-lg border border-black rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-all duration-300">
-                  <img src={doctorIcon} alt="Total Users" className="w-8 h-8" />
-                </div>
-                <div className="w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center border border-white/30">
-                  <CheckCircle className="w-5 h-5 text-slate-700" />
-                </div>
-              </div>
-              <p className="text-xs uppercase tracking-wider font-bold text-slate-600/90 mb-2">Doctors</p>
-              <p className="text-5xl font-bold text-slate-900 leading-tight mb-3">{stats.totalDoctors}</p>
-              <p className="text-xs text-slate-500 font-medium">{stats.pendingDoctorApprovals} pending approval</p>
-            </div>
-          </div>
-
-          {/* TOTAL APPOINTMENTS */}
-          <div className="relative bg-white/40 backdrop-blur-2xl rounded-3xl p-6 border border-white/40 shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 group overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-br from-white/30 via-white/10 to-transparent opacity-50"></div>
-            <div className="relative z-10">
-              <div className="flex items-center justify-between mb-5">
-                <div className="w-14 h-14 backdrop-blur-lg border border-black rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-all duration-300">
-                  <img src={appointmentIcon} alt="Appointment Icon" className="w-8 h-8" />
-                </div>
-                <div className="w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center border border-white/30">
-                  <span className="text-xs font-bold text-slate-700">All</span>
-                </div>
-              </div>
-              <p className="text-xs uppercase tracking-wider font-bold text-slate-600/90 mb-2">Appointments</p>
-              <p className="text-5xl font-bold text-slate-900 leading-tight mb-3">{stats.totalAppointments}</p>
-              <p className="text-xs text-slate-500 font-medium">System-wide total</p>
-            </div>
-          </div>
-
-          {/* SYSTEM HEALTH */}
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4">
-            <h3 className="text-lg font-semibold text-slate-900 mb-4 flex items-center">
-              <Shield className="w-5 h-5 mr-2 text-purple-600" />
-              System Health
-            </h3>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between py-2">
-                <div className="flex items-center space-x-3">
-                  <img src={backendIcon} alt="Backend Icon" className="w-4 h-4" />
-                  <span className="text-sm font-medium text-slate-700">Backend</span>
-                </div>
-                <span className={`text-xs font-bold px-2 py-1 rounded-full ${
-                  (systemHealth.backend_status || "").toLowerCase().includes("active") || systemHealth.backend_status === "healthy"
-                    ? "bg-green-100 text-green-700" 
-                    : "bg-red-100 text-red-700"
-                }`}>
-                  {systemHealth.backend_status}
-                </span>
-              </div>
-              <div className="flex items-center justify-between py-2">
-                <div className="flex items-center space-x-3">
-                  <img src={databaseIcon} alt="Database Icon" className="w-4 h-4" />
-                  <span className="text-sm font-medium text-slate-700">Database</span>
-                </div>
-                <span className={`text-xs font-bold px-2 py-1 rounded-full ${
-                   (systemHealth.database_status || "").toLowerCase().includes("connected") || systemHealth.database_status === "healthy"
-                    ? "bg-green-100 text-green-700" 
-                    : "bg-red-100 text-red-700"
-                }`}>
-                  {systemHealth.database_status}
-                </span>
-              </div>
-              <div className="flex items-center justify-between py-2">
-                <div className="flex items-center space-x-3">
-                  <Clock className="w-4 h-4 text-purple-600" />
-                  <span className="text-sm font-medium text-slate-700">Uptime</span>
-                </div>
-                <span className="text-xs font-bold text-purple-600">
-                  {systemHealth.uptime}
-                </span>
+              
+              <div className="flex items-center gap-3">
+                <button className="px-5 py-2.5 bg-white/60 border border-white/40 rounded-xl text-slate-600 font-bold hover:bg-white transition-all shadow-sm flex items-center gap-2 text-sm backdrop-blur-sm">
+                  <Download className="w-4 h-4" />
+                  <span>Export Report</span>
+                </button>
+                <button 
+                  onClick={() => navigate('/admin/users')}
+                  className="px-5 py-2.5 bg-slate-800 text-white rounded-xl hover:bg-slate-900 transition-all flex items-center gap-2 shadow-lg shadow-slate-900/10 font-bold text-sm"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Manage Users</span>
+                </button>
               </div>
             </div>
-          </div>
-        </div>
 
-        {/* Charts and Main Content Grid */}
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-          {/* Left Column - Charts */}
-          <div className="xl:col-span-2 space-y-8">
-            {/* Charts Row */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Weekly User Growth Chart */}
-              <div className="bg-gradient-to-br from-white to-slate-50/50 rounded-2xl shadow-lg border border-slate-200/60 p-6 relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-purple-500/5 to-blue-500/5 rounded-full blur-2xl"></div>
+            {/* Statistics Cards Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6 mb-8">
+              
+              <StatsCard 
+                title="Total Users"
+                value={stats.totalUsers}
+                subtitle={`+${stats.newUsersThisWeek} this week`}
+                icon={totalPatientIcon}
+                trendIcon={TrendingUp}
+                color="bg-blue-500"
+              />
+
+              <StatsCard 
+                title="Patients"
+                value={stats.totalPatients}
+                subtitle={`${stats.totalUsers > 0 ? ((stats.totalPatients / stats.totalUsers) * 100).toFixed(1) : 0}% of users`}
+                icon={patientIcon}
+                color="bg-cyan-500"
+              />
+
+              <StatsCard 
+                title="Doctors"
+                value={stats.totalDoctors}
+                subtitle={`${stats.pendingDoctorApprovals} pending approval`}
+                icon={doctorIcon}
+                color="bg-emerald-500"
+              />
+
+              <StatsCard 
+                title="Appointments"
+                value={stats.totalAppointments}
+                subtitle="System-wide total"
+                icon={appointmentIcon}
+                color="bg-amber-500"
+              />
+
+              {/* SYSTEM HEALTH CARD */}
+              <div className="bg-white/40 backdrop-blur-xl rounded-[1.5rem] p-5 shadow-sm border border-white/40 flex flex-col justify-between">
+                <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider">System Health</h3>
+                    <Activity className="w-5 h-5 text-purple-500" />
+                </div>
                 
-                <div className="relative z-10">
-                  <div className="flex items-center justify-between mb-6">
-                    <div>
-                      <h3 className="text-lg font-bold text-slate-900">User Growth</h3>
-                      <p className="text-xs text-slate-500 mt-0.5">Weekly registration trends</p>
+                <div className="space-y-3">
+                    <HealthItem 
+                        icon={backendIcon} 
+                        label="Backend" 
+                        status={systemHealth.backend_status} 
+                    />
+                    <HealthItem 
+                        icon={databaseIcon} 
+                        label="Database" 
+                        status={systemHealth.database_status} 
+                    />
+                    <div className="flex items-center justify-between text-xs font-bold pt-1 border-t border-slate-200/40">
+                        <span className="text-slate-500 flex items-center gap-1"><Clock className="w-3 h-3" /> Uptime</span>
+                        <span className="text-purple-600">{systemHealth.uptime}</span>
                     </div>
-                  </div>
-
-                  <div className="flex gap-3 mb-4 flex-wrap">
-                    <div className="flex items-center gap-1.5 text-xs">
-                      <span className="w-3 h-3 rounded bg-blue-500"></span>
-                      <span className="text-slate-700 font-medium">Patients</span>
-                    </div>
-                    <div className="flex items-center gap-1.5 text-xs">
-                      <span className="w-3 h-3 rounded bg-emerald-500"></span>
-                      <span className="text-slate-700 font-medium">Doctors</span>
-                    </div>
-                    <div className="flex items-center gap-1.5 text-xs">
-                      <span className="w-3 h-3 rounded bg-purple-500"></span>
-                      <span className="text-slate-700 font-medium">Admins</span>
-                    </div>
-                  </div>
-
-                  {stats.weeklyGrowth && stats.weeklyGrowth.length > 0 ? (
-                    <ResponsiveContainer width="100%" height={250}>
-                      <BarChart data={stats.weeklyGrowth}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#cbd5e1" strokeOpacity={0.5} />
-                        <XAxis 
-                          dataKey="name" 
-                          stroke="#64748b" 
-                          fontSize={12}
-                          tick={{ fill: '#64748b' }}
-                        />
-                        <YAxis 
-                          stroke="#64748b" 
-                          fontSize={12}
-                          tick={{ fill: '#64748b' }}
-                        />
-                        <Tooltip 
-                          contentStyle={{ 
-                            backgroundColor: 'rgba(15, 23, 42, 0.95)',
-                            border: 'none',
-                            borderRadius: '12px',
-                            color: 'white',
-                            padding: '12px'
-                          }}
-                        />
-                        <Bar dataKey="patients" fill="#3B82F6" radius={[6, 6, 0, 0]} />
-                        <Bar dataKey="doctors" fill="#10B981" radius={[6, 6, 0, 0]} />
-                        <Bar dataKey="admins" fill="#8B5CF6" radius={[6, 6, 0, 0]} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <div className="h-[250px] flex items-center justify-center text-slate-400">
-                      <p>No growth data available</p>
-                    </div>
-                  )}
                 </div>
               </div>
 
-              {/* User Distribution Chart */}
-              <div className="bg-gradient-to-br from-white to-slate-50/50 rounded-2xl shadow-lg border border-slate-200/60 p-6 relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-violet-500/5 to-fuchsia-500/5 rounded-full blur-2xl"></div>
+            </div>
+
+            {/* Charts and Main Content Grid */}
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 mb-8">
+              
+              {/* Left Column - Charts (2/3 width) */}
+              <div className="xl:col-span-2 space-y-8">
                 
-                <div className="relative z-10">
-                  <div className="flex items-center justify-between mb-6">
-                    <div>
-                      <h3 className="text-lg font-bold text-slate-900">User Distribution</h3>
-                      <p className="text-xs text-slate-500 mt-0.5">By user type</p>
+                {/* Weekly Growth Chart - Reduced Opacity to white/40 */}
+                <div className="bg-white/40 backdrop-blur-xl rounded-[2rem] shadow-sm border border-white/40 p-8 relative overflow-hidden">
+                    <div className="flex items-center justify-between mb-8">
+                        <div>
+                            <h3 className="text-xl font-bold text-slate-800">User Growth</h3>
+                            <p className="text-sm text-slate-500">Weekly registration trends</p>
+                        </div>
+                        {/* Custom Legend */}
+                        <div className="flex gap-4">
+                            <LegendItem color="bg-blue-500" label="Patients" />
+                            <LegendItem color="bg-emerald-500" label="Doctors" />
+                            <LegendItem color="bg-purple-500" label="Admins" />
+                        </div>
                     </div>
-                  </div>
 
-                  {userDistributionData.length > 0 ? (
-                    <ResponsiveContainer width="100%" height={250}>
-                      <PieChart>
-                        <Pie
-                          data={userDistributionData}
-                          cx="50%"
-                          cy="50%"
-                          innerRadius={60}
-                          outerRadius={90}
-                          paddingAngle={5}
-                          dataKey="value"
-                        >
-                          {userDistributionData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.color} />
-                          ))}
-                        </Pie>
-                        <Tooltip 
-                          contentStyle={{ 
-                            backgroundColor: 'rgba(15, 23, 42, 0.95)',
-                            border: 'none',
-                            borderRadius: '12px',
-                            color: 'white'
-                          }}
-                        />
-                        <Legend 
-                          verticalAlign="bottom" 
-                          height={36}
-                          iconType="circle"
-                        />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <div className="h-[250px] flex items-center justify-center text-slate-400">
-                      <p>No distribution data available</p>
+                    <div className="h-[300px] w-full">
+                        {stats.weeklyGrowth && stats.weeklyGrowth.length > 0 ? (
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={stats.weeklyGrowth} barSize={20}>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#cbd5e1" vertical={false} />
+                                    <XAxis 
+                                        dataKey="name" 
+                                        axisLine={false}
+                                        tickLine={false}
+                                        tick={{ fill: '#64748b', fontSize: 12 }}
+                                        dy={10}
+                                    />
+                                    <YAxis 
+                                        axisLine={false}
+                                        tickLine={false}
+                                        tick={{ fill: '#64748b', fontSize: 12 }}
+                                    />
+                                    <Tooltip 
+                                        cursor={{ fill: '#f1f5f9' }}
+                                        contentStyle={{ 
+                                            backgroundColor: 'rgba(255, 255, 255, 0.95)', 
+                                            borderRadius: '12px', 
+                                            border: 'none', 
+                                            boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+                                            color: '#1e293b'
+                                        }}
+                                    />
+                                    <Bar dataKey="patients" stackId="a" fill="#3B82F6" radius={[0, 0, 4, 4]} />
+                                    <Bar dataKey="doctors" stackId="a" fill="#10B981" radius={[0, 0, 0, 0]} />
+                                    <Bar dataKey="admins" stackId="a" fill="#8B5CF6" radius={[4, 4, 0, 0]} />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        ) : (
+                            <div className="h-full flex items-center justify-center text-slate-400">
+                                <p>No growth data available</p>
+                            </div>
+                        )}
                     </div>
-                  )}
+                </div>
+
+                {/* Quick Actions Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <QuickActionCard 
+                        icon={Users} 
+                        color="text-blue-600" 
+                        bgColor="bg-purple-100" 
+                        title="Manage Users" 
+                        desc="View all system users" 
+                        onClick={() => navigate('/admin/users')}
+                    />
+                    <QuickActionCard 
+                        icon={AlertCircle} 
+                        color="text-blue-600" 
+                        bgColor="bg-purple-100" 
+                        title="Pending Approvals" 
+                        desc={`${stats.pendingDoctorApprovals} doctors waiting`} 
+                        onClick={() => navigate('/admin/users?filter=doctors&status=pending')}
+                    />
+                    <QuickActionCard 
+                        icon={UserCog} 
+                        color="text-blue-600" 
+                        bgColor="bg-purple-100" 
+                        title="My Profile" 
+                        desc="Account settings" 
+                        onClick={() => navigate('/admin/profile')}
+                    />
                 </div>
               </div>
+
+              {/* Right Column - Distribution (1/3 width) */}
+              <div className="bg-white/40 backdrop-blur-xl rounded-[2rem] shadow-sm border border-white/40 p-8 flex flex-col">
+                <div className="mb-6">
+                    <h3 className="text-xl font-bold text-slate-800">Distribution</h3>
+                    <p className="text-sm text-slate-500">Users by role type</p>
+                </div>
+
+                <div className="flex-1 min-h-[300px] relative">
+                    {userDistributionData.length > 0 ? (
+                        <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                                <Pie
+                                    data={userDistributionData}
+                                    cx="50%"
+                                    cy="50%"
+                                    innerRadius={80}
+                                    outerRadius={110}
+                                    paddingAngle={5}
+                                    dataKey="value"
+                                    stroke="none"
+                                >
+                                    {userDistributionData.map((entry, index) => (
+                                        <Cell key={`cell-${index}`} fill={entry.color} />
+                                    ))}
+                                </Pie>
+                                <Tooltip 
+                                    contentStyle={{ 
+                                        backgroundColor: 'rgba(255, 255, 255, 0.95)', 
+                                        borderRadius: '12px', 
+                                        border: 'none', 
+                                        boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' 
+                                    }} 
+                                />
+                                <Legend 
+                                    verticalAlign="bottom" 
+                                    height={36} 
+                                    iconType="circle"
+                                    formatter={(value) => <span className="text-slate-600 font-bold ml-1">{value}</span>}
+                                />
+                            </PieChart>
+                        </ResponsiveContainer>
+                    ) : (
+                        <div className="h-full flex items-center justify-center text-slate-400">
+                            <p>No distribution data</p>
+                        </div>
+                    )}
+                    
+                    {/* Center Text for Donut Chart */}
+                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none pb-8">
+                        <span className="text-4xl font-extrabold text-slate-800">{stats.totalUsers}</span>
+                        <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">Total</span>
+                    </div>
+                </div>
+              </div>
+
             </div>
 
-            {/* Quick Actions */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <button
-                onClick={() => navigate('/admin/users')}
-                className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 hover:shadow-md hover:border-purple-300 transition-all duration-300 group text-left"
-              >
-                <div className="flex items-center space-x-4">
-                  <div className="w-14 h-14 bg-purple-100 rounded-2xl flex items-center justify-center group-hover:bg-purple-200 transition-colors">
-                    <Users className="w-7 h-7 text-purple-600" />
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-slate-800 text-lg">Manage Users</h3>
-                    <p className="text-sm text-slate-600 mt-1">View all users</p>
-                  </div>
-                </div>
-              </button>
-
-              <button
-                onClick={() => navigate('/admin/users?filter=doctors&status=pending')}
-                className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 hover:shadow-md hover:border-amber-300 transition-all duration-300 group text-left"
-              >
-                <div className="flex items-center space-x-4">
-                  <div className="w-14 h-14 bg-amber-100 rounded-2xl flex items-center justify-center group-hover:bg-amber-200 transition-colors">
-                    <AlertCircle className="w-7 h-7 text-amber-600" />
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-slate-800 text-lg">Pending Approvals</h3>
-                    <p className="text-sm text-slate-600 mt-1">{stats.pendingDoctorApprovals} doctors</p>
-                  </div>
-                </div>
-              </button>
-
-              <button
-                onClick={() => navigate('/admin/profile')}
-                className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 hover:shadow-md hover:border-blue-300 transition-all duration-300 group text-left"
-              >
-                <div className="flex items-center space-x-4">
-                  <div className="w-14 h-14 bg-blue-100 rounded-2xl flex items-center justify-center group-hover:bg-blue-200 transition-colors">
-                    <UserCog className="w-7 h-7 text-blue-600" />
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-slate-800 text-lg">My Profile</h3>
-                    <p className="text-sm text-slate-600 mt-1">Account settings</p>
-                  </div>
-                </div>
-              </button>
-            </div>
           </div>
-        </div>
-      </main>
+        </main>
+      </div>
     </div>
   );
 };
+
+// --- SUB COMPONENTS ---
+
+// 1. Stats Card (Softer Background: bg-white/40)
+const StatsCard = ({ title, value, subtitle, icon, trendIcon: TrendIcon, color }: any) => (
+    <div className="bg-white/40 backdrop-blur-xl rounded-[1.5rem] p-5 shadow-sm border border-white/40 relative overflow-hidden group hover:-translate-y-1 transition-all duration-300">
+        <div className={`absolute top-0 right-0 w-24 h-24 rounded-bl-full opacity-5 ${color}`}></div>
+        
+        <div className="flex justify-between items-start mb-4">
+            <div className="w-12 h-12 bg-white/60 rounded-2xl flex items-center justify-center shadow-sm border border-white/50">
+                <img src={icon} alt={title} className="w-6 h-6" />
+            </div>
+            {TrendIcon && (
+                <div className="bg-slate-200/50 p-1.5 rounded-full">
+                    <TrendIcon className="w-4 h-4 text-slate-600" />
+                </div>
+            )}
+        </div>
+        
+        <div>
+            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">{title}</p>
+            <h3 className="text-3xl font-extrabold text-slate-800 mb-1">{value}</h3>
+            <p className="text-xs font-medium text-slate-500">{subtitle}</p>
+        </div>
+    </div>
+);
+
+// 2. Health Item
+const HealthItem = ({ icon, label, status }: any) => {
+    const isHealthy = (status || "").toLowerCase().includes("active") || 
+                      (status || "").toLowerCase().includes("connected") || 
+                      status === "healthy";
+                      
+    return (
+        <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+                <img src={icon} alt={label} className="w-4 h-4 opacity-70" />
+                <span className="text-sm font-bold text-slate-600">{label}</span>
+            </div>
+            <div className={`flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wide ${
+                isHealthy ? "bg-emerald-100/80 text-emerald-700" : "bg-rose-100/80 text-rose-700"
+            }`}>
+                <div className={`w-1.5 h-1.5 rounded-full ${isHealthy ? "bg-emerald-500" : "bg-rose-500"}`}></div>
+                {status}
+            </div>
+        </div>
+    );
+};
+
+// 3. Quick Action Card (Softer Background)
+const QuickActionCard = ({ icon: Icon, color, bgColor, title, desc, onClick }: any) => (
+    <button 
+        onClick={onClick}
+        className="bg-white/40 backdrop-blur-xl rounded-[1.5rem] p-6 shadow-sm border border-white/40 text-left hover:shadow-md hover:bg-white/60 transition-all group"
+    >
+        <div className="flex items-center gap-4">
+            <div className={`w-12 h-12 ${bgColor} rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300`}>
+                <Icon className={`w-6 h-6 ${color}`} />
+            </div>
+            <div>
+                <h4 className="font-bold text-slate-800 text-lg">{title}</h4>
+                <p className="text-sm text-slate-500">{desc}</p>
+            </div>
+        </div>
+    </button>
+);
+
+// 4. Legend Item
+const LegendItem = ({ color, label }: { color: string, label: string }) => (
+    <div className="flex items-center gap-1.5">
+        <div className={`w-3 h-3 rounded-full ${color}`}></div>
+        <span className="text-xs font-bold text-slate-500">{label}</span>
+    </div>
+);
+
 export default AdminDashboard;
