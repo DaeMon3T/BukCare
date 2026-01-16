@@ -3,7 +3,7 @@ import { Link, useLocation } from "react-router-dom"; // Added useLocation
 import { Globe, Menu, X } from "lucide-react"; // Added Icons for Mobile Menu
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-import logo from "@/assets/images/bukcare_logo.png"
+import logo from "@/assets/images/icon_logo_name.png"
 import preview from "@/assets/images/preview.png"
 
 gsap.registerPlugin(ScrollTrigger);
@@ -180,14 +180,16 @@ const Landing: React.FC = () => {
       {/* 1. NAVIGATION BAR (UPDATED) */}
       <nav className="fixed w-full bg-white/80 backdrop-blur-xl border-b border-slate-100 z-50 transition-all duration-300">
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-          <Link to="/" onClick={handleScrollTop} className="flex items-center gap-2 group">
-            <div className="w-15 h-15 rounded-xl flex items-center justify-center text-white shadow-lg shadow-blue-500/20 group-hover:scale-105 transition-transform">
-                <img src={logo} className="w-20 h-20"/>
-             </div>
-            <span className="text-xl font-bold text-slate-800 tracking-tight">
-              Buk<span className="text-[#00aeef]">Care</span>
-            </span>
-          </Link>
+            <Link to="/" className="flex items-center gap-2 md:gap-3 group">
+                <div className="flex items-center gap-1 hover:scale-105 transition-transform cursor-pointer">
+                    {/* Logo */}
+                    <img 
+                        src={logo} 
+                        className="h-25 md:h-30 lg:h-35 w-auto object-contain transition-all duration-300" 
+                        alt="BukCare Logo" 
+                    />
+                </div>
+            </Link>
         
 
           {/* Desktop Links */}

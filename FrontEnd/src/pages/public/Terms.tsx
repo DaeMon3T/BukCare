@@ -18,7 +18,7 @@ import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import Lenis from "@studio-freight/lenis";
 import Footer from "@/components/Footer";
-import logo from "@/assets/images/bukcare_logo.png"
+import logo from "@/assets/images/icon_logo_name.png"
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -83,14 +83,16 @@ const TermsAndPrivacy: React.FC = () => {
       {/* --- 1. NAVIGATION --- */}
       <nav className="fixed w-full bg-white/80 backdrop-blur-xl border-b border-slate-100 z-50 transition-all">
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2 group" onClick={handleScrollTop}>
-              <div className="w-15 h-15 rounded-xl flex items-center justify-center text-white shadow-lg shadow-blue-500/20 group-hover:scale-105 transition-transform">
-                <img src={logo} className="w-20 h-20"/>
-              </div>
-              <span className="text-xl font-bold text-slate-900 tracking-tight">
-                 Buk<span className="text-[#00aeef]">Care</span>
-              </span>
-          </Link>
+            <Link to="/" className="flex items-center gap-2 md:gap-3 group">
+                <div className="flex items-center gap-1 hover:scale-105 transition-transform cursor-pointer">
+                    {/* Logo */}
+                    <img 
+                        src={logo} 
+                        className="h-25 md:h-30 lg:h-35 w-auto object-contain transition-all duration-300" 
+                        alt="BukCare Logo" 
+                    />
+                </div>
+            </Link>
 
           <div className="hidden md:flex items-center gap-8">
              {navLinks.map((link) => (
@@ -206,8 +208,8 @@ const TermsAndPrivacy: React.FC = () => {
 
                   <div className="mt-8 pt-6 border-t border-slate-100">
                       <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-3">Contact Legal</p>
-                      <a href="mailto:legal@bukcare.app" className="flex items-center gap-2 text-slate-700 hover:text-[#00aeef] transition-colors text-sm font-bold">
-                          <Mail className="w-4 h-4" /> legal@bukcare.app
+                      <a href="bukcare.app@gmail.com" className="flex items-center gap-2 text-slate-700 hover:text-[#00aeef] transition-colors text-sm font-bold">
+                          <Mail className="w-4 h-4" /> bukcare.app@gmail.com
                       </a>
                   </div>
               </div>

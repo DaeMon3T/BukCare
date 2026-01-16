@@ -18,7 +18,7 @@ import gsap from "gsap";
 import Lenis from "@studio-freight/lenis";
 import { signIn } from "@/services/auth/SignInAPI";
 import { useAuth } from "@/context/AuthContext";
-import logo from "@/assets/images/bukcare_logo.png"
+import logo from "@/assets/images/icon_logo_name.png"
 
 interface FormData {
   email: string;
@@ -141,12 +141,14 @@ const SignIn: React.FC = () => {
       <nav className="fixed w-full bg-white/90 backdrop-blur-xl border-b border-slate-100 z-50 transition-all">
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2 group" onClick={handleScrollTop}>
-              <div className="w-15 h-15 rounded-xl flex items-center justify-center text-white shadow-lg shadow-blue-500/20 group-hover:scale-105 transition-transform">
-                <img src={logo} className="w-20 h-20"/>
-              </div>
-              <span className="text-xl font-bold text-slate-900 tracking-tight">
-                 Buk<span className="text-[#00aeef]">Care</span>
-              </span>
+              <div className="flex items-center gap-1 hover:scale-105 transition-transform cursor-pointer">
+                    {/* Logo */}
+                    <img 
+                        src={logo} 
+                        className="h-35 w-auto object-contain" 
+                        alt="BukCare Logo" 
+                    />
+                </div>
           </Link>
 
           <div className="hidden md:flex items-center gap-8">

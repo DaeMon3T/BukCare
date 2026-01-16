@@ -1,18 +1,31 @@
 from fastapi_mail import FastMail, MessageSchema, ConnectionConfig, MessageType
-from pydantic import EmailStr
+from pydantic import EmailStr, BaseModel
 from typing import List
 import os
 from dotenv import load_dotenv
 
 load_dotenv()
 
-# Configure the connection
+# --- CONFIGURATION ---
+# Note: Pydantic v2 requires this structure for ConnectionConfig
+class EmailConfig(BaseModel):
+    MAIL_USERNAME: str = os.getenv("MAIL_USERNAME")
+    MAIL_PASSWORD: str = os.getenv("MAIL_PASSWORD")
+    MAIL_FROM: str = os.getenv("MAIL_FROM")
+    MAIL_PORT: int = int(os.getenv("MAIL_PORT", 587))
+    MAIL_SERVER: str = os.getenv("MAIL_SERVER", "smtp-relay.brevo.com")
+    MAIL_STARTTLS: bool = True
+    MAIL_SSL_TLS: bool = False
+    USE_CREDENTIALS: bool = True
+    VALIDATE_CERTS: bool = True
+
+# Initialize Config
 conf = ConnectionConfig(
     MAIL_USERNAME=os.getenv("MAIL_USERNAME"),
     MAIL_PASSWORD=os.getenv("MAIL_PASSWORD"),
-    MAIL_FROM=os.getenv("MAIL_FROM"),
+    MAIL_FROM=os.getenv("MAIL_FROM", "no-reply@bukcare.com"),
     MAIL_PORT=int(os.getenv("MAIL_PORT", 587)),
-    MAIL_SERVER=os.getenv("MAIL_SERVER"),
+    MAIL_SERVER=os.getenv("MAIL_SERVER", "smtp-relay.brevo.com"),
     MAIL_STARTTLS=True,
     MAIL_SSL_TLS=False,
     USE_CREDENTIALS=True,
@@ -23,7 +36,7 @@ class EmailService:
     @staticmethod
     async def send_email(recipients: List[EmailStr], subject: str, body: str):
         """
-        Sends an email in the background.
+        Sends an email in the background using FastAPI-Mail.
         """
         message = MessageSchema(
             subject=subject,
@@ -34,35 +47,32 @@ class EmailService:
 
         fm = FastMail(conf)
         await fm.send_message(message)
+        return True
 
     @staticmethod
     def get_appointment_template(action: str, user_name: str, doctor_name: str, date: str, time: str, reason: str = ""):
         """
-        Generates Premium HTML templates (Clean Text Header).
+        Generates Premium HTML templates.
         """
-        # 🔗 CHANGE THIS TO YOUR FRONTEND URL
-        dashboard_link = "http://localhost:5173/login"
+        dashboard_link = "www.bukcare.com"
         
-        # 🎨 ICONS (For the body content only)
         icons = {
             "request": "https://img.icons8.com/fluency/96/calendar-plus.png",
             "approved": "https://img.icons8.com/fluency/96/verified-account.png",
             "cancelled": "https://img.icons8.com/fluency/96/cancel.png",
             "rescheduled": "https://img.icons8.com/fluency/96/overtime.png",
             "completed": "https://img.icons8.com/fluency/96/guarantee.png",
-            "default": "https://img.icons8.com/fluency/96/info.png" # Fallback
+            "default": "https://img.icons8.com/fluency/96/info.png" 
         }
 
-        # 🎨 COLORS
         colors = {
-            "primary": "#2563EB",   # Blue
-            "success": "#059669",   # Green
-            "danger": "#DC2626",    # Red
-            "warning": "#D97706",   # Orange
+            "primary": "#2563EB",
+            "success": "#059669",
+            "danger": "#DC2626",
+            "warning": "#D97706",
             "bg_gray": "#F3F4F6"
         }
 
-        # Dynamic Content Setup
         title = ""
         headline_color = colors["primary"]
         main_icon = icons["default"]
@@ -72,7 +82,7 @@ class EmailService:
 
         if action == "request":
             title = "New Appointment Request"
-            headline_color = "#1E293B" # Dark Slate
+            headline_color = "#1E293B"
             main_icon = icons["request"]
             message_body = f"""
                 <p><strong>Dr. {doctor_name}</strong>,</p>
@@ -102,7 +112,7 @@ class EmailService:
                 <p style="color: #DC2626; font-weight: bold;">Reason: {reason}</p>
             """
             button_text = "Reschedule Now"
-            button_color = "#64748B" # Slate Gray
+            button_color = "#64748B"
 
         elif action == "rescheduled":
             title = "Schedule Updated"
@@ -126,7 +136,7 @@ class EmailService:
             """
             button_text = "Leave a Review"
 
-        # 🏗️ HTML STRUCTURE
+        # HTML STRUCTURE
         return f"""
         <!DOCTYPE html>
         <html>

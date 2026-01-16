@@ -96,9 +96,6 @@ const GoogleCallbackHandler: React.FC = () => {
         };
         
         login(tokens, user);
-
-        const displayName = user.fname || 'User';
-        toast.success(`Welcome, ${displayName}!`);
         
         let redirectPath = '/';
         

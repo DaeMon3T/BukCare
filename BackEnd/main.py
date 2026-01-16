@@ -23,6 +23,7 @@ from middleware.request_logging import request_logging_middleware
 from routers.v1 import router as v1_router
 from routers.v1 import doctors, notifications, tips, reviews
 from routers.v1 import appointments, messages, medical_profile
+from routers.v1.auth import password_reset
 
 # Models (used for seeding)
 from models.doctor import Specialization
@@ -74,6 +75,7 @@ def create_app() -> FastAPI:
     app.include_router(messages.router, prefix="/v1")
     app.include_router(v1_router, prefix="/v1")
     app.include_router(medical_profile.router, prefix="/v1")
+    app.include_router(password_reset.router, prefix="/v1/auth/password-reset", tags=["Password Reset"])
 
     # ============================================================
     # DATABASE SEEDER

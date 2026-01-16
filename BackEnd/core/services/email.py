@@ -1,26 +1,38 @@
-# core/email.py
+# core/services/email.py
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from core.config import settings  # EMAIL_HOST_USER & EMAIL_HOST_PASSWORD
+import os
+from dotenv import load_dotenv
 from models.users import User
 
+load_dotenv()
+
+# Get Config from .env (with defaults just in case)
+SMTP_SERVER = os.getenv("MAIL_SERVER", "smtp-relay.brevo.com")
+SMTP_PORT = int(os.getenv("MAIL_PORT", 587))
+SMTP_USERNAME = os.getenv("MAIL_USERNAME")
+SMTP_PASSWORD = os.getenv("MAIL_PASSWORD")
+MAIL_FROM = os.getenv("MAIL_FROM", "no-reply@bukcare.com")
+
 def send_email(to: str, subject: str, body: str):
-    """Generic email sender using SMTP."""
+    """Generic email sender using SMTP (Brevo)."""
     msg = MIMEMultipart()
-    msg["From"] = settings.EMAIL_HOST_USER
+    msg["From"] = f"BukCare System <{MAIL_FROM}>"
     msg["To"] = to
     msg["Subject"] = subject
-    msg.attach(MIMEText(body, "plain"))
+    msg.attach(MIMEText(body, "plain")) 
 
     try:
-        with smtplib.SMTP("smtp.gmail.com", 587) as server:
+        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
             server.starttls()
-            server.login(settings.EMAIL_HOST_USER, settings.EMAIL_HOST_PASSWORD)
+            server.login(SMTP_USERNAME, SMTP_PASSWORD)
             server.send_message(msg)
-            print(f"Email sent to {to}")
+            print(f"Email sent successfully to {to}")
+            return True
     except Exception as e:
         print(f"Failed to send email to {to}: {e}")
+        return False
 
 def send_doctor_approval_email(user: User):
     """Sends approval email to a doctor."""
