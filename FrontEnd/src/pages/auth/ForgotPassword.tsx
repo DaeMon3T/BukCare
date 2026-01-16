@@ -8,7 +8,6 @@ import {
   validateConfirmPassword,
 } from "@/services/validation";
 import { forgotPassword, verifyOtp, resetPassword } from "@/services/auth/ForgotPasswordAPI";
-import Navbar from "@/components/Navbar";
 
 // --- TYPES ---
 type Step = "email" | "otp" | "reset";
@@ -131,15 +130,13 @@ export default function ForgotPassword() {
   return (
     <div className="min-h-screen bg-slate-50 relative overflow-hidden font-sans text-slate-800 flex flex-col">
       
-      {/* 🎨 Ambient Background Blobs */}
+      {/* Ambient Background Blobs */}
       <div className="fixed inset-0 pointer-events-none z-0">
           <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-blue-400/20 rounded-full blur-[100px] mix-blend-multiply" />
           <div className="absolute bottom-[-10%] right-[-10%] w-[600px] h-[600px] bg-purple-400/20 rounded-full blur-[100px] mix-blend-multiply" />
       </div>
 
       <div className="relative z-10 flex-1 flex flex-col">
-        <Navbar />
-
         <div className="flex-1 flex items-center justify-center p-4 sm:p-8">
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
