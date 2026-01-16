@@ -125,10 +125,10 @@ const AdminDashboard: React.FC = () => {
   }
 
   return (
-    // ✨ BACKGROUND: Slate-100 (Softer than white)
+    // BACKGROUND: Slate-100 (Softer than white)
     <div className="min-h-screen bg-slate-100 relative overflow-hidden font-sans text-slate-800 flex flex-col">
       
-      {/* 🎨 AMBIENT BLOBS (Opacity Reduced to 10% for less glare) */}
+      {/* AMBIENT BLOBS (Opacity Reduced to 10% for less glare) */}
       <div className="fixed inset-0 pointer-events-none z-0">
           <div className="absolute top-[-10%] right-[-5%] w-[500px] h-[500px] bg-blue-400/10 rounded-full blur-[100px] mix-blend-multiply" />
           <div className="absolute bottom-[-10%] left-[-5%] w-[600px] h-[600px] bg-purple-400/10 rounded-full blur-[100px] mix-blend-multiply" />
