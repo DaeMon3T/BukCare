@@ -7,10 +7,21 @@ import logging
 import traceback
 from sqlalchemy.orm import Session
 
+
+import logging
+import traceback
+from sqlalchemy.orm import Session
+
 from utils.admin import create_admin_if_not_exists
 from core.config import settings
 from core.database import engine, SessionLocal, Base
+from core.database import engine, SessionLocal, Base
 from core.logging_config import setup_logging, get_logger
+
+from middleware.rate_limiting import (
+    rate_limit_middleware,
+    endpoint_rate_limit_middleware,
+)
 
 from middleware.rate_limiting import (
     rate_limit_middleware,
@@ -20,9 +31,15 @@ from middleware.security import security_middleware_handler
 from middleware.request_logging import request_logging_middleware
 
 # Routers
+# Routers
 from routers.v1 import router as v1_router
 from routers.v1 import doctors, notifications, tips, reviews
 from routers.v1 import appointments, messages, medical_profile
+from routers.v1 import doctors, notifications, tips, reviews
+from routers.v1 import appointments, messages, medical_profile
+
+# Models (used for seeding)
+from models.doctor import Specialization
 
 # Models (used for seeding)
 from models.doctor import Specialization
@@ -36,9 +53,11 @@ def create_app() -> FastAPI:
         title="BukCare API",
         description="Online Appointment API",
         version="1.0.0",
+        version="1.0.0",
     )
 
     # ============================================================
+    # CORS (MUST be first)
     # CORS (MUST be first)
     # ============================================================
     app.add_middleware(
@@ -57,6 +76,7 @@ def create_app() -> FastAPI:
 
     # ============================================================
     # Custom Middlewares
+    # Custom Middlewares
     # ============================================================
     app.middleware("http")(request_logging_middleware)
     app.middleware("http")(security_middleware_handler)
@@ -64,6 +84,7 @@ def create_app() -> FastAPI:
     app.middleware("http")(endpoint_rate_limit_middleware)
 
     # ============================================================
+    # Routers
     # Routers
     # ============================================================
     app.include_router(notifications.router, prefix="/v1/notifications", tags=["Notifications"])
@@ -77,9 +98,21 @@ def create_app() -> FastAPI:
 
     # ============================================================
     # DATABASE SEEDER
+    # DATABASE SEEDER
     # ============================================================
     def seed_specializations(db: Session):
         standard_specs = [
+            "General Practice",
+            "Pediatrics",
+            "Dermatology",
+            "Neurology",
+            "Internal Medicine",
+            "Cardiology",
+            "Psychiatry",
+            "Surgery",
+            "Orthopedics",
+            "Ophthalmology",
+            "Obstetrics and Gynecology",
             "General Practice",
             "Pediatrics",
             "Dermatology",
@@ -96,13 +129,17 @@ def create_app() -> FastAPI:
         try:
             if db.query(Specialization).count() == 0:
                 logger.info("Seeding specializations...")
+                logger.info("Seeding specializations...")
                 for name in standard_specs:
                     db.add(Specialization(name=name))
                 db.commit()
                 logger.info("Specializations seeded successfully")
+                logger.info("Specializations seeded successfully")
             else:
                 logger.info("Specializations already exist — skipping")
+                logger.info("Specializations already exist — skipping")
         except Exception as e:
+            logger.error(f"Specialization seeding failed: {e}", exc_info=True)
             logger.error(f"Specialization seeding failed: {e}", exc_info=True)
 
     # ============================================================
@@ -111,9 +148,11 @@ def create_app() -> FastAPI:
     @app.on_event("startup")
     def startup_tasks():
         # 1. Create tables
+        # 1. Create tables
         Base.metadata.create_all(bind=engine)
         logger.info("Database tables verified/created successfully")
 
+        # 2. Seed data
         # 2. Seed data
         db = SessionLocal()
         try:
@@ -124,11 +163,17 @@ def create_app() -> FastAPI:
         # 3. Create default admin
         create_admin_if_not_exists()
 
+
+        # 3. Create default admin
+        create_admin_if_not_exists()
+
         logger.info("Startup tasks completed")
 
 
     # ============================================================
+    # ============================================================
     # Exception Handlers
+    # ============================================================
     # ============================================================
     @app.exception_handler(HTTPException)
     async def http_exception_handler(request: Request, exc: HTTPException):
@@ -137,6 +182,8 @@ def create_app() -> FastAPI:
             content={
                 "error": True,
                 "message": exc.detail,
+                "status_code": exc.status_code,
+            },
                 "status_code": exc.status_code,
             },
         )
@@ -151,10 +198,14 @@ def create_app() -> FastAPI:
                 "details": exc.errors(),
                 "status_code": 422,
             },
+                "status_code": 422,
+            },
         )
 
     @app.exception_handler(Exception)
     async def general_exception_handler(request: Request, exc: Exception):
+        logging.error(f"Unhandled exception: {exc}")
+        logging.error(traceback.format_exc())
         logging.error(f"Unhandled exception: {exc}")
         logging.error(traceback.format_exc())
 
@@ -165,13 +216,20 @@ def create_app() -> FastAPI:
                 "message": "Internal server error",
                 "status_code": 500,
             },
+                "status_code": 500,
+            },
         )
 
     @app.get("/")
     def read_root():
         return {"message": "Welcome to BukCare API"}
 
+    @app.get("/")
+    def read_root():
+        return {"message": "Welcome to BukCare API"}
+
     return app
+
 
 
 app = create_app()

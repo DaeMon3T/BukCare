@@ -120,7 +120,7 @@ export function validateDOB(dateOfBirth: string | undefined | null): ValidationR
     age--;
   }
 
-  if (age < 20) {
+  if (age < 13) { // Changed to 13 to match your comment
     return { isValid: false, message: 'You must be at least 13 years old' };
   }
 
@@ -132,14 +132,15 @@ export function validateDOB(dateOfBirth: string | undefined | null): ValidationR
 }
 
 /**
- * Validate sex selection
+ * Validate sex selection - UPDATED
  */
 export function validateSex(sex: string): ValidationResult {
   if (!sex) {
     return { isValid: false, message: 'Please select your sex' };
   }
 
-  if (!['0', '1'].includes(sex)) {
+  // UPDATED: Allow "true" (Male) and "false" (Female) string values
+  if (!['true', 'false'].includes(sex)) {
     return { isValid: false, message: 'Invalid sex selection' };
   }
 
