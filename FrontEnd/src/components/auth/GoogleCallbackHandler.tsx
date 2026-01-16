@@ -3,6 +3,7 @@ import React, { useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import toast from 'react-hot-toast';
+import { ShieldCheck, Loader2 } from 'lucide-react';
 
 const GoogleCallbackHandler: React.FC = () => {
   const location = useLocation();
@@ -11,7 +12,6 @@ const GoogleCallbackHandler: React.FC = () => {
   const hasProcessed = useRef(false);
 
   useEffect(() => {
-    // Prevent double execution in React StrictMode
     if (hasProcessed.current) {
       console.log('Callback already processed, skipping...');
       return;
@@ -23,22 +23,18 @@ const GoogleCallbackHandler: React.FC = () => {
       const searchParams = new URLSearchParams(location.search);
       const hashParams = new URLSearchParams(location.hash.substring(1));
       
-      // Helper to get param from either search or hash
       const getParam = (key: string): string | null => {
         return searchParams.get(key) || hashParams.get(key);
       };
       
-      // Extract tokens
       const token = getParam('token') || getParam('access_token');
       const refresh = getParam('refresh') || getParam('refresh_token');
       const error = getParam('error');
 
-      
       if (token) {
         console.log('  ✓ Token Preview:', token.substring(0, 20) + '...');
       }
 
-      // Handle OAuth error
       if (error) {
         console.error('OAuth Error Detected:', error);
         const errorDescription = getParam('error_description') || error;
@@ -50,7 +46,6 @@ const GoogleCallbackHandler: React.FC = () => {
         return;
       }
 
-      // Validate required tokens
       if (!token || !refresh) {
         console.error('Missing Authentication Tokens');
         toast.error('Authentication failed: Missing tokens');
@@ -62,7 +57,6 @@ const GoogleCallbackHandler: React.FC = () => {
       }
 
       try {
-        // Extract user data from URL
         const user_id = getParam('user_id');
         const email = getParam('email');
         const fname = getParam('fname');
@@ -73,19 +67,15 @@ const GoogleCallbackHandler: React.FC = () => {
         const is_verified = getParam('is_verified');
         const is_active = getParam('is_active');
 
-
-        // Validate required user data
         if (!user_id || !email) {
           throw new Error('Missing required user information (user_id or email)');
         }
 
-        // Parse user_id safely
         const parsedUserId = parseInt(user_id, 10);
         if (isNaN(parsedUserId)) {
           throw new Error('Invalid user_id format');
         }
 
-        // Construct user object
         const user = {
           user_id: parsedUserId,
           email: decodeURIComponent(email),
@@ -105,29 +95,20 @@ const GoogleCallbackHandler: React.FC = () => {
           expires_in: 3600
         };
         
-        // Login user (stores tokens and user data)
         login(tokens, user);
 
-        // Show welcome message
         const displayName = user.fname || 'User';
-        toast.success(`Welcome, ${displayName}!`, {
-          duration: 3000,
-          icon: '👋'
-        });
+        toast.success(`Welcome, ${displayName}!`);
         
-        // Determine redirect path
         let redirectPath = '/';
         
         if (!user.is_profile_complete) {
-          
           toast('Please complete your profile to continue', { 
-            icon: '📝',
             duration: 4000
           });
           
           redirectPath = '/complete-profile';
           
-          // Navigate with user state for profile completion
           setTimeout(() => {
             navigate(redirectPath, {
               replace: true,
@@ -143,49 +124,32 @@ const GoogleCallbackHandler: React.FC = () => {
           return;
         }
 
-        // Profile is complete - route by role
-        console.log('Profile is complete');
         const userRole = (user.role || '').toLowerCase();
         
         switch (userRole) {
           case 'admin':
             redirectPath = '/admin/dashboard';
-            console.log('User is Admin');
             break;
           case 'doctor':
             redirectPath = '/doctor/dashboard';
-            console.log('User is Doctor');
             break;
           case 'patient':
             redirectPath = '/patient/home';
-            console.log('User is Patient');
             break;
           default:
             redirectPath = '/';
-            console.warn('Unknown or missing role:', userRole);
-            toast.error('Unknown user role. Please contact support.', {
-              duration: 5000
-            });
+            toast.error('Unknown user role. Please contact support.');
         }
 
         console.log('🔀 Redirecting to:', redirectPath);
         
-        // Navigate after a short delay to ensure state is updated
         setTimeout(() => {
           navigate(redirectPath, { replace: true });
         }, 500);
 
       } catch (err: any) {
-        console.error('========================================');
-        console.error('Error Processing Google Callback');
-        console.error('========================================');
-        console.error('Error:', err);
-        console.error('Message:', err.message);
-        console.error('Stack:', err.stack);
-        
-        toast.error(`Failed to process sign-in: ${err.message}`, {
-          duration: 5000
-        });
+        console.error('Error Processing Google Callback', err);
+        toast.error(`Failed to process sign-in: ${err.message}`);
         
         setTimeout(() => {
           navigate('/signin', { replace: true });
@@ -194,40 +158,43 @@ const GoogleCallbackHandler: React.FC = () => {
     };
 
     handleGoogleCallback();
-  }, []); // Run once on mount
+  }, []);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#1A1A40] via-[#0057B8] to-[#00A8E8] flex items-center justify-center">
-      <div className="text-center text-white max-w-md px-6">
-        {/* Loading Spinner */}
-        <div className="relative inline-block mb-6">
-          <div className="animate-spin rounded-full h-20 w-20 border-b-4 border-[#FFC43D]"></div>
-          <div className="absolute inset-0 rounded-full h-20 w-20 border-t-4 border-white/20 animate-pulse"></div>
+    // ✨ GLASSMORPHISM BACKGROUND WRAPPER
+    <div className="min-h-screen bg-[#F0F4F8] relative overflow-hidden font-sans text-slate-800 flex items-center justify-center">
+      
+      {/* 🎨 AMBIENT BACKGROUND BLOBS */}
+      <div className="fixed inset-0 pointer-events-none z-0">
+          <div className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] bg-blue-400/20 rounded-full blur-[100px] mix-blend-multiply" />
+          <div className="absolute bottom-[-10%] left-[-10%] w-[600px] h-[600px] bg-emerald-400/20 rounded-full blur-[100px] mix-blend-multiply" />
+      </div>
+
+      {/* GLASS CARD */}
+      <div className="relative z-10 bg-white/60 backdrop-blur-xl border border-white/50 shadow-2xl rounded-3xl p-10 max-w-md w-full text-center mx-4">
+        
+        {/* Animated Icon */}
+        <div className="relative inline-block mb-8">
+            <div className="w-20 h-20 bg-blue-50 rounded-full flex items-center justify-center shadow-inner">
+                <Loader2 className="w-10 h-10 text-blue-600 animate-spin" />
+            </div>
+            <div className="absolute -bottom-2 -right-2 bg-white rounded-full p-1.5 shadow-md">
+                <ShieldCheck className="w-5 h-5 text-emerald-500 fill-current" />
+            </div>
         </div>
 
-        {/* Title */}
-        <h2 className="text-3xl font-bold mb-3 text-white">
-          Completing Sign-In
-        </h2>
+        <h2 className="text-2xl font-bold text-slate-900 mb-2">Completing Sign-In</h2>
+        <p className="text-slate-500 text-lg mb-8">Please wait a moment while we secure your session...</p>
 
-        {/* Subtitle */}
-        <p className="text-lg text-white/90 mb-4">
-          Please wait while we complete your Google Sign-In...
-        </p>
-
-        {/* Additional Info */}
-        <div className="mt-8 p-4 bg-white/10 rounded-lg backdrop-blur-sm">
-          <p className="text-sm text-white/70">
-            Securely authenticating your account
-          </p>
-          <p className="text-sm text-white/70 mt-1">
-            Preparing your profile
-          </p>
+        <div className="bg-white/50 rounded-xl p-4 border border-white/60">
+            <p className="text-sm font-medium text-slate-600 flex items-center justify-center gap-2">
+                <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
+                Authenticating with Google
+            </p>
         </div>
 
-        {/* Help Text */}
-        <p className="text-xs text-white/60 mt-6">
-          If this takes longer than expected, please try refreshing the page
+        <p className="text-xs text-slate-400 mt-6">
+            If this takes longer than expected, please refresh the page.
         </p>
       </div>
     </div>
