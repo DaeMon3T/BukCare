@@ -1,52 +1,71 @@
 import { useState, type FormEvent } from "react";
-import { Mail, KeyRound, Lock } from "lucide-react";
+import { Mail, KeyRound, Lock, ArrowLeft, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 import {
   validateEmail,
   validatePassword,
   validateConfirmPassword,
 } from "@/services/validation";
 import { forgotPassword, verifyOtp, resetPassword } from "@/services/auth/ForgotPasswordAPI";
-import Footer from "@/components/Footer";
+import Navbar from "@/components/Navbar";
+
+// --- TYPES ---
+type Step = "email" | "otp" | "reset";
 
 export default function ForgotPassword() {
+  const navigate = useNavigate();
+
+  // --- STATE ---
+  const [step, setStep] = useState<Step>("email");
   const [email, setEmail] = useState("");
   const [otp, setOtp] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [step, setStep] = useState<"email" | "otp" | "reset">("email");
 
-  const navigate = useNavigate();
+  // --- HANDLERS ---
 
-  // STEP 1: Request OTP
-  const handleEmailSubmit = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  // Reusable function for sending OTP (used by Form and Resend button)
+  const sendOtpCode = async () => {
     setError("");
     setSuccess("");
 
     const emailCheck = validateEmail(email);
     if (!emailCheck.isValid) {
       setError(emailCheck.message);
-      return;
+      return false;
     }
 
     setIsLoading(true);
     try {
       await forgotPassword(email);
       setSuccess("Verification code sent to your email!");
-      setStep("otp");
-    } catch (err: any) {
-      setError(err.message || "Failed to send verification code. Please try again.");
+      return true;
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("Failed to send verification code. Please try again.");
+      }
+      return false;
     } finally {
       setIsLoading(false);
     }
   };
 
+  // STEP 1: Request OTP Form Handler
+  const handleEmailSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    const isSent = await sendOtpCode();
+    if (isSent) setStep("otp");
+  };
+
   // STEP 2: Verify OTP
-  const handleOtpSubmit = async (e: FormEvent<HTMLFormElement>) => {
+  const handleOtpSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError("");
     setSuccess("");
@@ -60,16 +79,23 @@ export default function ForgotPassword() {
     try {
       await verifyOtp(email, otp);
       setSuccess("OTP verified successfully!");
-      setStep("reset");
-    } catch (err: any) {
-      setError(err.message || "Invalid or expired OTP.");
+      setTimeout(() => {
+        setSuccess(""); // Clear success msg before next step
+        setStep("reset");
+      }, 1000);
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("Invalid or expired OTP.");
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
   // STEP 3: Reset Password
-  const handlePasswordReset = async (e: FormEvent<HTMLFormElement>) => {
+  const handlePasswordReset = async (e: FormEvent) => {
     e.preventDefault();
     setError("");
     setSuccess("");
@@ -89,194 +115,213 @@ export default function ForgotPassword() {
     setIsLoading(true);
     try {
       await resetPassword(email, newPassword);
-      setSuccess("Password reset successful! Redirecting to sign in...");
-      setTimeout(() => navigate("/signin"), 2000); // Redirect after 2 seconds
-    } catch (err: any) {
-      setError(err.message || "Failed to reset password. Please try again.");
+      setSuccess("Password reset successful! Redirecting...");
+      setTimeout(() => navigate("/signin"), 2000);
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("Failed to reset password. Please try again.");
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-r from-blue-700 to-[#2dc7f8] text-white">
-      {/* Navbar */}
-      <nav className="flex items-center justify-between px-8 py-4 bg-[#1A1A40]/80 shadow sticky top-0 z-10">
-        <Link to="/" className="text-2xl font-bold tracking-tight text-[#FFC43D] drop-shadow">
-          BukCare
-        </Link>
-        <div className="space-x-6">
-          <Link to="/signin" className="hover:underline text-[#FFC43D] font-medium">
-            Sign In
-          </Link>
-          <Link to="/signup" className="hover:underline">
-            Sign Up
-          </Link>
-        </div>
-      </nav>
+    <div className="min-h-screen bg-slate-50 relative overflow-hidden font-sans text-slate-800 flex flex-col">
+      
+      {/* 🎨 Ambient Background Blobs */}
+      <div className="fixed inset-0 pointer-events-none z-0">
+          <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-blue-400/20 rounded-full blur-[100px] mix-blend-multiply" />
+          <div className="absolute bottom-[-10%] right-[-10%] w-[600px] h-[600px] bg-purple-400/20 rounded-full blur-[100px] mix-blend-multiply" />
+      </div>
 
-      {/* Main Content */}
-      <div className="flex items-center justify-center min-h-[calc(100vh-80px)] px-6 py-12">
-        <div className="max-w-md w-full">
-          <div className="text-center mb-8">
-            <h1 className="text-4xl font-extrabold mb-4 drop-shadow-xl">
-              {step === "email" && <>Forgot <span className="text-[#FFC43D]">Password?</span></>}
-              {step === "otp" && <>Enter <span className="text-[#FFC43D]">OTP</span></>}
-              {step === "reset" && <>Set New <span className="text-[#FFC43D]">Password</span></>}
-            </h1>
-            <p className="text-lg text-white/90">
-              {step === "email"
-                ? "Enter your email to receive a verification code."
-                : step === "otp"
-                ? `Enter the 6-digit code sent to ${email}`
-                : "Enter and confirm your new password."}
-            </p>
-          </div>
+      <div className="relative z-10 flex-1 flex flex-col">
+        <Navbar />
 
-          <div className="bg-white/20 backdrop-blur-md p-8 rounded-2xl shadow-2xl border border-white/20">
-            {/* STEP 1 - EMAIL FORM */}
+        <div className="flex-1 flex items-center justify-center p-4 sm:p-8">
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+            className="w-full max-w-md bg-white/70 backdrop-blur-xl rounded-[2rem] shadow-xl border border-white/50 p-8 relative overflow-hidden"
+          >
+            {/* Header Area */}
+            <div className="text-center mb-8">
+              <div className="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-inner">
+                {step === "email" && <Mail className="w-8 h-8 text-blue-600" />}
+                {step === "otp" && <KeyRound className="w-8 h-8 text-blue-600" />}
+                {step === "reset" && <Lock className="w-8 h-8 text-blue-600" />}
+              </div>
+              
+              <h1 className="text-2xl font-bold text-slate-900 mb-2">
+                {step === "email" && "Forgot Password?"}
+                {step === "otp" && "Enter OTP"}
+                {step === "reset" && "Reset Password"}
+              </h1>
+              
+              <p className="text-slate-500 text-sm">
+                {step === "email" && "Enter your email to receive a code."}
+                {step === "otp" && `We sent a code to ${email}`}
+                {step === "reset" && "Create your new secure password."}
+              </p>
+            </div>
+
+            {/* Alerts */}
+            {error && (
+              <motion.div 
+                initial={{ opacity: 0, height: 0 }} 
+                animate={{ opacity: 1, height: "auto" }}
+                className="mb-6 bg-red-50 text-red-600 p-4 rounded-xl text-sm flex items-start gap-3 border border-red-100"
+              >
+                <AlertCircle className="w-5 h-5 shrink-0" />
+                <p>{error}</p>
+              </motion.div>
+            )}
+
+            {success && (
+              <motion.div 
+                initial={{ opacity: 0, height: 0 }} 
+                animate={{ opacity: 1, height: "auto" }}
+                className="mb-6 bg-emerald-50 text-emerald-600 p-4 rounded-xl text-sm flex items-start gap-3 border border-emerald-100"
+              >
+                <CheckCircle2 className="w-5 h-5 shrink-0" />
+                <p>{success}</p>
+              </motion.div>
+            )}
+
+            {/* STEP 1: EMAIL FORM */}
             {step === "email" && (
-              <form onSubmit={handleEmailSubmit} className="space-y-6">
-                {error && <Alert color="red" text={error} />}
-                {success && <Alert color="green" text={success} />}
-
+              <form onSubmit={handleEmailSubmit} className="space-y-5">
                 <InputField
-                  icon={<Mail size={20} />}
                   label="Email Address"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Enter your email"
+                  placeholder="name@example.com"
+                  icon={<Mail className="w-5 h-5" />}
                 />
-
-                <Button text={isLoading ? "Sending..." : "Send Code"} disabled={isLoading} />
-              </form>
-            )}
-
-            {/* STEP 2 - OTP FORM */}
-            {step === "otp" && (
-              <form onSubmit={handleOtpSubmit} className="space-y-6">
-                {error && <Alert color="red" text={error} />}
-                {success && <Alert color="green" text={success} />}
-
-                <InputField
-                  icon={<KeyRound size={20} />}
-                  label="Verification Code"
-                  type="text"
-                  maxLength={6}
-                  value={otp}
-                  onChange={(e) => setOtp(e.target.value)}
-                  placeholder="Enter 6-digit code"
-                />
-
-                <Button text={isLoading ? "Verifying..." : "Verify OTP"} disabled={isLoading} />
-
-                <div className="text-center text-white/80">
-                  Didn’t get the code?{" "}
-                  <button
-                    type="button"
-                    onClick={() =>
-                      handleEmailSubmit(new Event("submit") as unknown as FormEvent<HTMLFormElement>)
-                    }
-                    className="text-[#FFC43D] hover:underline font-semibold"
-                  >
-                    Resend
-                  </button>
+                
+                <SubmitButton isLoading={isLoading} text="Send Code" />
+                
+                <div className="text-center pt-2">
+                  <Link to="/signin" className="text-sm font-bold text-slate-500 hover:text-blue-600 transition flex items-center justify-center gap-2">
+                    <ArrowLeft className="w-4 h-4" /> Back to Sign In
+                  </Link>
                 </div>
               </form>
             )}
 
-            {/* STEP 3 - RESET PASSWORD FORM */}
-            {step === "reset" && (
-              <form onSubmit={handlePasswordReset} className="space-y-6">
-                {error && <Alert color="red" text={error} />}
-                {success && <Alert color="green" text={success} />}
-
+            {/* STEP 2: OTP FORM */}
+            {step === "otp" && (
+              <form onSubmit={handleOtpSubmit} className="space-y-5">
                 <InputField
-                  icon={<Lock size={20} />}
+                  label="Verification Code"
+                  type="text"
+                  maxLength={6}
+                  value={otp}
+                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))} // Only numbers
+                  placeholder="123456"
+                  icon={<KeyRound className="w-5 h-5" />}
+                  className="tracking-[0.5em] font-mono text-center pl-12" // Spaced out for OTP feel
+                />
+
+                <SubmitButton isLoading={isLoading} text="Verify OTP" />
+
+                <div className="text-center text-sm text-slate-500 pt-2">
+                  Didn’t receive the code?{" "}
+                  <button
+                    type="button"
+                    disabled={isLoading}
+                    onClick={sendOtpCode}
+                    className="text-blue-600 font-bold hover:underline disabled:opacity-50"
+                  >
+                    Resend
+                  </button>
+                </div>
+                
+                <button 
+                  type="button"
+                  onClick={() => setStep("email")}
+                  className="w-full text-center text-xs text-slate-400 hover:text-slate-600 mt-4"
+                >
+                  Change Email Address
+                </button>
+              </form>
+            )}
+
+            {/* STEP 3: RESET FORM */}
+            {step === "reset" && (
+              <form onSubmit={handlePasswordReset} className="space-y-5">
+                <InputField
                   label="New Password"
                   type="password"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="Enter new password"
+                  placeholder="••••••••"
+                  icon={<Lock className="w-5 h-5" />}
                 />
-
+                
                 <InputField
-                  icon={<Lock size={20} />}
                   label="Confirm Password"
                   type="password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Confirm new password"
+                  placeholder="••••••••"
+                  icon={<Lock className="w-5 h-5" />}
                 />
 
-                <Button text={isLoading ? "Resetting..." : "Reset Password"} disabled={isLoading} />
+                <SubmitButton isLoading={isLoading} text="Reset Password" />
               </form>
             )}
 
-            {/* Back Link */}
-            <div className="text-center mt-8 pt-6 border-t border-white/20">
-              <span className="text-white/80">
-                Remember your password?{" "}
-                <Link to="/signin" className="text-[#FFC43D] hover:text-[#FFD84C] transition font-semibold">
-                  Back to Sign In
-                </Link>
-              </span>
-            </div>
-          </div>
-
-          <div className="text-center mt-6">
-            <p className="text-sm text-white/60">
-              By continuing, you agree to our{" "}
-              <Link to="/terms" className="text-[#FFC43D] hover:underline">
-                Terms of Service
-              </Link>{" "}
-              and{" "}
-              <Link to="/privacy" className="text-[#FFC43D] hover:underline">
-                Privacy Policy
-              </Link>
-            </p>
-          </div>
+          </motion.div>
         </div>
       </div>
-
-      <Footer />
     </div>
   );
 }
 
-// Reusable components
-function InputField({ icon, label, ...props }: any) {
+// --- REUSABLE UI COMPONENTS ---
+
+function InputField({ 
+  label, 
+  icon, 
+  className = "", 
+  ...props 
+}: React.InputHTMLAttributes<HTMLInputElement> & { label: string; icon: React.ReactNode }) {
   return (
-    <div>
-      <label className="block text-sm font-semibold text-white/90 mb-2">{label}</label>
-      <div className="relative">
-        <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-white/50">{icon}</span>
+    <div className="space-y-1.5">
+      <label className="block text-xs font-bold text-slate-500 uppercase ml-1">{label}</label>
+      <div className="relative group">
+        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-blue-500 transition-colors">
+          {icon}
+        </div>
         <input
           {...props}
-          className="w-full pl-12 pr-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-[#FFC43D]"
+          className={`w-full pl-11 pr-4 py-3.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all text-slate-800 font-medium placeholder:text-slate-400 ${className}`}
         />
       </div>
     </div>
   );
 }
 
-function Button({ text, disabled }: { text: string; disabled?: boolean }) {
+function SubmitButton({ isLoading, text }: { isLoading: boolean; text: string }) {
   return (
     <button
       type="submit"
-      disabled={disabled}
-      className="w-full bg-[#FFC43D] text-[#1A1A40] font-bold py-3 px-6 rounded-xl shadow-lg hover:bg-[#FFD84C] transition disabled:opacity-50"
+      disabled={isLoading}
+      className="w-full bg-slate-900 hover:bg-blue-600 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-blue-900/20 hover:shadow-blue-600/30 active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
     >
-      {text}
+      {isLoading ? (
+        <>
+          <Loader2 className="w-5 h-5 animate-spin" />
+          Processing...
+        </>
+      ) : (
+        text
+      )}
     </button>
   );
-}
-
-function Alert({ color, text }: { color: "red" | "green"; text: string }) {
-  const colorMap = {
-    red: "bg-red-500/20 border border-red-400/50 text-red-100",
-    green: "bg-green-500/20 border border-green-400/50 text-green-100",
-  };
-  return <div className={`${colorMap[color]} px-4 py-3 rounded-xl`}>{text}</div>;
 }

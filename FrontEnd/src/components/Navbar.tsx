@@ -21,8 +21,8 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useNotifications } from "@/hooks/useNotifications"; 
-import { useWebSocket } from "@/context/WebSocketContext"; // 👈 Import WebSocket Context
-import bukcareLogo from "@/assets/images/bukcare_logo.png";
+import { useWebSocket } from "@/context/WebSocketContext"; 
+import logo from "@/assets/images/icon_logo_name.png";
 import defaultAvatar from "@/assets/images/default_avatar.png";
 
 const Navbar: React.FC = () => {
@@ -30,7 +30,6 @@ const Navbar: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // 1. Get Chat Unread Count from WebSocket (Real-time & Syncs with ChatWindow)
   const { unreadCount: chatUnreadCount } = useWebSocket(); 
 
   const { 
@@ -48,10 +47,8 @@ const Navbar: React.FC = () => {
   // --- MEMOIZED BADGE COUNTS ---
   const badgeCounts = useMemo(() => {
     return {
-        // ⚡ Update: Use the WebSocket count for messages
         messages: chatUnreadCount, 
         
-        // Keep existing logic for appointments
         appointments: notifications.filter(n => ['NEW_APPOINTMENT', 'APPOINTMENT_UPDATE'].includes(n.type) && !n.is_read).length
     };
   }, [notifications, chatUnreadCount]);
@@ -94,7 +91,7 @@ const Navbar: React.FC = () => {
           { label: "Dashboard", path: "/doctor/dashboard", icon: Home },
           { label: "Appointments", path: "/doctor/appointments", icon: Calendar, badge: badgeCounts.appointments },
           { label: "Availability", path: "/doctor/set-availability", icon: ClipboardList },
-          { label: "Messages", path: "/doctor/messages", icon: MessageCircle, badge: badgeCounts.messages }, // 👈 Uses new count
+          { label: "Messages", path: "/doctor/messages", icon: MessageCircle, badge: badgeCounts.messages },
         ];
         break;
       case "patient":
@@ -103,7 +100,7 @@ const Navbar: React.FC = () => {
           { label: "Home", path: "/patient/home", icon: Home },
           { label: "Find Doctors", path: "/patient/find-doctor", icon: Search },
           { label: "Appointments", path: "/patient/appointments", icon: ClipboardList, badge: badgeCounts.appointments },
-          { label: "Messages", path: "/patient/messages", icon: MessageCircle, badge: badgeCounts.messages }, // 👈 Uses new count
+          { label: "Messages", path: "/patient/messages", icon: MessageCircle, badge: badgeCounts.messages },
         ];
         break;
     }
@@ -130,13 +127,15 @@ const Navbar: React.FC = () => {
               </button>
 
               <Link to={homeLink} className="flex items-center gap-2 md:gap-3 group">
-                <div className="relative overflow-hidden rounded-xl shadow-sm transition-transform group-hover:scale-105">
-                    <img src={bukcareLogo} alt="BukCare" className="w-8 h-8 md:w-10 md:h-10 object-cover"/>
+                <div className="flex items-center gap-1 hover:scale-105 transition-transform cursor-pointer">
+                    {/* Logo */}
+                    <img 
+                        src={logo}
+                        className="h-20 md:h-25 lg:h-35 w-auto object-contain transition-all duration-300" 
+                        alt="BukCare Logo" 
+                    />
                 </div>
-                <span className="text-lg md:text-xl font-bold bg-gradient-to-r from-blue-700 to-[#2dc7f8] bg-clip-text text-transparent hidden sm:block">
-                  BukCare
-                </span>
-              </Link>
+            </Link>
             </div>
 
             {/* CENTER - Desktop Nav */}
@@ -334,10 +333,16 @@ const Navbar: React.FC = () => {
               className="fixed top-0 left-0 h-full w-[280px] bg-white shadow-2xl z-[100] lg:hidden flex flex-col"
             >
               <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-                  <div className="flex items-center gap-3">
-                      <img src={bukcareLogo} className="w-8 h-8 rounded-lg shadow-sm" alt="Logo" />
-                      <span className="font-bold text-lg text-slate-800">BukCare</span>
-                  </div>
+                  <Link to={homeLink} className="flex items-center gap-2 md:gap-3 group">
+                    <div className="flex items-center gap-1 hover:scale-105 transition-transform cursor-pointer">
+                        {/* Logo */}
+                        <img 
+                            src={logo} 
+                            className="h-20 md:h-25 lg:h-30 w-auto object-contain transition-all duration-300" 
+                            alt="BukCare Logo" 
+                        />
+                    </div>
+                </Link>
                   <button onClick={() => setSidebarOpen(false)} className="p-2 bg-white rounded-full text-slate-500 hover:text-slate-800 border border-slate-200 shadow-sm">
                     <X className="w-5 h-5" />
                   </button>
