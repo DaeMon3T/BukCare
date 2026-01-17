@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Send, MoreVertical, Video as VideoIcon, ArrowLeft, Trash2, Calendar, Clock } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
-import { useWebSocket } from "@/context/WebSocketContext"; // 👈 Import Context
+import { useWebSocket } from "@/context/WebSocketContext";
 import messagesAPI, { type Conversation } from "@/services/messages";
 import api from "@/services/api";
 import toast from "react-hot-toast";
@@ -16,8 +16,6 @@ interface ChatWindowProps {
 
 const ChatWindow: React.FC<ChatWindowProps> = ({ activeChat, onBack, onMessageSent, isTyping }) => {
   const { user } = useAuth();
-  
-  // 👇 1. Get the global refresher function from Context
   const { lastMessage, markAsReadGlobally } = useWebSocket();
   
   const [messages, setMessages] = useState<any[]>([]);
@@ -29,11 +27,18 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ activeChat, onBack, onMessageSe
   
   const [isReminderModalOpen, setIsReminderModalOpen] = useState(false);
 
-  // 2. Load History & MARK AS READ
+  // CONSISTENT TIME FORMATTER
+  const formatMessageTime = (dateString: string) => {
+      if (!dateString) return "";
+      const date = new Date(dateString);
+      // This ensures 10:30 AM format consistently
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
   useEffect(() => {
     loadChatHistory();
-    markChatAsRead(); // Trigger read status immediately on open
-  }, [activeChat]);
+    markChatAsRead(); 
+  }, [activeChat.user_id]); // <--- THIS WAS THE KEY FIX!
 
   const loadChatHistory = async () => {
     try {
@@ -47,13 +52,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ activeChat, onBack, onMessageSe
 
   const markChatAsRead = async () => {
       try {
-          // A. Tell Backend: "I saw these messages"
           await messagesAPI.markAsRead(activeChat.user_id);
-          
-          // B. 👇 Tell Frontend: "Refresh the badge count immediately!"
-          if (markAsReadGlobally) {
-             markAsReadGlobally();
-          }
+          if (markAsReadGlobally) markAsReadGlobally();
       } catch (error) {
           console.error("Failed to mark read", error);
       }
@@ -63,7 +63,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ activeChat, onBack, onMessageSe
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  // 3. WebSocket Listener
   useEffect(() => {
     if (!lastMessage) return;
 
@@ -75,7 +74,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ activeChat, onBack, onMessageSe
       const incomingMsg = lastMessage.message;
       const currentUserId = Number(user?.id);
       
-      // Check if this message belongs to the current active chat
       if ((incomingMsg.sender_id === activeChat.user_id) || (incomingMsg.sender_id === currentUserId && incomingMsg.receiver_id === activeChat.user_id)) {
          setMessages(prev => {
             if (prev.some(m => m.id === incomingMsg.id)) return prev;
@@ -91,7 +89,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ activeChat, onBack, onMessageSe
             return [...prev, incomingMsg];
          });
          
-         // 👇 If we receive a message while looking at the chat, mark it read instantly & update badge
          if (incomingMsg.sender_id === activeChat.user_id) {
              markChatAsRead();
          }
@@ -99,13 +96,12 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ activeChat, onBack, onMessageSe
          setTimeout(scrollToBottom, 100);
       }
     }
-  }, [lastMessage, activeChat, user]);
+  }, [lastMessage, activeChat.user_id, user]);
 
   useEffect(() => {
       if (isTyping) scrollToBottom();
   }, [isTyping]);
 
-  // 4. Handle Typing
   const handleTyping = (e: React.ChangeEvent<HTMLInputElement>) => {
       setNewMessage(e.target.value);
 
@@ -125,7 +121,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ activeChat, onBack, onMessageSe
       }, 2000);
   };
 
-  // 5. Send Message
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if(!newMessage.trim()) return;
@@ -139,8 +134,11 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ activeChat, onBack, onMessageSe
         typingTimeoutRef.current = null;
     }
 
+    // 1. Create Temporary ID
+    const tempId = Date.now(); 
+
     const optimisticMsg = {
-        id: Date.now(),
+        id: tempId, 
         sender_id: Number(user?.id),
         receiver_id: activeChat.user_id,
         content: text,
@@ -148,15 +146,24 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ activeChat, onBack, onMessageSe
         is_read: false,
         message_type: "text"
     };
+
     setMessages(prev => [...prev, optimisticMsg]);
     scrollToBottom();
     onMessageSent(text); 
 
     try {
-        await messagesAPI.sendMessage(activeChat.user_id, text);
+        // Wait for Real ID from Backend
+        const response = await messagesAPI.sendMessage(activeChat.user_id, text);
+        
+        // SWAP TRICK: Find the temp message and give it the real ID
+        setMessages(prev => prev.map(msg => 
+            msg.id === tempId ? { ...msg, id: response.id } : msg
+        ));
+
     } catch (error) {
         toast.error("Failed to send");
-        setMessages(prev => prev.filter(m => m.id !== optimisticMsg.id));
+        // Remove the optimistic message if it failed
+        setMessages(prev => prev.filter(m => m.id !== tempId));
     }
   };
 
@@ -225,7 +232,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ activeChat, onBack, onMessageSe
                             <div>
                                 <p className="text-sm font-bold text-slate-900 flex items-center gap-1.5">
                                     <Clock className="w-3.5 h-3.5 text-slate-400"/>
-                                    {new Date(msg.appointment.appointment_date).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}
+                                    {formatMessageTime(msg.appointment.appointment_date)}
                                 </p>
                                 <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase mt-2 inline-block shadow-sm ${
                                     msg.appointment.status === 'confirmed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
@@ -265,7 +272,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ activeChat, onBack, onMessageSe
                         </div>
                     ) : ( msg.content )}
                 </div>
-                {!isDeleted && <p className={`text-[10px] mt-1 text-right opacity-70`}>{new Date(msg.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>}
+                {!isDeleted && <p className={`text-[10px] mt-1 text-right opacity-70`}>{formatMessageTime(msg.timestamp)}</p>}
             </div>
         </div>
     );

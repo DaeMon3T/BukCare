@@ -49,10 +49,14 @@ export const useNotifications = (userId?: number) => {
   useEffect(() => {
     if (!lastMessage) return;
 
-    // 🛑 STOP! FILTER OUT CHAT MESSAGES HERE
-    // We do this because WebSocketContext.tsx already handles Chat Toasts (smartly).
-    // If we don't return here, we get Double Notifications.
-    if (lastMessage.type === "CHAT_MESSAGE" || lastMessage.type === "TYPING_START" || lastMessage.type === "TYPING_STOP") {
+    // 🛑 STOP! FILTER OUT CHAT & SYSTEM EVENTS HERE
+    // We strictly ignore Chat Messages, Typing Indicators, AND Deleted Messages
+    if (
+        lastMessage.type === "CHAT_MESSAGE" || 
+        lastMessage.type === "TYPING_START" || 
+        lastMessage.type === "TYPING_STOP" ||
+        lastMessage.type === "MESSAGE_DELETED" // ✅ ADDED: Ignore delete signals
+    ) {
         return; 
     }
 

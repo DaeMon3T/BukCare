@@ -56,14 +56,14 @@ export default function ForgotPassword() {
     }
   };
 
-  // STEP 1: Request OTP Form Handler
+  // Request OTP Form Handler
   const handleEmailSubmit = async (e: FormEvent) => {
     e.preventDefault();
     const isSent = await sendOtpCode();
     if (isSent) setStep("otp");
   };
 
-  // STEP 2: Verify OTP
+  // Verify OTP
   const handleOtpSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError("");
@@ -93,7 +93,7 @@ export default function ForgotPassword() {
     }
   };
 
-  // STEP 3: Reset Password
+  // Reset Password
   const handlePasswordReset = async (e: FormEvent) => {
     e.preventDefault();
     setError("");

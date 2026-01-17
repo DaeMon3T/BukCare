@@ -6,6 +6,8 @@ export interface Doctor {
   doctor_id: number;
   avatar?: string;
   name: string;
+  // ✅ FIX: Support both singular (often primary) and plural keys
+  specialization?: string;
   specializations?: string[] | string; 
   address: string;
   email: string;
@@ -19,13 +21,10 @@ interface DoctorCardProps {
 const DoctorCard: React.FC<DoctorCardProps> = ({ doctor }) => {
   const navigate = useNavigate();
   
-  // Default image path (ensure this file exists in your public folder)
   const DEFAULT_AVATAR = "/default-avatar.png";
-
-  // State to manage the image source
   const [imgSrc, setImgSrc] = useState<string>(DEFAULT_AVATAR);
 
-  // ✅ FIX 1: Sync state when doctor data changes
+  // Sync state when doctor data changes
   useEffect(() => {
     if (doctor.avatar && doctor.avatar.trim() !== "") {
         setImgSrc(doctor.avatar);
@@ -34,28 +33,46 @@ const DoctorCard: React.FC<DoctorCardProps> = ({ doctor }) => {
     }
   }, [doctor.avatar]);
 
-  // Specialization Parsing Logic (Preserved from your reference)
+  // ✅ FIX: Robust Specialization Parsing Logic
   const specializationLabel = useMemo(() => {
-    const specs = doctor.specializations;
+    // 1. Check both keys (Prioritize plural list, fall back to singular)
+    const specs = doctor.specializations || doctor.specialization;
+    
     if (!specs) return "General Practice";
     
+    // 2. If it's already an array, join it
     if (Array.isArray(specs)) return specs.join(", ");
     
+    // 3. If it's a string, try to parse it
     if (typeof specs === "string") {
-        try {
-            // Check if it's a JSON string array
-            if (specs.startsWith("[") && specs.endsWith("]")) {
-                const parsed = JSON.parse(specs);
+        let cleanStr = specs.trim();
+
+        // Check for List format: "['A', 'B']" or '["A", "B"]'
+        if (cleanStr.startsWith("[")) {
+            try {
+                // Try standard JSON first
+                const parsed = JSON.parse(cleanStr);
                 if (Array.isArray(parsed)) return parsed.join(", ");
+            } catch (e) {
+                // If failed, it might be Python style (single quotes). Fix it.
+                try {
+                     const fixed = cleanStr.replace(/'/g, '"'); // Replace ' with "
+                     const parsed = JSON.parse(fixed);
+                     if (Array.isArray(parsed)) return parsed.join(", ");
+                } catch (e2) {
+                     // console.error("Parsing failed, falling back to regex");
+                }
             }
-        } catch (e) {
-            // console.error("Error parsing specializations:", e); 
+            // Fallback: Aggressive Regex cleanup (Removes [ ] " ')
+            return cleanStr.replace(/[\[\]"']/g, '');
         }
-        // Clean up string artifacts if regular string
-        return specs.replace(/[\[\]"]/g, '');
+
+        // Regular string cleanup
+        return cleanStr.replace(/[\[\]"]/g, '');
     }
+    
     return String(specs);
-  }, [doctor.specializations]);
+  }, [doctor.specializations, doctor.specialization]);
 
   return (
     <div className="group relative bg-white rounded-2xl md:rounded-[2rem] shadow-md hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 overflow-hidden border border-slate-100 flex flex-col h-full">
@@ -83,7 +100,6 @@ const DoctorCard: React.FC<DoctorCardProps> = ({ doctor }) => {
                 alt={doctor.name}
                 className="w-20 h-20 md:w-28 md:h-28 rounded-full object-cover border-2 md:border-4 border-teal-50 bg-slate-100"
                 onError={(e) => {
-                    // ✅ FIX 2: Prevent infinite loop if default also fails
                     const target = e.target as HTMLImageElement;
                     if (target.src.includes(DEFAULT_AVATAR)) return; 
                     setImgSrc(DEFAULT_AVATAR);
@@ -98,6 +114,7 @@ const DoctorCard: React.FC<DoctorCardProps> = ({ doctor }) => {
             {doctor.name}
         </h3>
         
+        {/* Specialization Pill */}
         <div className="mb-4 md:mb-6">
             <span className="text-blue-600 font-medium text-[10px] md:text-sm bg-teal-50 inline-block px-2 py-0.5 md:px-3 md:py-1 rounded-full">
                 {specializationLabel}

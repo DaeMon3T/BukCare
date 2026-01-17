@@ -333,9 +333,11 @@ export default function DoctorProfile() {
                         <div>
                             <h1 className="text-3xl font-bold text-slate-900 leading-tight">Dr. {formData.fname} {formData.lname}</h1>
                             <div className="flex items-center justify-center sm:justify-start gap-3 mt-1 text-slate-500 font-medium">
-                                <span className="flex items-center gap-1">
+                                <span className="flex items-center gap-1 text-slate-600 font-medium">
                                     <Stethoscope className="w-4 h-4 text-teal-500" /> 
-                                    {doctorData?.specialization || "Medical Specialist"}
+                                    {doctorData?.specialization 
+                                        ? doctorData.specialization.replace(/[\[\]"]/g, '').replace(/,/g, ', ') 
+                                        : "Medical Specialist"}
                                 </span>
                                 
                                 {formData.is_doctor_approved ? (

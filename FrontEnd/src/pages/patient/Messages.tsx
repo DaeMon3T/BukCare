@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import { useAuth } from "@/context/AuthContext";
 import { useWebSocket } from "@/context/WebSocketContext";
@@ -11,13 +12,12 @@ const PatientMessages: React.FC = () => {
   const { user } = useAuth();
   const { lastMessage } = useWebSocket();
   
+  const [searchParams] = useSearchParams();
+
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeChat, setActiveChat] = useState<Conversation | null>(null);
   
-  // Mobile View Control: False = List View, True = Chat View
   const [isMobileChatOpen, setIsMobileChatOpen] = useState(false);
-
-  // Desktop Sidebar Control: True = Visible, False = Collapsed
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   
   const [typingUsers, setTypingUsers] = useState<Set<number>>(new Set());
@@ -38,6 +38,26 @@ const PatientMessages: React.FC = () => {
       console.error("Failed to load conversations", error);
     }
   };
+
+  useEffect(() => {
+      const targetUserId = searchParams.get("userId");
+      
+      // Only run if we have a target ID and conversations are loaded
+      if (targetUserId && conversations.length > 0) {
+          const targetIdNum = Number(targetUserId);
+          
+          // Find the chat in the loaded list
+          const targetChat = conversations.find(c => c.user_id === targetIdNum);
+          
+          if (targetChat) {
+              if (activeChat?.user_id !== targetChat.user_id) {
+                  setActiveChat(targetChat);
+                  setIsMobileChatOpen(true); 
+              }
+          }
+      }
+  }, [searchParams, conversations, activeChat]); 
+
 
   // WEBSOCKET LISTENER 
   useEffect(() => {
@@ -83,9 +103,9 @@ const PatientMessages: React.FC = () => {
     if (lastMessage.type === "TYPING_STOP" && lastMessage.sender_id) {
        const senderId = lastMessage.sender_id;
        setTypingUsers(prev => {
-          const next = new Set(prev);
-          next.delete(senderId);
-          return next;
+         const next = new Set(prev);
+         next.delete(senderId);
+         return next;
        });
     }
 
@@ -145,7 +165,7 @@ const PatientMessages: React.FC = () => {
                     ${isSidebarOpen ? 'w-full md:w-80 lg:w-96 opacity-100 translate-x-0' : 'w-0 opacity-0 -translate-x-10 md:border-none'}
                 `}
             >
-                {/* CLOSE BUTTON: Positioned inside sidebar, top right */}
+                {/* CLOSE BUTTON */}
                 <div className="hidden md:block absolute top-4 right-4 z-50">
                     <button 
                         onClick={() => setIsSidebarOpen(false)}
@@ -174,7 +194,7 @@ const PatientMessages: React.FC = () => {
             {/* CHAT WINDOW */}
             <div className={`flex-1 bg-white/70 backdrop-blur-xl md:rounded-[2rem] shadow-none md:shadow-xl md:shadow-blue-900/5 border-l md:border border-white/50 flex flex-col overflow-hidden transition-all duration-300 relative ${!isMobileChatOpen ? 'hidden md:flex' : 'flex'}`}>
                 
-                {/* OPEN BUTTON: Positioned as a "Tab" on the left edge when sidebar is closed */}
+                {/* OPEN BUTTON */}
                 {!isSidebarOpen && (
                     <div className="hidden md:block absolute top-20 left-0 z-50">
                         <button 
