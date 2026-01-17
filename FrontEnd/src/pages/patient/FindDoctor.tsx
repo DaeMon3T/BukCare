@@ -1,17 +1,25 @@
 import React, { useEffect, useState } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import toast from "react-hot-toast";
-import { Search, Filter, X, Stethoscope, Activity } from "lucide-react";
+import { Search, Filter, X, Stethoscope, Activity, Loader2 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import DoctorCard, { type Doctor } from "@/components/DoctorCard";
-import GetDoctorAPI from "@/services/patient/GetDoctorAPI";
+import api from "@/services/api"; 
 
 const FindDoctor: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
+  
+  // Data States
   const [allDoctors, setAllDoctors] = useState<Doctor[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   
+  // Pagination States
+  const [offset, setOffset] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const LIMIT = 6; 
+
   const [activeFilter, setActiveFilter] = useState<string>(
     searchParams.get("specialization") || "All"
   );
@@ -26,40 +34,62 @@ const FindDoctor: React.FC = () => {
     "Pediatrics", "Orthopedics", "Ophthalmology", "Dermatology"
   ];
 
+  // HELPER: Parse Doctor Data (Reusable)
+  const parseDoctorData = (data: any[]): Doctor[] => {
+    return data.map((doc) => {
+        const rawSpec = doc.specializations || doc.specialization;
+        let cleanSpec = "General Practice";
+        
+        // Handle list or string from backend
+        if (rawSpec) {
+             if (Array.isArray(rawSpec)) {
+                 cleanSpec = rawSpec.join(", ");
+             } else if (typeof rawSpec === "string") {
+                 // Clean up JSON string artifacts if present
+                 cleanSpec = rawSpec.replace(/[\[\]"]/g, '');
+             }
+        }
+
+        return {
+            doctor_id: doc.doctor_id,
+            name: doc.name,
+            specializations: cleanSpec, 
+            specialization: cleanSpec,
+            avatar: doc.avatar || "/default-avatar.png",
+            address: doc.address || "No address provided",
+            email: doc.email || "",
+            user_id: doc.user_id,
+            is_verified: doc.is_verified,
+            is_doctor_approved: doc.is_doctor_approved,
+            license_number: doc.license_number,
+            years_of_experience: doc.years_of_experience,
+            created_at: doc.created_at,
+            updated_at: doc.updated_at,
+            availabilities: doc.availabilities || []
+        };
+    });
+  };
+
+  // INITIAL FETCH
   useEffect(() => {
-    const fetchDoctors = async () => {
+    const fetchInitialDoctors = async () => {
       try {
         setLoading(true);
-        const data: any[] = await GetDoctorAPI.getDoctors();
+        // Reset States
+        setAllDoctors([]);
+        setOffset(0);
+        setHasMore(true);
 
-        const formattedDoctors: Doctor[] = data.map((doc) => {
-            const rawSpec = doc.specializations || doc.specialization;
-            
-            let cleanSpec = "General Practice";
-            if (rawSpec) {
-                cleanSpec = Array.isArray(rawSpec) ? rawSpec.join(", ") : String(rawSpec);
-            }
+        // Fetch first page (skip=0)
+        const response = await api.get(`/doctors/?skip=0&limit=${LIMIT}`);
+        const formatted = parseDoctorData(response.data);
 
-            return {
-                doctor_id: doc.doctor_id,
-                name: doc.name,
-                specializations: cleanSpec, 
-                specialization: cleanSpec,
-                avatar: doc.avatar || "/default-avatar.png",
-                address: doc.address || "No address provided",
-                email: doc.email || "",
-                user_id: doc.user_id,
-                is_verified: doc.is_verified,
-                is_doctor_approved: doc.is_doctor_approved,
-                license_number: doc.license_number,
-                years_of_experience: doc.years_of_experience,
-                created_at: doc.created_at,
-                updated_at: doc.updated_at,
-                availabilities: doc.availabilities || []
-            };
-        });
+        setAllDoctors(formatted);
+        setOffset(formatted.length); // Update offset for next load
+        
+        // If we got fewer items than the limit, we've reached the end
+        if (formatted.length < LIMIT) setHasMore(false);
 
-        setAllDoctors(formattedDoctors);
       } catch (err) {
         console.error(err);
         toast.error("Failed to load doctors.");
@@ -68,8 +98,36 @@ const FindDoctor: React.FC = () => {
       }
     };
 
-    fetchDoctors();
-  }, []);
+    fetchInitialDoctors();
+  }, []); // Run once on mount
+
+  // LOAD MORE FUNCTION
+  const loadMoreDoctors = async () => {
+      if (loadingMore || !hasMore) return;
+
+      try {
+          setLoadingMore(true);
+          
+          // Fetch next page based on current offset
+          const response = await api.get(`/doctors/?skip=${offset}&limit=${LIMIT}`);
+          const newDoctors = parseDoctorData(response.data);
+
+          if (newDoctors.length === 0) {
+              setHasMore(false);
+          } else {
+              // Append new doctors to the existing list
+              setAllDoctors(prev => [...prev, ...newDoctors]);
+              setOffset(prev => prev + newDoctors.length);
+              
+              if (newDoctors.length < LIMIT) setHasMore(false);
+          }
+
+      } catch (err) {
+          toast.error("Could not load more doctors.");
+      } finally {
+          setLoadingMore(false);
+      }
+  };
 
   const handleFilterChange = (filter: string) => {
     setActiveFilter(filter);
@@ -81,10 +139,11 @@ const FindDoctor: React.FC = () => {
     setSearchParams(searchParams);
   };
 
+  // This filtering happens on the CLIENT side (only on loaded doctors)
   const filteredDoctors = allDoctors.filter((doc) => {
     const query = search.toLowerCase();
     const docName = doc.name?.toLowerCase() || "";
-    const specStr = (doc.specializations || doc.specializations || "").toString().toLowerCase();
+    const specStr = (doc.specializations || "").toString().toLowerCase();
     const matchesSearch = docName.includes(query) || specStr.includes(query);
     const matchesFilter = activeFilter === "All" || specStr.includes(activeFilter.toLowerCase());
     return matchesSearch && matchesFilter;
@@ -160,44 +219,67 @@ const FindDoctor: React.FC = () => {
                 </div>
             </div>
 
-            {/* RESULTS GRID - FIX APPLIED HERE */}
-            {loading ? (
-                // FIX: Changed grid-cols-1 to grid-cols-2 on mobile, added smaller gap-4
-                <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-                    {[1, 2, 3, 4, 5, 6].map((n) => (
-                        <DoctorCardSkeleton key={n} />
-                    ))}
-                </div>
-            ) : filteredDoctors.length > 0 ? (
-                // FIX: Changed grid-cols-1 to grid-cols-2 on mobile, added smaller gap-4
-                <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6"> 
-                    {filteredDoctors.map((doc) => (
-                        <Link 
-                            to={`/patient/doctor/${doc.doctor_id}`} 
-                            key={doc.doctor_id}
-                            className="block transition-all hover:-translate-y-1 hover:shadow-xl rounded-[2rem]"
-                        >
-                            <DoctorCard doctor={doc} />
-                        </Link>
-                    ))}
-                </div>
-            ) : (
-                <div className="flex flex-col items-center justify-center py-20 bg-white/40 backdrop-blur-xl rounded-[2rem] border border-white/50 border-dashed">
-                    <div className="w-20 h-20 sm:w-24 sm:h-24 bg-white/50 rounded-full flex items-center justify-center mb-6 shadow-sm">
-                        <Activity className="w-10 h-10 sm:w-12 sm:h-12 text-slate-300" />
+            {/* RESULTS GRID */}
+            <div className="min-h-[300px]">
+                {loading ? (
+                    <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+                        {[1, 2, 3, 4, 5, 6].map((n) => (
+                            <DoctorCardSkeleton key={n} />
+                        ))}
                     </div>
-                    <h3 className="text-xl font-bold text-slate-900 text-center px-4">No doctors found</h3>
-                    <p className="text-slate-500 max-w-sm text-center mt-2 font-medium px-4 text-sm sm:text-base">
-                        We couldn't find any doctors matching "{search}" {activeFilter !== "All" && `in ${activeFilter}`}.
-                    </p>
-                    <button 
-                        onClick={() => { setSearch(""); handleFilterChange("All"); }}
-                        className="mt-8 px-8 py-3 bg-white border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-50 transition-all shadow-sm hover:shadow-md"
-                    >
-                        Clear All Filters
-                    </button>
-                </div>
-            )}
+                ) : filteredDoctors.length > 0 ? (
+                    <>
+                        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6"> 
+                            {filteredDoctors.map((doc) => (
+                                <Link 
+                                    to={`/patient/doctor/${doc.doctor_id}`} 
+                                    key={doc.doctor_id}
+                                    className="block transition-all hover:-translate-y-1 hover:shadow-xl rounded-[2rem]"
+                                >
+                                    <DoctorCard doctor={doc} />
+                                </Link>
+                            ))}
+                        </div>
+
+                        {/* LOAD MORE BUTTON */}
+                        {hasMore && (
+                             <div className="flex justify-center mt-12 pb-8">
+                                <button 
+                                    onClick={loadMoreDoctors}
+                                    disabled={loadingMore}
+                                    className="px-8 py-3 bg-white border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-50 hover:shadow-md transition-all flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
+                                >
+                                    {loadingMore ? (
+                                        <>
+                                            <Loader2 className="w-4 h-4 animate-spin" />
+                                            Loading...
+                                        </>
+                                    ) : (
+                                        "Load More Doctors"
+                                    )}
+                                </button>
+                             </div>
+                        )}
+                    </>
+                ) : (
+                    <div className="flex flex-col items-center justify-center py-20 bg-white/40 backdrop-blur-xl rounded-[2rem] border border-white/50 border-dashed">
+                        <div className="w-20 h-20 sm:w-24 sm:h-24 bg-white/50 rounded-full flex items-center justify-center mb-6 shadow-sm">
+                            <Activity className="w-10 h-10 sm:w-12 sm:h-12 text-slate-300" />
+                        </div>
+                        <h3 className="text-xl font-bold text-slate-900 text-center px-4">No doctors found</h3>
+                        <p className="text-slate-500 max-w-sm text-center mt-2 font-medium px-4 text-sm sm:text-base">
+                            We couldn't find any doctors matching "{search}" {activeFilter !== "All" && `in ${activeFilter}`}.
+                        </p>
+                        <button 
+                            onClick={() => { setSearch(""); handleFilterChange("All"); }}
+                            className="mt-8 px-8 py-3 bg-white border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-50 transition-all shadow-sm hover:shadow-md"
+                        >
+                            Clear All Filters
+                        </button>
+                    </div>
+                )}
+            </div>
+
             </div>
         </main>
       </div>

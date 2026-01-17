@@ -7,7 +7,7 @@ interface ChatListProps {
   activeChat: Conversation | null;
   onSelectChat: (chat: Conversation) => void;
   onStartNewChat: (user: UserSearchResult) => void;
-  typingUsers?: Set<number>; // 🆕 New Prop
+  typingUsers?: Set<number>;
 }
 
 const ChatList: React.FC<ChatListProps> = ({ conversations, activeChat, onSelectChat, onStartNewChat, typingUsers }) => {
@@ -31,25 +31,22 @@ const ChatList: React.FC<ChatListProps> = ({ conversations, activeChat, onSelect
     return () => clearTimeout(delayDebounceFn);
   }, [searchTerm]);
 
-  // 🕒 Smart Time Formatter (Industrial Standard)
+  // 🕒 Smart Time Formatter
   const formatTime = (isoString: string) => {
     if (!isoString) return "";
     const date = new Date(isoString);
     const now = new Date();
     
-    // If today, show time (9:41 AM)
     if (date.toDateString() === now.toDateString()) {
         return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     }
     
-    // If yesterday, show 'Yesterday'
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
     if (date.toDateString() === yesterday.toDateString()) {
         return "Yesterday";
     }
 
-    // Otherwise show date (Jan 15)
     return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
   };
 
@@ -84,12 +81,18 @@ const ChatList: React.FC<ChatListProps> = ({ conversations, activeChat, onSelect
                     onClick={() => { onStartNewChat(result); setSearchTerm(""); setSearchResults([]); }}
                     className="px-5 py-3 flex items-center gap-3 cursor-pointer hover:bg-blue-50 transition-colors"
                   >
-                      <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold">
-                        {result.name.charAt(0)}
+                      {/* ✅ FIX: Display Avatar in Search Results */}
+                      <div className="relative w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold overflow-hidden border border-slate-200">
+                        {result.picture ? (
+                             <img src={result.picture} alt={result.name} className="w-full h-full object-cover" />
+                        ) : (
+                             <span>{result.name.charAt(0)}</span>
+                        )}
                       </div>
+
                       <div>
-                         <p className="text-sm font-bold text-slate-900">{result.name}</p>
-                         <p className="text-xs text-slate-500 capitalize">{result.role}</p>
+                          <p className="text-sm font-bold text-slate-900">{result.name}</p>
+                          <p className="text-xs text-slate-500 capitalize">{result.role}</p>
                       </div>
                       <MessageSquarePlus className="w-4 h-4 text-blue-400 ml-auto" />
                   </div>
@@ -124,6 +127,7 @@ const ChatList: React.FC<ChatListProps> = ({ conversations, activeChat, onSelect
                 >
                   <div className="relative shrink-0">
                     <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-50 to-purple-50 border border-slate-100 overflow-hidden shadow-sm">
+                      {/* ✅ Conversation Avatar Logic (already existed, but ensuring it matches) */}
                       {chat.picture ? (
                         <img src={chat.picture} alt={chat.name} className="w-full h-full object-cover" />
                       ) : (
@@ -132,7 +136,7 @@ const ChatList: React.FC<ChatListProps> = ({ conversations, activeChat, onSelect
                         </div>
                       )}
                     </div>
-                    {/* Status Dot (Optional) */}
+                    {/* Status Dot */}
                     <div className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-white rounded-full"></div>
                   </div>
                   

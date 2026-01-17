@@ -3,6 +3,8 @@ import { useAuth } from "./AuthContext";
 import toast from "react-hot-toast"; 
 import messagesAPI from "@/services/messages"; 
 import notificationSound from "@/assets/sounds/notification2.mp3"; 
+// ✅ 1. IMPORT NAVIGATE
+import { useNavigate } from "react-router-dom";
 
 interface WebSocketMessage {
   type: string;
@@ -31,21 +33,20 @@ const WebSocketContext = createContext<WebSocketContextType | null>(null);
 
 export const WebSocketProvider = ({ children }: { children: React.ReactNode }) => {
   const { user } = useAuth();
+  // ✅ 2. INITIALIZE NAVIGATE
+  const navigate = useNavigate();
+  
   const [isConnected, setIsConnected] = useState(false);
   const [lastMessage, setLastMessage] = useState<WebSocketMessage | null>(null);
-  
-  // Unread Badge State
   const [unreadCount, setUnreadCount] = useState(0);
 
   const socketRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Initial Load of Unread Count
   const refreshUnreadCount = useCallback(async () => {
     if (!user) return;
     try {
       const convos = await messagesAPI.getConversations();
-      // Sum up all unread_counts from all conversations
       const total = convos.reduce((acc: number, curr: any) => acc + (curr.unread_count || 0), 0);
       setUnreadCount(total);
     } catch (err) {
@@ -53,13 +54,10 @@ export const WebSocketProvider = ({ children }: { children: React.ReactNode }) =
     }
   }, [user]);
 
-  // Load count on mount/login
   useEffect(() => {
     refreshUnreadCount();
   }, [refreshUnreadCount]);
 
-
-  // ... (Socket URL logic remains the same)
   const getSocketUrl = (userId: string | number) => {
     let baseUrl = import.meta.env.VITE_API_URL || "http://localhost:8000";
     if (!baseUrl.startsWith("http")) {
@@ -134,45 +132,58 @@ export const WebSocketProvider = ({ children }: { children: React.ReactNode }) =
   }, [user, connect]);
 
 
-  // SMART NOTIFICATION LOGIC
   const handleGlobalToast = (msg: any) => {
-    
-    // CASE A: Chat Message
     if (msg.type === "CHAT_MESSAGE") {
-        // 1. Update Badge Logic
         setUnreadCount(prev => prev + 1);
 
-        // PLAY SOUND GLOBALLY (Added this part)
         try {
             const audio = new Audio(notificationSound);
-            audio.play().catch(e => console.log("Audio play failed (interaction needed)", e));
+            audio.play().catch(e => console.log("Audio play failed", e));
         } catch (e) {}
 
-        // Smart Toast Logic
-        // Check if user is currently looking at messages
         const isOnMessagesPage = window.location.pathname.includes('/messages');
-        
-        // Stop! Don't show toast if we are already on the messages page
-        if (isOnMessagesPage) {
-            return; 
-        }
+        if (isOnMessagesPage) return; 
 
-        // Otherwise, show the popup
-        toast(
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-slate-200 overflow-hidden">
-                 {msg.message?.sender_picture && <img src={msg.message.sender_picture} className="w-full h-full object-cover"/>}
+        // ✅ CLICKABLE TOAST
+        toast((t) => (
+            <div 
+                className="cursor-pointer flex items-center gap-3 w-full"
+                onClick={() => {
+                    toast.dismiss(t.id);
+                    const baseRole = user?.role === 'doctor' ? '/doctor' : '/patient';
+                    
+                    // ✅ 3. USE NAVIGATE (Instant Transition)
+                    navigate(`${baseRole}/messages?userId=${msg.message.sender_id}`);
+                }}
+            >
+              <div className="relative flex-shrink-0">
+                  <div className="w-10 h-10 rounded-full bg-slate-200 overflow-hidden border border-slate-200">
+                     {msg.message?.sender_picture ? (
+                        <img src={msg.message.sender_picture} className="w-full h-full object-cover" alt="Avatar"/>
+                     ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-blue-100 text-blue-600 font-bold">
+                            {(msg.message?.sender_name || "U").charAt(0)}
+                        </div>
+                     )}
+                  </div>
+                  <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-white rounded-full"></span>
               </div>
-              <div>
-                <p className="font-bold text-sm text-slate-900">{msg.message?.sender_name || "New Message"}</p>
-                <p className="text-xs text-slate-500 truncate max-w-[150px]">{msg.message?.content}</p>
+
+              <div className="flex-1 min-w-0">
+                <p className="font-bold text-sm text-slate-900 truncate">
+                    {msg.message?.sender_name || "New Message"}
+                </p>
+                <p className="text-xs text-slate-500 truncate">
+                    {msg.message?.content}
+                </p>
               </div>
-            </div>, 
-            { duration: 4000, position: "top-right" }
-        );
+            </div>
+        ), { 
+            duration: 5000, 
+            position: "top-right",
+            className: "bg-white shadow-xl rounded-2xl p-4 border border-slate-100 ring-1 ring-black/5" 
+        });
     } 
-    
-    // CASE B: System Notifications (Keep existing logic)
     else if (msg.type === "NEW_APPOINTMENT") {
        toast.success(msg.notification?.message || "New Appointment");
     } 

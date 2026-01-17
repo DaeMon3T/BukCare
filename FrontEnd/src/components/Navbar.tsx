@@ -59,12 +59,22 @@ const Navbar: React.FC = () => {
         markAsRead(Number(notif.id));
     }
 
+    const baseRole = user?.role === 'doctor' ? '/doctor' : '/patient';
     if (notif.type === "CHAT_MESSAGE") {
-        navigate(user?.role === 'doctor' ? '/doctor/messages' : '/patient/messages');
-    } else if (notif.appointment_id) {
-        navigate(user?.role === 'doctor' ? '/doctor/appointments' : '/patient/appointments');
+
+        const senderId = notif.sender_id || notif.message?.sender_id; 
+
+        if (senderId) {
+            navigate(`${baseRole}/messages?userId=${senderId}`);
+        } else {
+            navigate(`${baseRole}/messages`);
+        }
+    } 
+    else if (notif.appointment_id || notif.type.includes('APPOINTMENT')) {
+        navigate(`${baseRole}/appointments`);
     }
 
+    // Close dropdowns
     setShowNotifications(false);
     setSidebarOpen(false); 
   }, [navigate, user?.role, markAsRead]);

@@ -32,22 +32,57 @@ import toast from "react-hot-toast";
 interface Doctor {
   doctor_id: number;
   name: string;
+  // Support both key formats to match DoctorCard logic
   specialization?: string;
+  specializations?: string[] | string;
   avatar?: string;
 }
 
 interface Appointment {
   id: number;
+  doctor_id?: number; // Added to help match with doctor list
   doctor_name: string;
   appointment_date: string;
   reason: string | null;
   status: string; 
+  specialization?: string; 
 }
 
 interface HealthTip {
   category: string;
   text: string;
 }
+
+// ✅ HELPER: Exact logic from DoctorCard.tsx to parse specializations
+const getSpecialization = (data: any): string => {
+    // Try both possible keys
+    const specs = data?.specialization || data?.specializations;
+    
+    if (!specs) return "General Practice";
+
+    // 1. If it's already an array, join it
+    if (Array.isArray(specs)) return specs.join(", ");
+
+    // 2. If it's a string, try to parse JSON or clean it
+    if (typeof specs === "string") {
+        try {
+            // Check if it looks like a JSON array e.g. "['Cardiology']"
+            if (specs.startsWith("[") && specs.endsWith("]")) {
+                // Replace single quotes with double quotes for valid JSON if needed, 
+                // though standard JSON uses double. 
+                // Safer to just try parsing or regex if strictly formatted.
+                const parsed = JSON.parse(specs.replace(/'/g, '"')); 
+                if (Array.isArray(parsed)) return parsed.join(", ");
+            }
+        } catch (e) {
+            // If parse fails, fall through to regex cleanup
+        }
+        // Remove brackets and quotes: ["Cardiology"] -> Cardiology
+        return specs.replace(/[\[\]"']/g, '');
+    }
+
+    return String(specs);
+};
 
 const PatientDashboard = () => {
   const { user } = useAuth();
@@ -61,6 +96,10 @@ const PatientDashboard = () => {
   const [stats, setStats] = useState({ total: 0, pending: 0, completed: 0 });
   const [loading, setLoading] = useState(true);
   const [healthTip, setHealthTip] = useState<HealthTip | null>(null);
+
+  const [aiInsight, setAiInsight] = useState<string>(
+    "Stay hydrated and take small steps towards better health today."
+  );
 
   const categories = [
     { name: "General", icon: <Stethoscope className="w-5 h-5" />, color: "bg-blue-500/10 text-blue-600", specialization: "General Practice" },
@@ -82,9 +121,19 @@ const PatientDashboard = () => {
             api.get("/tips/daily")
         ]);
 
-        if (doctorsRes.status === "fulfilled") setDoctors(doctorsRes.value.data.slice(0, 4));
-        if (tipRes.status === "fulfilled") setHealthTip(tipRes.value.data);
-        else setHealthTip({ category: "General", text: "Small steps lead to big changes!" });
+        let allDoctors: Doctor[] = [];
+        if (doctorsRes.status === "fulfilled") {
+            allDoctors = doctorsRes.value.data;
+            setDoctors(allDoctors.slice(0, 4));
+        }
+
+        // Gemini AI Insight
+        if (tipRes.status === "fulfilled" && tipRes.value.data) {
+            setHealthTip(tipRes.value.data);
+            setAiInsight(tipRes.value.data.text); 
+        } else {
+            setAiInsight("Stay hydrated and take small steps towards better health today.");
+        }
 
         if (apptRes.status === "fulfilled") {
             const allAppts = apptRes.value.data;
@@ -97,12 +146,30 @@ const PatientDashboard = () => {
             const upcoming = allAppts
                 .filter((a: any) => {
                     const apptDate = new Date(a.appointment_date);
-                    const now = new Date();
-                    return apptDate > now && a.status !== 'cancelled' && a.status !== 'completed';
+                    const startOfToday = new Date();
+                    startOfToday.setHours(0, 0, 0, 0);
+                    return apptDate >= startOfToday && a.status !== 'cancelled' && a.status !== 'completed';
                 })
                 .sort((a: any, b: any) => new Date(a.appointment_date).getTime() - new Date(b.appointment_date).getTime());
             
-            setNextAppointment(upcoming[0] || null);
+            const nextAppt = upcoming[0] || null;
+
+            // ✅ FIX: Cross-reference doctor to get accurate specialization
+            if (nextAppt) {
+                // 1. Try to find the full doctor object from our doctors list
+                const matchedDoctor = allDoctors.find(d => 
+                    d.doctor_id === nextAppt.doctor_id || d.name === nextAppt.doctor_name
+                );
+
+                // 2. Use the helper to format the specialization string correctly
+                const rawSpec = matchedDoctor ? (matchedDoctor.specialization || matchedDoctor.specializations) : nextAppt.specialization;
+                const formattedSpec = getSpecialization({ specialization: rawSpec });
+
+                // 3. Update the appointment object with the clean string
+                setNextAppointment({ ...nextAppt, specialization: formattedSpec });
+            } else {
+                setNextAppointment(null);
+            }
         }
 
     } catch (error: any) {
@@ -227,7 +294,13 @@ const PatientDashboard = () => {
                                         )}
                                     </div>
 
-                                    <h2 className="text-3xl md:text-4xl font-bold mb-2">Dr. {nextAppointment.doctor_name}</h2>
+                                    <h2 className="text-3xl md:text-4xl font-bold mb-1">Dr. {nextAppointment.doctor_name}</h2>
+                                    
+                                    {/* ✅ SPECIALIZATION DISPLAY */}
+                                    <p className="text-white/80 text-sm font-bold uppercase tracking-widest mb-4">
+                                        {nextAppointment.specialization || "Medical Specialist"}
+                                    </p>
+
                                     <div className="flex flex-wrap gap-3 text-blue-50 mt-4">
                                         <p className="flex items-center gap-2 bg-black/10 px-4 py-2 rounded-xl backdrop-blur-md border border-white/5">
                                             <Calendar className="w-4 h-4" /> 
@@ -282,17 +355,24 @@ const PatientDashboard = () => {
                 {/* RIGHT: SMART HEALTH TIP (Glass Card) */}
                 <div className="flex flex-col gap-6">
                     <div className={`h-full rounded-[2rem] p-8 border border-white/50 relative overflow-hidden transition-all duration-500 group flex flex-col justify-center backdrop-blur-xl shadow-sm hover:shadow-md ${
+                        // Dynamic color based on appointment existence or tip category
+                        nextAppointment ? "bg-emerald-100/60 text-emerald-900" :
                         healthTip?.category === "Morning" ? "bg-amber-100/60 text-amber-900" :
-                        healthTip?.category === "Evening" ? "bg-indigo-100/60 text-indigo-900" :
-                        "bg-emerald-100/60 text-emerald-900"
+                        "bg-indigo-100/60 text-indigo-900"
                     }`}>
                         <Quote className="absolute top-6 right-6 w-16 h-16 rotate-180 opacity-10 mix-blend-multiply" />
                         <div className="relative z-10">
                             <div className="flex items-center gap-2 mb-4 opacity-70">
                                 <Zap className="w-4 h-4 fill-current" />
-                                <span className="font-bold text-xs tracking-wider uppercase">{healthTip?.category || "Daily"} Insight</span>
+                                {/* Label changes to "Personalized Insight" if appointment exists */}
+                                <span className="font-bold text-xs tracking-wider uppercase">
+                                    {nextAppointment ? "Personalized Insight" : (healthTip?.category || "Daily") + " Insight"}
+                                </span>
                             </div>
-                            <p className="font-medium text-xl leading-relaxed mb-6">"{healthTip?.text || "Stay consistent with your health journey!"}"</p>
+                            
+                            {/* Uses the `aiInsight` from state (Powered by Gemini) */}
+                            <p className="font-medium text-xl leading-relaxed mb-6">"{aiInsight}"</p>
+                            
                             <div className="flex items-center gap-2 opacity-60">
                                 <div className="w-6 h-6 rounded-full bg-current opacity-20"></div>
                                 <span className="text-xs font-bold uppercase tracking-wide">BukCare AI</span>
@@ -343,7 +423,10 @@ const PatientDashboard = () => {
                                     </div>
                                     <div className="min-w-0">
                                         <h4 className="font-bold text-lg text-slate-900 truncate">Dr. {doc.name}</h4>
-                                        <p className="text-sm text-slate-500 truncate font-medium">{doc.specialization || "General Practice"}</p>
+                                        <p className="text-sm text-slate-500 truncate font-medium">
+                                            {/* Use helper here too for consistent display */}
+                                            {getSpecialization(doc)}
+                                        </p>
                                         <div className="flex items-center gap-1 mt-1 text-amber-500 bg-amber-50 w-fit px-2 py-0.5 rounded-md"><Star className="w-3 h-3 fill-current" /><span className="text-xs font-bold text-slate-700">Book to review</span></div>
                                     </div>
                                 </div>

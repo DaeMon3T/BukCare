@@ -21,10 +21,11 @@ import {
     X, 
     ChevronDown, 
     Eye, 
-    EyeOff 
+    EyeOff,
+    Plus,
 } from "lucide-react";
 import gsap from "gsap";
-import logo from "@/assets/images/bukcare_logo.png";
+import logo from "@/assets/images/icon_logo_name.png";
 
 // --- 1. UI COMPONENT: Custom Select (Glass Style) ---
 const CustomSelect = ({ label, name, value, options, onChange, disabled = false, placeholder = "Select..." }: any) => {
@@ -198,7 +199,7 @@ const CompleteProfile: React.FC = () => {
   }, [step]);
 
   // --------------------------------------------
-  // Handlers (PRESERVED LOGIC)
+  // Handlers (PRESERVED & ADDED LOGIC)
   // --------------------------------------------
   
   // UI Helper: Advance step
@@ -249,6 +250,33 @@ const CompleteProfile: React.FC = () => {
     if (e.target.files?.[0]) {
       setFormData({ ...formData, [e.target.name]: e.target.files[0] });
     }
+  };
+
+  // ✅ NEW: SPECIALIZATION HANDLERS (From Original)
+  const toggleSpecialization = (specId: string) => {
+    const current = formData.specializations;
+    const updated = current.includes(specId)
+      ? current.filter((id) => id !== specId)
+      : [...current, specId];
+    setFormData({ ...formData, specializations: updated });
+  };
+
+  const handleAddOtherSpecialization = () => {
+    if (formData.otherSpecialization?.trim()) {
+      const newSpec = formData.otherSpecialization.trim();
+      setFormData((prev) => ({
+        ...prev,
+        specializations: [...prev.specializations, newSpec],
+        otherSpecialization: "",
+      }));
+    }
+  };
+
+  const handleRemoveSpecialization = (idx: number) => {
+    setFormData((prev) => ({
+      ...prev,
+      specializations: prev.specializations.filter((_, i) => i !== idx),
+    }));
   };
 
   // Helper functions used in handleSubmit
@@ -305,6 +333,7 @@ const CompleteProfile: React.FC = () => {
       if (role === "doctor") {
         if (formData.license_number) payload.append("license_number", formData.license_number);
         if (formData.years_of_experience) payload.append("years_of_experience", formData.years_of_experience);
+        // ✅ FIXED: Correctly stringify specializations
         if (formData.specializations.length) payload.append("specializations", JSON.stringify(formData.specializations));
         if (formData.prc_license_front) payload.append("prc_license_front", formData.prc_license_front);
         if (formData.prc_license_back) payload.append("prc_license_back", formData.prc_license_back);
@@ -329,15 +358,23 @@ const CompleteProfile: React.FC = () => {
     <ErrorBoundary>
         <div ref={containerRef} className="bg-white min-h-screen font-sans text-slate-600 selection:bg-[#00aeef] selection:text-white overflow-x-hidden flex flex-col">
             
+            <div className="fixed inset-0 pointer-events-none z-0">
+                <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-blue-400/20 rounded-full blur-[100px] mix-blend-multiply" />
+                <div className="absolute top-[20%] right-[-10%] w-[600px] h-[600px] bg-purple-400/20 rounded-full blur-[100px] mix-blend-multiply" />
+                <div className="absolute bottom-[-10%] left-[20%] w-[500px] h-[500px] bg-emerald-400/20 rounded-full blur-[100px] mix-blend-multiply" />
+            </div>
+
             {/* --- NAV BAR --- */}
             <nav className="fixed w-full bg-white/90 backdrop-blur-xl border-b border-slate-100 z-50 h-20 flex items-center px-6 lg:px-12">
-                <Link to="/" className="flex items-center gap-2 group">
-                    <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-lg shadow-blue-500/20 group-hover:scale-105 transition-transform overflow-hidden">
-                        <img src={logo} className="w-full h-full object-cover"/>
-                    </div>
-                    <span className="text-xl font-bold text-slate-900 tracking-tight">
-                        Buk<span className="text-[#00aeef]">Care</span>
-                    </span>
+                <Link to="/" className="flex items-center gap-2 md:gap-3 group">
+                <div className="flex items-center gap-1 hover:scale-105 transition-transform cursor-pointer">
+                    {/* Logo */}
+                    <img 
+                        src={logo} 
+                        className="h-25 md:h-30 lg:h-35 w-auto object-contain transition-all duration-300" 
+                        alt="BukCare Logo" 
+                    />
+                </div>
                 </Link>
             </nav>
 
@@ -474,7 +511,7 @@ const CompleteProfile: React.FC = () => {
                                     )}
                                 </div>
 
-                                {/* DOCTOR SPECIFIC FIELDS */}
+                                {/* DOCTOR SPECIFIC FIELDS (WITH SPECIALIZATIONS FIXED) */}
                                 {role === "doctor" && (
                                     <div className="space-y-4 pt-2 p-4 bg-blue-50/50 rounded-2xl border border-blue-100">
                                         <h3 className="text-sm font-bold text-blue-700 uppercase tracking-wider flex items-center gap-2">
@@ -484,6 +521,52 @@ const CompleteProfile: React.FC = () => {
                                             <input type="text" name="license_number" value={formData.license_number} onChange={handleChange} placeholder="PRC License Number" className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#00aeef] outline-none" />
                                             <input type="number" name="years_of_experience" value={formData.years_of_experience} onChange={handleChange} placeholder="Years Experience" className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#00aeef] outline-none" />
                                         </div>
+
+                                        {/* ✅ SPECIALIZATION SELECTION RESTORED */}
+                                        <div className="space-y-2">
+                                            <label className="block text-xs font-bold text-slate-500 mb-1 ml-1 uppercase tracking-wider">Specialization</label>
+                                            <CustomSelect 
+                                                name="specializationSelect"
+                                                value=""
+                                                onChange={(e: any) => toggleSpecialization(e.target.value)}
+                                                options={[
+                                                    "General Practice", "Cardiology", "Dermatology", "Neurology", 
+                                                    "Pediatrics", "Psychiatry", "Surgery", "Orthopedics", 
+                                                    "Ophthalmology", "Radiology"
+                                                ].map(s => ({ value: s, label: s }))}
+                                                placeholder="Add Specialization..."
+                                            />
+                                            
+                                            {/* Other Specialization Input */}
+                                            <div className="flex gap-2">
+                                                <input 
+                                                    type="text" 
+                                                    name="otherSpecialization"
+                                                    value={formData.otherSpecialization}
+                                                    onChange={handleChange}
+                                                    placeholder="Or type other specialization..."
+                                                    className="flex-1 px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#00aeef] outline-none"
+                                                />
+                                                <button type="button" onClick={handleAddOtherSpecialization} className="bg-blue-600 text-white px-4 rounded-xl hover:bg-blue-700 transition-colors">
+                                                    <Plus className="w-5 h-5" />
+                                                </button>
+                                            </div>
+
+                                            {/* Selected Specializations Tags */}
+                                            {formData.specializations.length > 0 && (
+                                                <div className="flex flex-wrap gap-2 mt-2">
+                                                    {formData.specializations.map((spec, idx) => (
+                                                        <span key={idx} className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1">
+                                                            {spec}
+                                                            <button type="button" onClick={() => handleRemoveSpecialization(idx)} className="hover:text-red-500">
+                                                                <X className="w-3 h-3" />
+                                                            </button>
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+
                                         <div className="space-y-2">
                                             <label className="text-xs font-bold text-slate-500 uppercase">Upload PRC ID (Front/Back/Selfie)</label>
                                             <div className="grid grid-cols-3 gap-2">
