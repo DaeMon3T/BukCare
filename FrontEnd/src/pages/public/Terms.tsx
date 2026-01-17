@@ -313,16 +313,12 @@ const TermsAndPrivacy: React.FC = () => {
                                   <p className="mb-6">We employ industry-standard security measures to ensure your data never leaks.</p>
                                   <ul className="space-y-4">
                                       <li className="flex items-center gap-3">
-                                          <Lock className="w-5 h-5 text-green-400" />
-                                          <span><strong>Encrypted Storage:</strong> AES-256 encryption for database at rest.</span>
-                                      </li>
-                                      <li className="flex items-center gap-3">
                                           <ShieldCheck className="w-5 h-5 text-green-400" />
                                           <span><strong>Secure Transit:</strong> All data moves via HTTPS/SSL protocols.</span>
                                       </li>
                                       <li className="flex items-center gap-3">
                                           <Eye className="w-5 h-5 text-green-400" />
-                                          <span><strong>Access Control:</strong> Strict Role-Based Access (RBAC) for staff.</span>
+                                          <span><strong>Access Control:</strong> Strict Role-Based Access Control(RBAC) </span>
                                       </li>
                                   </ul>
                               </div>
