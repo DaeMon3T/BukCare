@@ -32,7 +32,6 @@ import toast from "react-hot-toast";
 interface Doctor {
   doctor_id: number;
   name: string;
-  // Support both key formats to match DoctorCard logic
   specialization?: string;
   specializations?: string[] | string;
   avatar?: string;
@@ -40,7 +39,7 @@ interface Doctor {
 
 interface Appointment {
   id: number;
-  doctor_id?: number; // Added to help match with doctor list
+  doctor_id?: number; 
   doctor_name: string;
   appointment_date: string;
   reason: string | null;
@@ -53,31 +52,20 @@ interface HealthTip {
   text: string;
 }
 
-// ✅ HELPER: Exact logic from DoctorCard.tsx to parse specializations
+// Exact logic from DoctorCard.tsx to parse specializations
 const getSpecialization = (data: any): string => {
-    // Try both possible keys
     const specs = data?.specialization || data?.specializations;
-    
     if (!specs) return "General Practice";
 
-    // 1. If it's already an array, join it
     if (Array.isArray(specs)) return specs.join(", ");
 
-    // 2. If it's a string, try to parse JSON or clean it
     if (typeof specs === "string") {
         try {
-            // Check if it looks like a JSON array e.g. "['Cardiology']"
             if (specs.startsWith("[") && specs.endsWith("]")) {
-                // Replace single quotes with double quotes for valid JSON if needed, 
-                // though standard JSON uses double. 
-                // Safer to just try parsing or regex if strictly formatted.
                 const parsed = JSON.parse(specs.replace(/'/g, '"')); 
                 if (Array.isArray(parsed)) return parsed.join(", ");
             }
-        } catch (e) {
-            // If parse fails, fall through to regex cleanup
-        }
-        // Remove brackets and quotes: ["Cardiology"] -> Cardiology
+        } catch (e) {}
         return specs.replace(/[\[\]"']/g, '');
     }
 
@@ -154,18 +142,18 @@ const PatientDashboard = () => {
             
             const nextAppt = upcoming[0] || null;
 
-            // ✅ FIX: Cross-reference doctor to get accurate specialization
+            // Cross-reference doctor to get accurate specialization
             if (nextAppt) {
-                // 1. Try to find the full doctor object from our doctors list
+                // Try to find the full doctor object from our doctors list
                 const matchedDoctor = allDoctors.find(d => 
                     d.doctor_id === nextAppt.doctor_id || d.name === nextAppt.doctor_name
                 );
 
-                // 2. Use the helper to format the specialization string correctly
+                // Use the helper to format the specialization string correctly
                 const rawSpec = matchedDoctor ? (matchedDoctor.specialization || matchedDoctor.specializations) : nextAppt.specialization;
                 const formattedSpec = getSpecialization({ specialization: rawSpec });
 
-                // 3. Update the appointment object with the clean string
+                // Update the appointment object with the clean string
                 setNextAppointment({ ...nextAppt, specialization: formattedSpec });
             } else {
                 setNextAppointment(null);
@@ -205,10 +193,10 @@ const PatientDashboard = () => {
   if (loading) return <div className="min-h-screen bg-slate-50 flex items-center justify-center"><div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div></div>;
 
   return (
-    // ✨ GLASSMORPHISM BACKGROUND WRAPPER
+    // GLASSMORPHISM BACKGROUND WRAPPER
     <div className="min-h-screen bg-[#F0F4F8] pb-20 relative overflow-hidden font-sans text-slate-800">
       
-      {/* 🎨 AMBIENT BACKGROUND BLOBS */}
+      {/* AMBIENT BACKGROUND BLOBS */}
       <div className="fixed inset-0 pointer-events-none z-0">
           <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-blue-400/20 rounded-full blur-[100px] mix-blend-multiply" />
           <div className="absolute top-[10%] right-[-10%] w-[600px] h-[600px] bg-purple-400/20 rounded-full blur-[100px] mix-blend-multiply" />
@@ -296,20 +284,20 @@ const PatientDashboard = () => {
 
                                     <h2 className="text-3xl md:text-4xl font-bold mb-1">Dr. {nextAppointment.doctor_name}</h2>
                                     
-                                    {/* ✅ SPECIALIZATION DISPLAY */}
+                                    {/* SPECIALIZATION DISPLAY */}
                                     <p className="text-white/80 text-sm font-bold uppercase tracking-widest mb-4">
                                         {nextAppointment.specialization || "Medical Specialist"}
                                     </p>
 
                                     <div className="flex flex-wrap gap-3 text-blue-50 mt-4">
-                                        <p className="flex items-center gap-2 bg-black/10 px-4 py-2 rounded-xl backdrop-blur-md border border-white/5">
-                                            <Calendar className="w-4 h-4" /> 
-                                            {formatDate(nextAppointment.appointment_date)}
-                                        </p>
-                                        <p className="flex items-center gap-2 bg-black/10 px-4 py-2 rounded-xl backdrop-blur-md border border-white/5">
-                                            <Clock className="w-4 h-4" />
-                                            {new Date(nextAppointment.appointment_date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                                        </p>
+                                            <p className="flex items-center gap-2 bg-black/10 px-4 py-2 rounded-xl backdrop-blur-md border border-white/5">
+                                                <Calendar className="w-4 h-4" /> 
+                                                {formatDate(nextAppointment.appointment_date)}
+                                            </p>
+                                            <p className="flex items-center gap-2 bg-black/10 px-4 py-2 rounded-xl backdrop-blur-md border border-white/5">
+                                                <Clock className="w-4 h-4" />
+                                                {new Date(nextAppointment.appointment_date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                            </p>
                                     </div>
                                 </div>
                                 
@@ -320,11 +308,13 @@ const PatientDashboard = () => {
                                     >
                                         View Details
                                     </button>
+                                    
+                                    {/* --- UPDATED: MESSAGE DOCTOR BUTTON (Match Navbar) --- */}
                                     <button 
-                                        onClick={() => navigate('/patient/messages')}
+                                        onClick={() => navigate(`/patient/messages?userId=${nextAppointment.doctor_id}`)}
                                         className="px-6 py-3.5 rounded-xl font-bold text-white border border-white/30 hover:bg-white/10 transition-colors flex-1 sm:flex-none text-center backdrop-blur-sm"
                                     >
-                                        Message
+                                        Message Doctor
                                     </button>
                                 </div>
                             </div>
@@ -375,7 +365,7 @@ const PatientDashboard = () => {
                             
                             <div className="flex items-center gap-2 opacity-60">
                                 <div className="w-6 h-6 rounded-full bg-current opacity-20"></div>
-                                <span className="text-xs font-bold uppercase tracking-wide">BukCare AI</span>
+                                <span className="text-xs font-bold uppercase tracking-wide">BukCare Health Tips</span>
                             </div>
                         </div>
                     </div>

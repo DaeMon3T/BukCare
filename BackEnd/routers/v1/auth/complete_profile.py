@@ -42,39 +42,39 @@ async def complete_profile(
     Completes a user's profile with address, personal info, and role.
     """
 
-    # 🔹 Find user
+    # Find user
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # 🔹 Convert IDs to integers (PSGC codes)
+    # Convert IDs to integers (PSGC codes)
     province_code = int(province_id)
     city_code = int(city_id)
     barangay_code = int(barangay_id)
 
-    # 🔹 Province - Create if doesn't exist
+    # Province - Create if doesn't exist
     province_obj = db.query(Province).filter(Province.id == province_code).first()
     if not province_obj:
         province_obj = Province(id=province_code, name=province_name.strip())
         db.add(province_obj)
         db.commit()
 
-    # 🔹 City - Create if doesn't exist
+    # City - Create if doesn't exist
     city_obj = db.query(City).filter(City.id == city_code).first()
     if not city_obj:
         city_obj = City(id=city_code, name=city_name.strip(), province_id=province_code)
         db.add(city_obj)
         db.commit()
 
-    # 🔹 Barangay - Create if doesn't exist
+    # Barangay - Create if doesn't exist
     barangay_obj = db.query(Barangay).filter(Barangay.id == barangay_code).first()
     if not barangay_obj:
         barangay_obj = Barangay(id=barangay_code, name=barangay_name.strip(), city_id=city_code)
         db.add(barangay_obj)
         db.commit()
 
-    # 🔹 Update user info
-    user.sex = sex == "1"
+    # Update user info
+    user.sex = str(sex).lower() in ["true", "false"]
     user.dob = datetime.strptime(dob, "%Y-%m-%d").date()
     user.contact_number = contact_number
     user.password = get_password_hash(password)
@@ -83,7 +83,7 @@ async def complete_profile(
     user.city_id = city_code
     user.barangay_id = barangay_code
 
-    # 🔹 Assign user role
+    # Assign user role
     if role.lower() == "doctor":
         user.role = UserRole.DOCTOR
     elif role.lower() == "patient":
@@ -91,7 +91,7 @@ async def complete_profile(
     else:
         user.role = UserRole.PENDING
 
-    # 🔹 Handle doctor-specific fields
+    # Handle doctor-specific fields
     if role.lower() == "doctor":
         # 🛡️ CHECK IF DOCTOR EXISTS TO PREVENT CRASH
         doctor = db.query(Doctor).filter(Doctor.user_id == user.id).first()
@@ -109,7 +109,7 @@ async def complete_profile(
             if license_number: doctor.license_number = license_number
             if years_of_experience: doctor.years_of_experience = int(years_of_experience)
 
-        # 🚀 OPTIMIZED: Upload all 3 images in parallel (Much Faster!)
+        # Upload all 3 images in parallel (Much Faster!)
         async def upload_async(file_obj, folder_path):
             if not file_obj: return None
             try:
@@ -140,7 +140,7 @@ async def complete_profile(
         if results[2]: doctor.prc_license_selfie = results[2]
 
         
-        # 🛡️ ROBUST SPECIALIZATION HANDLING
+        # ROBUST SPECIALIZATION HANDLING
         if specializations:
             try:
                 specs = json.loads(specializations)
@@ -159,10 +159,10 @@ async def complete_profile(
                     spec = db.query(Specialization).filter(Specialization.name == str(spec_name_or_id).strip()).first()
 
                 if not spec:
-                    # 🛑 SAFETY GUARD: If frontend sent "6" and we didn't find it,
+                    # If frontend sent "6" and we didn't find it,
                     # DO NOT create a specialization named "6". Skip it!
                     if str(spec_name_or_id).isdigit():
-                        print(f"⚠️ Warning: Specialization ID {spec_name_or_id} not found in DB. Skipping creation.")
+                        print(f"Warning: Specialization ID {spec_name_or_id} not found in DB. Skipping creation.")
                         continue 
 
                     # Only create if it's a real name (e.g., "Neuro-Surgery")
@@ -177,11 +177,11 @@ async def complete_profile(
             # SAVE TO JSON COLUMN (Fixes the empty column issue)
             doctor.specializations_json = json.dumps(found_names)
 
-    # 🔹 Final commit for all data
+    # Final commit for all data
     db.commit()
     db.refresh(user)
 
-    # 🔹 Create tokens
+    # Create tokens
     access_token = create_access_token(
         data={"user_id": user.id, "email": user.email, "role": user.role.value}
     )

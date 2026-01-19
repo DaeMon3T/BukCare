@@ -11,7 +11,8 @@ import {
   Ban,
   AlertTriangle,
   Calendar,
-  FileText
+  FileText,
+  Check // <--- Added Check icon
 } from "lucide-react";
 import { useWebSocket } from "@/context/WebSocketContext";
 import ReviewModal from "@/components/ReviewModal"; 
@@ -29,12 +30,11 @@ interface Appointment {
   created_at: string;
   updated_at: string;
   has_reviewed?: boolean; 
-  doctor_avatar?: string;         // Profile picture URL
-  doctor_specialization?: string; // e.g. "Cardiologist"
+  doctor_avatar?: string;
+  doctor_specialization?: string;
 }
 
 // --- HELPER COMPONENT: AVATAR ---
-// Handles image display with fallback to initials if image fails or is missing
 const DoctorAvatar = ({ 
     src, 
     name, 
@@ -113,7 +113,6 @@ const PatientAppointments = () => {
                 : appt
             )
           );
-          toast.success(`Appointment status updated to ${status}`);
       }
     }
 
@@ -134,7 +133,17 @@ const PatientAppointments = () => {
   };
 
   const handleReviewSuccess = () => {
-    fetchAppointments(true); // Refresh data to update "has_reviewed" status if backend supports it
+    // Optimistically update the list so the button disables instantly
+    if (selectedApptForReview) {
+        setAppointments(prev => prev.map(a => 
+            a.id === selectedApptForReview.id 
+                ? { ...a, has_reviewed: true } 
+                : a
+        ));
+    }
+    fetchAppointments(true); // Refresh data from backend to confirm
+    toast.success("Review submitted successfully!");
+    setIsReviewOpen(false);
   };
 
   // --- CANCEL HANDLERS ---
@@ -405,12 +414,18 @@ const PatientAppointments = () => {
                                             <td className="py-5 px-6 align-top text-right">
                                                 <div className="flex justify-end gap-2">
                                                     {appt.status === "completed" && (
-                                                        <button
-                                                            onClick={() => handleOpenReview(appt)}
-                                                            className="px-3 py-1.5 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-colors text-xs font-bold border border-indigo-100 flex items-center gap-1"
-                                                        >
-                                                            <Star className="w-3 h-3" /> Rate
-                                                        </button>
+                                                        appt.has_reviewed ? (
+                                                            <div className="px-3 py-1.5 rounded-lg bg-slate-50 text-slate-400 text-xs font-bold border border-slate-100 flex items-center gap-1 cursor-default">
+                                                                <Check className="w-3 h-3" /> Reviewed
+                                                            </div>
+                                                        ) : (
+                                                            <button
+                                                                onClick={() => handleOpenReview(appt)}
+                                                                className="px-3 py-1.5 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-colors text-xs font-bold border border-indigo-100 flex items-center gap-1"
+                                                            >
+                                                                <Star className="w-3 h-3" /> Rate
+                                                            </button>
+                                                        )
                                                     )}
                                                     {["pending", "confirmed"].includes(appt.status) && (
                                                         <button
@@ -480,12 +495,18 @@ const PatientAppointments = () => {
                                     {/* Actions */}
                                     <div className="flex gap-3">
                                         {appt.status === "completed" && (
-                                            <button 
-                                                onClick={() => handleOpenReview(appt)}
-                                                className="flex-1 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-bold shadow-lg shadow-indigo-200 active:scale-95 transition-transform flex items-center justify-center gap-2"
-                                            >
-                                                <Star className="w-4 h-4" /> Rate Doctor
-                                            </button>
+                                            appt.has_reviewed ? (
+                                                <div className="flex-1 py-2.5 rounded-xl bg-slate-50 text-slate-400 text-sm font-bold border border-slate-200 flex items-center justify-center gap-2 cursor-default">
+                                                    <Check className="w-4 h-4" /> Reviewed
+                                                </div>
+                                            ) : (
+                                                <button 
+                                                    onClick={() => handleOpenReview(appt)}
+                                                    className="flex-1 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-bold shadow-lg shadow-indigo-200 active:scale-95 transition-transform flex items-center justify-center gap-2"
+                                                >
+                                                    <Star className="w-4 h-4" /> Rate Doctor
+                                                </button>
+                                            )
                                         )}
                                         {["pending", "confirmed"].includes(appt.status) && (
                                             <button 

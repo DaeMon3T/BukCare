@@ -463,7 +463,7 @@ export default function DoctorProfile() {
                     <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
                         <p className="text-xs font-bold text-slate-400 uppercase mb-1 tracking-wider">Primary Specialization</p>
                         <p className="text-lg font-bold text-slate-700">
-                            {doctorData?.specialization || "General Practice"}
+                            {doctorData?.specialization.replace(/[\[\]"]/g, "") || "General Practice"}
                         </p>
                     </div>
                     

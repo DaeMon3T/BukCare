@@ -36,6 +36,7 @@ class AppointmentResponse(BaseModel):
     updated_at: datetime
     patient_name: Optional[str] = None
     doctor_name: Optional[str] = None
+    has_reviewed: bool = False
 
     class Config:
         from_attributes = True

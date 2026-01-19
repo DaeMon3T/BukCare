@@ -22,19 +22,20 @@ import {
 } from "lucide-react";
 
 interface UserProfile {
-  fname: string;
-  mname?: string;
-  lname: string;
-  sex?: boolean | null;
-  dob?: string;
-  contact_number?: string;
-  email: string;
-  picture?: string;
-  address?: {
-    province?: string;
-    city?: string;
-    barangay?: string;
-  };
+    id?: number;
+    fname: string;
+    mname?: string;
+    lname: string;
+    sex?: boolean | null;
+    dob?: string;
+    contact_number?: string;
+    email: string;
+    picture?: string;
+    address?: {
+        province?: string;
+        city?: string;
+        barangay?: string;
+    };
 }
 
 // --- MODAL COMPONENT ---
@@ -89,10 +90,15 @@ const EditProfileModal = ({
                 </div>
                 <div className="space-y-1.5">
                     <label className="text-xs font-bold text-slate-500 ml-1">Gender</label>
-                    <select name="sex" value={formData.sex === true ? "true" : formData.sex === false ? "false" : ""} onChange={handleChange} className="w-full p-3.5 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none bg-slate-50/50 transition-all font-medium">
-                      <option value="">Select...</option>
-                      <option value="true">Male</option>
-                      <option value="false">Female</option>
+                    <select 
+                        name="sex" 
+                        value={formData.sex === null ? "" : String(formData.sex)} 
+                        onChange={handleChange} 
+                        className="w-full p-3.5 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none bg-slate-50/50 transition-all font-medium"
+                    >
+                        <option value="">Select...</option>
+                        <option value="true">Male</option>
+                        <option value="false">Female</option>
                     </select>
                 </div>
                 <div className="space-y-1.5 md:col-span-2">
@@ -183,17 +189,24 @@ export default function Profile() {
   }, []);
 
   const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    if (["province", "city", "barangay"].includes(name)) {
-      setFormData(prev => ({...prev, address: { ...prev.address, [name]: value }}));
-      return;
-    }
-    if (name === "sex") {
-      setFormData((prev) => ({...prev, sex: value === "true" ? true : value === "false" ? false : null}));
-    } else {
-      setFormData((prev) => ({ ...prev, [name]: value }));
-    }
-  };
+        const { name, value } = e.target;
+
+        if (["province", "city", "barangay"].includes(name)) {
+        setFormData(prev => ({...prev, address: { ...prev.address, [name]: value }}));
+        return;
+        }
+
+        if (name === "sex") {
+        let newSexValue: boolean | null = null;
+        
+        if (value === "true") newSexValue = true;
+        if (value === "false") newSexValue = false;
+
+        setFormData((prev) => ({ ...prev, sex: newSexValue }));
+        } else {
+        setFormData((prev) => ({ ...prev, [name]: value }));
+        }
+    };
 
   const handleSave = async () => {
     setSaving(true);
@@ -299,7 +312,8 @@ export default function Profile() {
                             <h1 className="text-3xl font-bold text-slate-900 leading-tight">{formData.fname} {formData.lname}</h1>
                             <div className="flex items-center justify-center sm:justify-start gap-2 mt-1 text-slate-500 font-medium">
                                 <ShieldCheck className="w-4 h-4 text-blue-500" />
-                                <span className="text-sm">Patient ID: PT-{Date.now().toString().slice(-4)}</span>
+                                {/* --- UPDATED ID DISPLAY HERE --- */}
+                                <span className="text-sm">Patient ID: 20260{formData.id}</span>
                             </div>
                         </div>
 

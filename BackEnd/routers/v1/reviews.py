@@ -7,8 +7,8 @@ from datetime import datetime
 from core.database import get_db
 from models.review import Review
 from models.users import User
-from models.doctor import Doctor  # Needed for ID translation
-from models.appointment import Appointment, AppointmentStatus # Needed for verification
+from models.doctor import Doctor  
+from models.appointment import Appointment, AppointmentStatus 
 from routers.v1.dependencies import get_current_user
 
 router = APIRouter()
@@ -27,8 +27,6 @@ class ReviewOut(BaseModel):
     rating: int
     comment: Optional[str]
     created_at: datetime
-    
-    # Optional: Return patient details if needed
     patient: Optional[dict] = None 
 
     class Config:
@@ -56,37 +54,36 @@ def create_review(
     if not appointment:
         raise HTTPException(status_code=404, detail="Appointment record not found")
 
-    # 1. Ownership Check: Did YOU book this?
+    # Ownership Check: Did YOU book this?
     if appointment.patient_id != current_user.id:
         raise HTTPException(status_code=403, detail="You can only review your own appointments")
 
-    # 2. Status Check: Is it actually done?
+    # Status Check: Is it actually done?
     if appointment.status != AppointmentStatus.COMPLETED:
         raise HTTPException(status_code=400, detail="You can only review completed appointments")
 
-    # 3. Doctor Check: Does the appointment match the doctor being reviewed?
-    # Note: Appointment stores the doctor's USER_ID.
-    # The frontend usually sends the doctor's USER_ID in review.doctor_id if it came from the appointment object.
+    # Doctor Check
     if appointment.doctor_id != review.doctor_id:
-        # Edge Case: If frontend sent Profile ID, we might need to handle that, 
-        # but usually appointment.doctor_id is reliable.
-        # We'll allow it if it matches the Appointment's stored doctor ID.
+        # Optional: You could raise error here if IDs don't match, 
+        # but for now we trust the appointment ID's doctor.
         pass 
 
-    # 4. Duplicate Check (Optional but recommended)
-    # Check if a review already exists for this appointment
-    # existing_review = db.query(Review).filter(Review.appointment_id == review.appointment_id).first()
-    # if existing_review:
-    #     raise HTTPException(status_code=400, detail="You have already reviewed this appointment")
+    # DUPLICATE CHECK (ACTIVATED)
+    # This prevents the user from spamming reviews for the same visit
+    existing_review = db.query(Review).filter(Review.appointment_id == review.appointment_id).first()
+    if existing_review:
+        raise HTTPException(status_code=400, detail="You have already reviewed this appointment")
 
     # Save the review
     new_review = Review(
-        doctor_id=appointment.doctor_id, # Force use of the correct User ID from appointment
+        doctor_id=appointment.doctor_id, 
         patient_id=current_user.id,
         rating=review.rating,
-        comment=review.comment
-        # appointment_id=review.appointment_id # Uncomment if you added this column to DB
+        comment=review.comment,
+        
+        appointment_id=review.appointment_id 
     )
+    
     db.add(new_review)
     db.commit()
     db.refresh(new_review)
@@ -101,26 +98,22 @@ def create_review(
         "patient": {"fname": current_user.fname, "lname": current_user.lname}
     }
 
-# 2. Get Reviews for a Specific Doctor (Fixed ID Mismatch)
+# 2. Get Reviews for a Specific Doctor
 @router.get("/{doctor_id}", response_model=List[ReviewOut])
 def get_doctor_reviews(doctor_id: int, db: Session = Depends(get_db)):
     """
     Fetch reviews for a doctor.
-    Handles the translation from Doctor Profile ID (e.g. 1) to User ID (e.g. 3).
+    Handles the translation from Doctor Profile ID to User ID.
     """
     
-    # A. First, try to find the doctor using the Profile ID (e.g., 1)
+    # A. First, try to find the doctor using the Profile ID
     doctor = db.query(Doctor).filter(Doctor.doctor_id == doctor_id).first()
     
     target_user_id = doctor_id # Default fallback
 
     if doctor:
-        # B. If found, use the REAL User ID (e.g., 3) which is what Reviews table uses
+        # B. If found, use the REAL User ID
         target_user_id = doctor.user_id
-    else:
-        # C. If not found in Doctor table, check if it might be a User ID directly?
-        # Or just return empty list if doctor doesn't exist.
-        pass
 
     # Query reviews using the correct ID
     reviews = db.query(Review).options(joinedload(Review.patient))\
