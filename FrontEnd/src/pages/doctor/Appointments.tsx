@@ -377,7 +377,8 @@ const DoctorAppointments = () => {
                             </div>
                             <div>
                               <p className="text-sm font-bold text-slate-900">{appt.patient_name}</p>
-                              <p className="text-xs text-slate-500">ID: #{appt.patient_id}</p>
+                              {/* --- UPDATED ID FORMAT HERE (Desktop) --- */}
+                              <p className="text-xs text-slate-500">ID: 20260{appt.patient_id}</p>
                             </div>
                           </div>
                         </td>
@@ -487,7 +488,8 @@ const DoctorAppointments = () => {
                           </div>
                           <div>
                             <p className="text-sm font-bold text-slate-900">{appt.patient_name}</p>
-                            <p className="text-xs text-slate-500">ID: #{appt.patient_id}</p>
+                            {/* --- UPDATED ID FORMAT HERE (Mobile) --- */}
+                            <p className="text-xs text-slate-500">ID: 2026-{appt.patient_id}</p>
                           </div>
                       </div>
                       <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold border ${statusStyle.badge}`}>

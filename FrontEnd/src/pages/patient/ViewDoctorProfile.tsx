@@ -119,7 +119,7 @@ const ViewDoctorProfile: React.FC = () => {
                             <h1 className="text-3xl font-bold text-slate-900 leading-tight">Dr. {doctor.name}</h1>
                             <div className="flex items-center justify-center sm:justify-start gap-2 mt-1 text-slate-500 font-medium">
                                 <span className="px-3 py-0.5 rounded-full bg-teal-50 text-teal-700 text-xs font-bold uppercase tracking-wider border border-teal-100">
-                                    {doctor.specialization}
+                                    {doctor.specialization.replace(/[\[\]"]/g, "")}
                                 </span>
                                 <span className="text-slate-300">•</span>
                                 
@@ -225,7 +225,7 @@ const ViewDoctorProfile: React.FC = () => {
                 ) : (
                     <div className="text-slate-600 leading-relaxed space-y-4">
                         <p>
-                            Dr. {doctor.name} is a board-certified <strong>{doctor.specialization}</strong> dedicated to providing comprehensive care to patients. 
+                            Dr. {doctor.name} is a board-certified <strong>{doctor.specialization.replace(/[\[\]"]/g, "")}</strong> dedicated to providing comprehensive care to patients. 
                             With over <strong>{doctor.years_of_experience} years of experience</strong> in the field, Dr. {doctor.name.split(" ").pop()} has a proven track record of accurate diagnoses and effective treatment plans.
                         </p>
                         <p>

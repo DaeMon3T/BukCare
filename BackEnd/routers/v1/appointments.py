@@ -41,7 +41,8 @@ def get_appointments(
 ):
     """Get appointments with optional filtering"""
     
-    from models.doctor import Doctor 
+    from models.doctor import Doctor
+    from models.review import Review
 
     query = db.query(Appointment).options(
         joinedload(Appointment.patient),
@@ -88,6 +89,7 @@ def get_appointments(
                         specialization = str(specs)
                 elif hasattr(doc_profile, "specialization") and doc_profile.specialization:
                     specialization = doc_profile.specialization
+            
             if appointment.doctor:
                 if hasattr(appointment.doctor, "picture") and appointment.doctor.picture:
                     avatar = appointment.doctor.picture
@@ -96,6 +98,22 @@ def get_appointments(
 
         except Exception as e:
             print(f"Error fetching details for appt {appointment.id}: {e}")
+
+        # --- CHECK IF REVIEW EXISTS ---
+        has_reviewed = False
+        try:
+            # Check if there is a review linked to this appointment ID
+            # Assuming your Review model has an 'appointment_id' column
+            existing_review = db.query(Review).filter(
+                Review.appointment_id == appointment.id
+            ).first()
+            
+            if existing_review:
+                has_reviewed = True
+                
+        except Exception as e:
+            print(f"Error checking review status: {e}")
+        # --------------------------------------------
 
         results.append({
             "id": appointment.id,
@@ -110,7 +128,8 @@ def get_appointments(
             "status": appointment.status.value,
             "notes": appointment.notes,
             "created_at": appointment.created_at,
-            "updated_at": appointment.updated_at
+            "updated_at": appointment.updated_at,
+            "has_reviewed": has_reviewed 
         })
     
     return results
@@ -933,10 +952,10 @@ async def reschedule_appointment(
                     body=html_body
                 )
             
-            # CASE B: Patient Requested -> Email Doctor
+            # Patient Requested -> Email Doctor
             elif not is_doctor and doctor_user.email:
                 html_body = EmailService.get_appointment_template(
-                    action="request", # Treat as a request since it's Pending
+                    action="request", 
                     user_name=f"{patient_user.fname} {patient_user.lname}",
                     doctor_name=f"{doctor_user.fname} {doctor_user.lname}",
                     date=request.new_date.strftime("%B %d, %Y"),
@@ -953,7 +972,7 @@ async def reschedule_appointment(
 
     except Exception as e:
         print(f"!!! DEBUG Notification/Email Error: {e}")
-        # Don't crash the request just because email failed
+        # Fix ang crash sa yawa nga email or notification errors
 
     return {
         "id": appointment.id,

@@ -372,7 +372,13 @@ const BookAppointment: React.FC = () => {
                     <div className="animate-fade-in space-y-6">
                         <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
                             <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Pick a Date</label>
-                            <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} min={getLocalTodayStr()} className="w-full bg-white border border-slate-200 rounded-lg px-4 py-3 text-slate-700 font-medium focus:ring-2 focus:ring-blue-500 outline-none" />
+                            <input 
+                                type="date" 
+                                value={selectedDate} 
+                                onChange={(e) => setSelectedDate(e.target.value)} 
+                                min={getLocalTodayStr()} 
+                                onKeyDown={(e) => e.preventDefault()}
+                                className="w-full bg-white border border-slate-200 rounded-lg px-4 py-3 text-slate-700 font-medium focus:ring-2 focus:ring-blue-500 outline-none" />
                         </div>
 
                         {selectedDate && (

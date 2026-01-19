@@ -137,7 +137,7 @@ const ChatList: React.FC<ChatListProps> = ({ conversations, activeChat, onSelect
                       )}
                     </div>
                     {/* Status Dot */}
-                    <div className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-white rounded-full"></div>
+                    {/* <div className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-white rounded-full"></div> */}
                   </div>
                   
                   <div className="flex-1 min-w-0">
@@ -154,7 +154,7 @@ const ChatList: React.FC<ChatListProps> = ({ conversations, activeChat, onSelect
                     
                     <div className="flex justify-between items-center h-5">
                       {isTyping ? (
-                          // 🟢 TYPING ANIMATION
+                          // TYPING ANIMATION
                           <div className="flex items-center gap-1">
                               <span className="w-1 h-1 bg-purple-500 rounded-full animate-bounce"></span>
                               <span className="w-1 h-1 bg-purple-500 rounded-full animate-bounce delay-75"></span>

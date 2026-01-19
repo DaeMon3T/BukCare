@@ -42,6 +42,7 @@ const CustomSelect = ({ label, name, value, options, onChange, disabled = false,
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // FIX: Ensure comparison is done as strings to catch boolean/string mismatches
   const selectedOption = options.find((opt: any) => String(opt.value) === String(value));
 
   return (
@@ -214,7 +215,14 @@ const CompleteProfile: React.FC = () => {
   const handleChange = (e: ReactChangeEvent<HTMLInputElement | HTMLSelectElement> | any) => {
     const { name, value } = e.target;
 
-    if (name === "province_id") {
+    // --- FIX FOR SEX/GENDER ---
+    if (name === "sex") {
+        // Force the value to stay as the string "true" or "false" in the state
+        // This ensures the CustomSelect component can match it to the options
+        setFormData({ ...formData, [name]: String(value) });
+    }
+    // --- LOCATION HANDLERS ---
+    else if (name === "province_id") {
       setFormData({
         ...formData,
         [name]: value,
@@ -313,7 +321,8 @@ const CompleteProfile: React.FC = () => {
       
       payload.append("user_id", String(userId));
       payload.append("role", role || "");
-      payload.append("sex", formData.sex); // This sends "true" or "false" string now
+      // FIX: Ensure 'sex' is sent as "true" or "false" string
+      payload.append("sex", String(formData.sex)); 
       payload.append("dob", formData.dob);
       payload.append("contact_number", formData.contact_number);
       payload.append("password", formData.password);
@@ -436,7 +445,7 @@ const CompleteProfile: React.FC = () => {
                                         <CustomSelect 
                                             label="Gender"
                                             name="sex"
-                                            value={formData.sex}
+                                            value={formData.sex} // Now this holds the string "true" or "false"
                                             onChange={handleChange}
                                             options={[
                                                 { value: "true", label: "Male" }, 
@@ -570,13 +579,63 @@ const CompleteProfile: React.FC = () => {
                                         <div className="space-y-2">
                                             <label className="text-xs font-bold text-slate-500 uppercase">Upload PRC ID (Front/Back/Selfie)</label>
                                             <div className="grid grid-cols-3 gap-2">
-                                                {['prc_license_front', 'prc_license_back', 'prc_license_selfie'].map((field) => (
-                                                    <label key={field} className="h-24 bg-white border-2 border-dashed border-slate-300 rounded-xl flex flex-col items-center justify-center text-slate-400 hover:border-[#00aeef] hover:text-[#00aeef] hover:bg-blue-50 transition cursor-pointer text-xs text-center p-2">
-                                                        <Upload className="w-5 h-5 mb-1" />
-                                                        {field.replace('prc_license_', '').toUpperCase()}
-                                                        <input type="file" name={field} onChange={handleFileChange} className="hidden" accept="image/*" />
-                                                    </label>
-                                                ))}
+                                                {['prc_license_front', 'prc_license_back', 'prc_license_selfie'].map((field) => {
+                                                    // Get the current file from state
+                                                    // @ts-ignore - Suppress indexing error if strict mode is on
+                                                    const file = formData[field];
+
+                                                    return (
+                                                        <label 
+                                                            key={field} 
+                                                            className={`h-28 relative border-2 border-dashed rounded-xl flex flex-col items-center justify-center transition-all cursor-pointer overflow-hidden group
+                                                                ${file 
+                                                                    ? "border-emerald-400 bg-emerald-50" // Style when file exists
+                                                                    : "border-slate-300 bg-white hover:border-[#00aeef] hover:bg-blue-50" // Style when empty
+                                                                }`}
+                                                        >
+                                                            {file ? (
+                                                                /* --- STATE 1: FILE SELECTED (PREVIEW) --- */
+                                                                <>
+                                                                    {/* Image Thumbnail */}
+                                                                    <img 
+                                                                        src={URL.createObjectURL(file)} 
+                                                                        alt="Preview" 
+                                                                        className="absolute inset-0 w-full h-full object-cover opacity-90 group-hover:scale-105 transition-transform duration-500" 
+                                                                    />
+                                                                    
+                                                                    {/* Green Check Overlay */}
+                                                                    <div className="absolute inset-0 bg-black/20 flex flex-col items-center justify-center transition-opacity">
+                                                                        <div className="bg-emerald-500 text-white p-1.5 rounded-full shadow-lg mb-1">
+                                                                            <CheckCircle2 className="w-5 h-5" />
+                                                                        </div>
+                                                                        <span className="bg-white/90 text-[10px] font-bold px-2 py-0.5 rounded-full text-slate-700 shadow-sm max-w-[90%] truncate">
+                                                                            {file.name}
+                                                                        </span>
+                                                                    </div>
+                                                                </>
+                                                            ) : (
+                                                                /* --- STATE 2: EMPTY (UPLOAD BUTTON) --- */
+                                                                <>
+                                                                    <div className="p-3 bg-slate-100 rounded-full mb-2 group-hover:bg-blue-100 group-hover:text-[#00aeef] transition-colors text-slate-400">
+                                                                        <Upload className="w-5 h-5" />
+                                                                    </div>
+                                                                    <span className="text-[10px] font-bold text-slate-400 group-hover:text-[#00aeef] text-center uppercase tracking-wide">
+                                                                        {field.replace('prc_license_', '')}
+                                                                    </span>
+                                                                </>
+                                                            )}
+
+                                                            {/* Actual Hidden Input */}
+                                                            <input 
+                                                                type="file" 
+                                                                name={field} 
+                                                                onChange={handleFileChange} 
+                                                                className="hidden" 
+                                                                accept="image/*" 
+                                                            />
+                                                        </label>
+                                                    );
+                                                })}
                                             </div>
                                         </div>
                                     </div>

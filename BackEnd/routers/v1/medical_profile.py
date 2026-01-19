@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from uuid import UUID
+import re
 
 from core.database import get_db
 from models.users import User, UserRole
@@ -14,7 +15,7 @@ router = APIRouter(
 )
 
 # ==========================================
-# 1. PATIENT ENDPOINTS (My Profile)
+# PATIENT ENDPOINTS (My Profile)
 # ==========================================
 
 @router.get("/me", response_model=MedicalProfileOut)
@@ -47,8 +48,6 @@ def update_my_medical_profile(
 ):
     """
     Patient updates their OWN info (Emergency Contact, etc.).
-    Note: In a stricter version, we might prevent them from changing 
-    Blood Type/Allergies without doctor approval.
     """
     profile = db.query(MedicalProfile).filter(MedicalProfile.user_id == current_user.id).first()
     
@@ -67,35 +66,87 @@ def update_my_medical_profile(
 
 
 # ==========================================
-# 2. DOCTOR ENDPOINTS (The Scanner)
+# DOCTOR ENDPOINTS (The Scanner)
 # ==========================================
 
-@router.get("/scan/{qr_uid}", response_model=MedicalProfileOut)
+# Changed argument from `qr_uid: UUID` to `search_term: str`
+@router.get("/scan/{search_term}") 
 def scan_patient_qr(
-    qr_uid: UUID,
+    search_term: str,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
     CRITICAL SECURITY ENDPOINT
-    1. Checks if the requester is actually a DOCTOR.
-    2. Looks up the patient by the unique UUID from the QR code.
+    1. Checks if requester is a DOCTOR.
+    2. SMART SEARCH:
+       - If input looks like '202605' -> Extract '5' and search by User ID
+       - If input is a UUID -> Search by unique medical_uid (QR Code)
     """
     
-    # 1. Security Check: Only Doctors (or Admins) can scan
+    # 1. Security Check
     if current_user.role not in [UserRole.DOCTOR, UserRole.ADMIN]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Access denied. Only doctors can scan patient QR codes."
         )
 
-    # 2. Database Lookup
-    profile = db.query(MedicalProfile).filter(MedicalProfile.medical_uid == qr_uid).first()
+    result = None
     
-    if not profile:
+    # 2. Determine Search Strategy
+    
+    # STRATEGY A: Is it a Custom Student ID? (e.g. "2026012")
+    # We check if it starts with "20260" and the rest are digits
+    custom_id_match = re.match(r"^20260(\d+)$", search_term)
+    
+    if custom_id_match:
+        # Extract the real ID (e.g., "12" from "2026012")
+        extracted_id = int(custom_id_match.group(1))
+        
+        # Search by User ID directly
+        result = db.query(MedicalProfile, User)\
+            .join(User, MedicalProfile.user_id == User.id)\
+            .filter(MedicalProfile.user_id == extracted_id)\
+            .first()
+            
+    # STRATEGY B: Is it a valid UUID? (QR Code Scan)
+    else:
+        try:
+            # Validate UUID format
+            uuid_obj = UUID(search_term)
+            
+            # Search by Medical UUID
+            result = db.query(MedicalProfile, User)\
+                .join(User, MedicalProfile.user_id == User.id)\
+                .filter(MedicalProfile.medical_uid == uuid_obj)\
+                .first()
+        except ValueError:
+            # If it's neither a custom ID nor a UUID, fail early
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid ID format. Please scan a valid QR or enter a Student ID (e.g., 202605)."
+            )
+
+    # 3. Process Result
+    if not result:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Invalid QR Code. Patient profile not found."
+            detail="Patient profile not found."
         )
         
-    return profile
+    profile, user_data = result
+
+    # 4. Return Merged Data
+    return {
+        "id": profile.id,
+        "user_id": profile.user_id,
+        "medical_uid": str(profile.medical_uid),
+        "blood_type": profile.blood_type,
+        "allergies": profile.allergies,
+        "emergency_contact_name": profile.emergency_contact_name,
+        "emergency_contact_number": profile.emergency_contact_number,
+        # Joined User Data
+        "fname": user_data.fname,
+        "lname": user_data.lname,
+        "picture": user_data.picture
+    }
