@@ -30,8 +30,9 @@ const FindDoctor: React.FC = () => {
   }, [searchParams]);
 
   const filters = [
-    "All", "General Practice", "Cardiology", "Neurologist", 
-    "Pediatrics", "Orthopedics", "Ophthalmology", "Dermatology"
+    "All", "General Practice", "Cardiology", "Neurology", 
+    "Pediatrics", "Orthopedics", "Ophthalmology", "Dermatology", 
+    "Internal Medicine", "Psychiatry", "Surgery", "Obstetrics and Gynecology"
   ];
 
   // HELPER: Parse Doctor Data (Reusable)
