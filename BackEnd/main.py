@@ -83,15 +83,15 @@ def create_app() -> FastAPI:
     def seed_specializations(db: Session):
         standard_specs = [
             "General Practice",
-            "Pediatrics",
-            "Dermatology",
-            "Neurology",
-            "Internal Medicine",
             "Cardiology",
-            "Psychiatry",
-            "Surgery",
+            "Neurology",
+            "Pediatrics",
             "Orthopedics",
             "Ophthalmology",
+            "Dermatology",
+            "Internal Medicine",
+            "Psychiatry",
+            "Surgery",
             "Obstetrics and Gynecology",
         ]
 
