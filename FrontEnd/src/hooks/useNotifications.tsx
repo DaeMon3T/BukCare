@@ -3,9 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { useWebSocket } from "@/context/WebSocketContext"; 
 import { useAuth } from "@/context/AuthContext"; 
 import api from "@/services/api"; 
-import toast from "react-hot-toast";
-import notificationSound from "@/assets/sounds/notification2.mp3";
-import { Bell, X, CheckCircle } from "lucide-react"; 
 
 export interface Notification {
   id: number;
@@ -45,17 +42,17 @@ export const useNotifications = (userId?: number) => {
     fetchNotifications();
   }, [fetchNotifications]);
 
-  // 2. Handle Real-Time Messages
+  // 2. Handle Real-Time Messages (UPDATE LIST ONLY)
   useEffect(() => {
     if (!lastMessage) return;
 
-    // 🛑 STOP! FILTER OUT CHAT & SYSTEM EVENTS HERE
-    // We strictly ignore Chat Messages, Typing Indicators, AND Deleted Messages
+    // 🛑 STOP! FILTER OUT CHAT MESSAGES
+    // The Bell Icon should NOT show Chat Messages (those go to the Inbox)
     if (
         lastMessage.type === "CHAT_MESSAGE" || 
         lastMessage.type === "TYPING_START" || 
         lastMessage.type === "TYPING_STOP" ||
-        lastMessage.type === "MESSAGE_DELETED" // ✅ ADDED: Ignore delete signals
+        lastMessage.type === "MESSAGE_DELETED"
     ) {
         return; 
     }
@@ -74,13 +71,8 @@ export const useNotifications = (userId?: number) => {
     if (globalProcessedIds.has(uniqueKey)) return;
     globalProcessedIds.add(uniqueKey);
 
-    // --- PLAY SOUND (Only for System Alerts now) ---
-    try {
-      const audio = new Audio(notificationSound);
-      audio.play().catch(() => {}); 
-    } catch (err) {
-      console.error("Audio error:", err);
-    }
+    // ✅ REMOVED: Sound & Toast logic (Moved to WebSocketContext)
+    // This hook is NOW only responsible for updating the Notification List (Bell Icon)
 
     // Data Prep
     let displayTitle = lastMessage.title || "Notification";
@@ -90,51 +82,6 @@ export const useNotifications = (userId?: number) => {
     
     let messageType = lastMessage.type || "info";
     let appointmentId = lastMessage.appointment_id || lastMessage.message?.appointment_id;
-
-    // CUSTOM TOAST UI (For Appointments/System only)
-    toast.custom((t) => (
-      <div
-        onClick={() => {
-            toast.dismiss(t.id);
-            const baseRoute = user?.role === 'doctor' ? '/doctor' : '/patient';
-            if (appointmentId) {
-                navigate(`${baseRoute}/appointments`);
-            }
-        }}
-        className={`${
-          t.visible ? 'animate-enter' : 'animate-leave'
-        } max-w-md w-full bg-white shadow-lg rounded-2xl pointer-events-auto flex ring-1 ring-black ring-opacity-5 cursor-pointer hover:bg-slate-50 transition-colors`}
-      >
-        <div className="flex-1 w-0 p-4">
-          <div className="flex items-start">
-            <div className="flex-shrink-0 pt-0.5">
-               <div className={`h-10 w-10 rounded-full flex items-center justify-center ${
-                   messageType === 'success' ? 'bg-emerald-100 text-emerald-600' : 'bg-blue-100 text-blue-600'
-               }`}>
-                  {messageType === 'success' ? <CheckCircle className="w-6 h-6"/> : <Bell className="w-6 h-6"/>}
-               </div>
-            </div>
-            <div className="ml-3 flex-1">
-              <p className="text-sm font-bold text-slate-900">{displayTitle}</p>
-              <p className="mt-1 text-sm text-slate-500 line-clamp-2">
-                {displayMessage}
-              </p>
-            </div>
-          </div>
-        </div>
-        <div className="flex border-l border-slate-100">
-          <button
-            onClick={(e) => {
-                e.stopPropagation();
-                toast.dismiss(t.id);
-            }}
-            className="w-full border border-transparent rounded-none rounded-r-lg p-4 flex items-center justify-center text-sm font-medium text-slate-400 hover:text-slate-500 focus:outline-none"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-      </div>
-    ), { duration: 5000, position: "top-right" });
 
     // Update State (Add to Bell List)
     const newNotif: Notification = {
