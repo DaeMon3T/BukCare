@@ -505,31 +505,13 @@ const CompleteProfile: React.FC = () => {
                                         <h3 className="text-sm font-bold text-[#00aeef] uppercase tracking-wider flex items-center gap-2">
                                             <ShieldCheck className="w-4 h-4" /> Security
                                         </h3>
-                                        {/* <button type="button" onClick={() => setShowPassword(!showPassword)} className="text-xs font-bold text-slate-400 hover:text-[#00aeef] flex items-center gap-1 transition-colors">
+                                        <button type="button" onClick={() => setShowPassword(!showPassword)} className="text-xs font-bold text-slate-400 hover:text-[#00aeef] flex items-center gap-1 transition-colors">
                                             {showPassword ? <><EyeOff className="w-3 h-3" /> Hide</> : <><Eye className="w-3 h-3" /> Show</>}
-                                        </button> */}
+                                        </button>
                                     </div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-
-                                    {/* Password */}
-                                    <div className="relative">
-                                        <input
-                                        type={showPassword ? "text" : "password"}
-                                        name="password"
-                                        value={formData.password}
-                                        onChange={handleChange}
-                                        placeholder="Create Password"
-                                        required
-                                        className="w-full px-4 py-3 pr-12 bg-slate-50 border border-slate-200 rounded-xl
-                                                    focus:bg-white focus:ring-2 focus:ring-[#00aeef] outline-none transition-all"
-                                        />
-                                        <button
-                                        type="button"
-                                        onClick={() => setShowPassword(!showPassword)}
-                                        className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[#00aeef]"
-                                        >
-                                        {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                                        </button>
+                                        <input type={showPassword ? "text" : "password"} name="password" value={formData.password} onChange={handleChange} placeholder="Create Password" required className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-[#00aeef] outline-none transition-all" />
+                                        <input type={showPassword ? "text" : "password"} name="confirmPassword" value={formData.confirmPassword} onChange={handleChange} placeholder="Confirm Password" required className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-[#00aeef] outline-none transition-all" />
                                     </div>
 
                                     {/* Confirm Password */}
@@ -656,7 +638,6 @@ const CompleteProfile: React.FC = () => {
                                                                     </div>
                                                                 </>
                                                             ) : (
-                                                                /* --- STATE 2: EMPTY (UPLOAD BUTTON) --- */
                                                                 <>
                                                                     <div className="p-3 bg-slate-100 rounded-full mb-2 group-hover:bg-blue-100 group-hover:text-[#00aeef] transition-colors text-slate-400">
                                                                         <Upload className="w-5 h-5" />
@@ -667,7 +648,6 @@ const CompleteProfile: React.FC = () => {
                                                                 </>
                                                             )}
 
-                                                            {/* Actual Hidden Input */}
                                                             <input 
                                                                 type="file" 
                                                                 name={field} 
@@ -706,7 +686,7 @@ const CompleteProfile: React.FC = () => {
                     </div>
                 </div>
 
-                {/* RIGHT: VISUAL SIDE (Same as Sign In) */}
+                {/* VISUAL SIDE (Same as Sign In) */}
                 <div className="hidden lg:flex w-1/2 bg-[#F0F9FF] relative items-center justify-center overflow-hidden">
                     <div className="absolute inset-0 z-0">
                         <img 
