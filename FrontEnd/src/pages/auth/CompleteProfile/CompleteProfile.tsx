@@ -626,7 +626,6 @@ const CompleteProfile: React.FC = () => {
                                                                     </div>
                                                                 </>
                                                             ) : (
-                                                                /* --- STATE 2: EMPTY (UPLOAD BUTTON) --- */
                                                                 <>
                                                                     <div className="p-3 bg-slate-100 rounded-full mb-2 group-hover:bg-blue-100 group-hover:text-[#00aeef] transition-colors text-slate-400">
                                                                         <Upload className="w-5 h-5" />
@@ -637,7 +636,6 @@ const CompleteProfile: React.FC = () => {
                                                                 </>
                                                             )}
 
-                                                            {/* Actual Hidden Input */}
                                                             <input 
                                                                 type="file" 
                                                                 name={field} 
@@ -676,7 +674,7 @@ const CompleteProfile: React.FC = () => {
                     </div>
                 </div>
 
-                {/* RIGHT: VISUAL SIDE (Same as Sign In) */}
+                {/* VISUAL SIDE (Same as Sign In) */}
                 <div className="hidden lg:flex w-1/2 bg-[#F0F9FF] relative items-center justify-center overflow-hidden">
                     <div className="absolute inset-0 z-0">
                         <img 
