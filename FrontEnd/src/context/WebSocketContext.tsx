@@ -158,13 +158,13 @@ export const WebSocketProvider = ({ children }: { children: React.ReactNode }) =
             >
               <div className="relative flex-shrink-0">
                   <div className="w-10 h-10 rounded-full bg-slate-200 overflow-hidden border border-slate-200">
-                     {msg.message?.sender_picture ? (
+                      {msg.message?.sender_picture ? (
                         <img src={msg.message.sender_picture} className="w-full h-full object-cover" alt="Avatar"/>
-                     ) : (
+                      ) : (
                         <div className="w-full h-full flex items-center justify-center bg-blue-100 text-blue-600 font-bold">
                             {(msg.message?.sender_name || "U").charAt(0)}
                         </div>
-                     )}
+                      )}
                   </div>
                   <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-white rounded-full"></span>
               </div>
