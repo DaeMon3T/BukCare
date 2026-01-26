@@ -18,6 +18,109 @@ const IconCalendar: React.FC = () => {
 };
 
 const Landing: React.FC = () => {
+<<<<<<< Updated upstream
+=======
+  const containerRef = useRef<HTMLDivElement>(null);
+  
+  // Navigation State & Hooks
+  const location = useLocation();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const handleScrollTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setMobileMenuOpen(false);
+  };
+
+  const navLinks = [
+    { name: "Home", path: "/" },
+    { name: "About", path: "/about" },
+    { name: "Services", path: "/services" },
+    { name: "Contact", path: "/contact" },
+    { name: "Terms of Service", path: "/terms" },
+    { name: "Privacy Policy", path: "/privacy" },
+
+  ];
+
+  useLayoutEffect(() => {
+    // GSAP CONTEXT: Scopes all animations to this component
+    const ctx = gsap.context(() => {
+        
+        // 1. Hero Animations
+        const heroTl = gsap.timeline();
+        heroTl.from(".hero-text-element", {
+            y: 50,
+            opacity: 0,
+            duration: 1,
+            stagger: 0.15,
+            ease: "power3.out",
+            delay: 0.2
+        })
+        .from(".hero-image-container", {
+            x: 50,
+            opacity: 0,
+            duration: 1.2,
+            ease: "power3.out"
+        }, "-=0.8");
+
+        // 2. Stats Animation
+        gsap.fromTo(".stat-item", 
+            { y: 30, opacity: 0 },
+            {
+                y: 0,
+                opacity: 1,
+                duration: 0.8,
+                stagger: 0.1,
+                ease: "back.out(1.7)",
+                scrollTrigger: {
+                    trigger: ".stats-section",
+                    start: "top 80%",
+                }
+            }
+        );
+
+        // 3. Feature Cards
+        const cards = document.querySelectorAll(".feature-card");
+        if(cards.length > 0) {
+            gsap.fromTo(cards, 
+                { y: 50, opacity: 0 },
+                {
+                    y: 0,
+                    opacity: 1,
+                    duration: 0.8,
+                    stagger: 0.15,
+                    ease: "power3.out",
+                    scrollTrigger: {
+                        trigger: ".features-grid",
+                        start: "top 75%",
+                    }
+                }
+            );
+        }
+
+        // 4. How It Works Steps
+        const steps = document.querySelectorAll(".step-item");
+        steps.forEach((step) => {
+            gsap.fromTo(step, 
+                { opacity: 0, x: -30 },
+                {
+                    opacity: 1,
+                    x: 0,
+                    duration: 0.8,
+                    ease: "power3.out",
+                    scrollTrigger: {
+                        trigger: step,
+                        start: "top 85%",
+                    }
+                }
+            );
+        });
+
+    }, containerRef);
+
+    return () => ctx.revert();
+  }, []);
+
+>>>>>>> Stashed changes
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#1A1A40] via-[#0057B8] to-[#00A8E8] text-white">
 

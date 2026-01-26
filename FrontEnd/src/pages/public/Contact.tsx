@@ -2,6 +2,106 @@ import React from "react";
 import Footer from "@/components/Footer";
 
 const Contact: React.FC = () => {
+<<<<<<< Updated upstream
+=======
+  const containerRef = useRef<HTMLDivElement>(null);
+  const location = useLocation();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  
+  // Form State
+  const [formData, setFormData] = useState({ name: "", email: "", subject: "", message: "" });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    // Simulate API call
+    setTimeout(() => {
+        alert("Thank you! Your message has been sent.");
+        setFormData({ name: "", email: "", subject: "", message: "" });
+        setIsSubmitting(false);
+    }, 1500);
+  };
+
+  const handleScrollTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setMobileMenuOpen(false);
+  };
+
+  // Animations
+  useLayoutEffect(() => {
+    const lenis = new Lenis({
+      duration: 1.2,
+      easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+      smoothWheel: true,
+    });
+
+    function raf(time: number) {
+      lenis.raf(time);
+      requestAnimationFrame(raf);
+    }
+    requestAnimationFrame(raf);
+
+    const ctx = gsap.context(() => {
+        // Hero Reveal
+        const heroTl = gsap.timeline();
+        heroTl.fromTo(".hero-item",
+            { y: 30, opacity: 0 },
+            { y: 0, opacity: 1, duration: 1, stagger: 0.15, ease: "power3.out", delay: 0.2 }
+        );
+
+        // Contact Cards Stagger
+        gsap.fromTo(".contact-card",
+            { y: 50, opacity: 0 },
+            {
+                y: 0,
+                opacity: 1,
+                duration: 0.8,
+                stagger: 0.1,
+                ease: "power3.out",
+                scrollTrigger: {
+                    trigger: ".contact-grid",
+                    start: "top 85%",
+                }
+            }
+        );
+
+        // Form & Map Slide-in
+        gsap.fromTo(".form-section",
+            { x: -30, opacity: 0 },
+            {
+                x: 0, opacity: 1, duration: 1, ease: "power3.out",
+                scrollTrigger: { trigger: ".main-content", start: "top 75%" }
+            }
+        );
+
+        gsap.fromTo(".map-section",
+            { x: 30, opacity: 0 },
+            {
+                x: 0, opacity: 1, duration: 1, ease: "power3.out",
+                scrollTrigger: { trigger: ".main-content", start: "top 75%" }
+            }
+        );
+
+    }, containerRef);
+
+    return () => {
+        ctx.revert();
+        lenis.destroy();
+    };
+  }, []);
+
+  const navLinks = [
+    { name: "Home", path: "/" },
+    { name: "About", path: "/about" },
+    { name: "Services", path: "/services" },
+    { name: "Contact", path: "/contact" },
+    { name: "Terms of Service", path: "/terms" },
+    { name: "Privacy Policy", path: "/privacy" },
+
+  ];
+
+>>>>>>> Stashed changes
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#1A1A40] via-[#0057B8] to-[#00A8E8] text-white">
       {/* Hero */}

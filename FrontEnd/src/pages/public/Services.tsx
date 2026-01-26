@@ -4,6 +4,150 @@ import { Link } from "react-router-dom";
 import Footer from "@/components/Footer";
 
 const Services: React.FC = () => {
+<<<<<<< Updated upstream
+=======
+  const containerRef = useRef<HTMLDivElement>(null);
+  const location = useLocation();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  
+  // Dynamic Data
+  const [specialties, setSpecialties] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // 1. Fetch Real Data (With Fallback)
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const res = await api.get("/doctors");
+        if (Array.isArray(res.data) && res.data.length > 0) {
+            const uniqueSpecs = Array.from(new Set(res.data.map((d: any) => d.specialization))) as string[];
+            setSpecialties(uniqueSpecs);
+        } else {
+            // Fallback for visual testing
+            setSpecialties(["General Medicine", "Pediatrics", "Cardiology", "Neurology", "Dermatology", "Orthopedics", "Ophthalmology"]);
+        }
+      } catch (err) {
+        console.error("Using fallback due to API error", err);
+        setSpecialties(["General Medicine", "Pediatrics", "Cardiology", "Neurology", "Dermatology", "Orthopedics"]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
+
+  // 2. Animations & Smooth Scroll
+  useLayoutEffect(() => {
+    const lenis = new Lenis({
+      duration: 1.2,
+      easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+      smoothWheel: true,
+    });
+
+    function raf(time: number) {
+      lenis.raf(time);
+      requestAnimationFrame(raf);
+    }
+    requestAnimationFrame(raf);
+
+    if (!loading) {
+        const ctx = gsap.context(() => {
+            // Hero Elements
+            const heroTl = gsap.timeline();
+            heroTl.fromTo(".hero-item", 
+                { y: 30, opacity: 0 },
+                { y: 0, opacity: 1, duration: 1, stagger: 0.15, ease: "power3.out", delay: 0.2 }
+            );
+
+            gsap.fromTo(".hero-image", 
+                { x: 30, opacity: 0 },
+                { x: 0, opacity: 1, duration: 1.2, ease: "power3.out", delay: 0.4 }
+            );
+
+            // Service Cards Stagger
+            gsap.fromTo(".service-card", 
+                { y: 50, opacity: 0 },
+                {
+                    y: 0, 
+                    opacity: 1, 
+                    duration: 0.8, 
+                    stagger: 0.1, 
+                    ease: "power3.out",
+                    scrollTrigger: {
+                        trigger: ".services-grid",
+                        start: "top 80%",
+                    }
+                }
+            );
+
+            // Process Steps
+            gsap.fromTo(".process-step", 
+                { y: 40, opacity: 0 },
+                {
+                    y: 0, 
+                    opacity: 1, 
+                    duration: 0.8, 
+                    stagger: 0.2, 
+                    ease: "power3.out",
+                    scrollTrigger: {
+                        trigger: ".process-section",
+                        start: "top 75%",
+                    }
+                }
+            );
+
+            // Features Section
+            gsap.fromTo(".feature-item", 
+                { x: -20, opacity: 0 },
+                {
+                    x: 0, 
+                    opacity: 1, 
+                    duration: 0.8, 
+                    stagger: 0.1, 
+                    ease: "power2.out",
+                    scrollTrigger: {
+                        trigger: ".features-list",
+                        start: "top 80%",
+                    }
+                }
+            );
+
+        }, containerRef);
+        return () => ctx.revert();
+    }
+    
+    return () => lenis.destroy();
+  }, [loading]);
+
+  // Icon Mapper Helper
+  const getIconForSpecialty = (spec: string) => {
+    const s = spec.toLowerCase();
+    if (s.includes("heart") || s.includes("cardio")) return <Heart className="w-8 h-8 text-rose-500"/>;
+    if (s.includes("brain") || s.includes("neuro")) return <Brain className="w-8 h-8 text-purple-500"/>;
+    if (s.includes("bone") || s.includes("ortho")) return <Bone className="w-8 h-8 text-slate-500"/>;
+    if (s.includes("eye") || s.includes("opth")) return <Eye className="w-8 h-8 text-blue-500"/>;
+    if (s.includes("baby") || s.includes("pedia")) return <Baby className="w-8 h-8 text-pink-500"/>;
+    if (s.includes("general") || s.includes("med")) return <Thermometer className="w-8 h-8 text-green-500"/>;
+    if (s.includes("derma") || s.includes("skin")) return <Activity className="w-8 h-8 text-amber-500"/>;
+    return <Stethoscope className="w-8 h-8 text-[#00aeef]"/>;
+  };
+
+  const handleScrollTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setMobileMenuOpen(false);
+  };
+
+  const navLinks = [
+    { name: "Home", path: "/" },
+    { name: "About", path: "/about" },
+    { name: "Services", path: "/services" },
+    { name: "Contact", path: "/contact" },
+    { name: "Terms of Service", path: "/terms" },
+    { name: "Privacy Policy", path: "/privacy" },
+
+  ];
+
+>>>>>>> Stashed changes
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#1A1A40] via-[#0057B8] to-[#00A8E8] text-white">
       {/* Navigation */}

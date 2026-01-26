@@ -1,3 +1,4 @@
+<<<<<<< Updated upstream
 import React from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -92,6 +93,36 @@ const Terms: React.FC = () => {
 
       <Footer />
     </div>
+=======
+import LegalLayout from "./LegalLayout";
+import { CheckCircle2, AlertTriangle } from "lucide-react";
+
+const Terms = () => {
+  return (
+    <LegalLayout title="Terms of Service">
+      <h2 className="text-3xl font-bold mb-6">Terms of Service</h2>
+
+      <p className="text-slate-500 mb-8">
+        By using BukCare, you agree to comply with these terms.
+      </p>
+
+      <ul className="space-y-4">
+        <li className="flex gap-2">
+          <CheckCircle2 className="text-[#00aeef]" />
+          Centralized appointment scheduling
+        </li>
+        <li className="flex gap-2">
+          <CheckCircle2 className="text-[#00aeef]" />
+          Accurate information required
+        </li>
+      </ul>
+
+      <div className="mt-10 bg-amber-50 p-6 rounded-xl border border-amber-100">
+        <AlertTriangle className="inline mr-2" />
+        System availability depends on internet connectivity.
+      </div>
+    </LegalLayout>
+>>>>>>> Stashed changes
   );
 };
 

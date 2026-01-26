@@ -4,6 +4,125 @@ import { Link } from "react-router-dom";
 import Footer from "@/components/Footer";
 
 const About: React.FC = () => {
+<<<<<<< Updated upstream
+=======
+  const containerRef = useRef<HTMLDivElement>(null);
+  const location = useLocation();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  
+  // Dynamic Data
+  const [specialties, setSpecialties] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // 1. Fetch Real Specializations (With Fallback)
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const res = await api.get("/doctors");
+        if (Array.isArray(res.data) && res.data.length > 0) {
+            const uniqueSpecs = Array.from(new Set(res.data.map((d: any) => d.specialization))).slice(0, 10) as string[];
+            setSpecialties(uniqueSpecs);
+        } else {
+            // FALLBACK DATA (If API is empty or offline, show these to keep UI looking good)
+            setSpecialties(["Cardiology", "Pediatrics", "Dermatology", "Neurology", "General Surgery", "Internal Medicine", "Oncology", "Orthopedics"]);
+        }
+      } catch (err) {
+        console.error("Using fallback data due to API error", err);
+        setSpecialties(["Cardiology", "Pediatrics", "Dermatology", "Neurology", "General Surgery", "Internal Medicine"]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
+
+  // 2. Animations & Smooth Scroll
+  useLayoutEffect(() => {
+    // Lenis Smooth Scroll
+    const lenis = new Lenis({
+      duration: 1.2,
+      easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+      smoothWheel: true,
+    });
+
+    function raf(time: number) {
+      lenis.raf(time);
+      requestAnimationFrame(raf);
+    }
+    requestAnimationFrame(raf);
+
+    // GSAP Context
+    const ctx = gsap.context(() => {
+        // Hero Reveal
+        const heroTl = gsap.timeline();
+        heroTl.fromTo(".hero-reveal", 
+            { y: 50, opacity: 0 },
+            { y: 0, opacity: 1, duration: 1, stagger: 0.15, ease: "power3.out", delay: 0.2 }
+        );
+
+        // Image Scale Reveal
+        gsap.fromTo(".hero-image-wrapper",
+            { scale: 0.95, opacity: 0 },
+            { scale: 1, opacity: 1, duration: 1.2, ease: "power2.out", delay: 0.4 }
+        );
+
+        // Section Headers (ScrollTrigger)
+        gsap.utils.toArray<HTMLElement>(".section-reveal").forEach((elem) => {
+            gsap.fromTo(elem,
+                { y: 40, opacity: 0 },
+                {
+                    y: 0, 
+                    opacity: 1, 
+                    duration: 0.8, 
+                    ease: "power3.out",
+                    scrollTrigger: {
+                        trigger: elem,
+                        start: "top 85%",
+                    }
+                }
+            );
+        });
+
+        // Value Cards Stagger
+        gsap.fromTo(".value-card",
+            { y: 50, opacity: 0 },
+            {
+                y: 0,
+                opacity: 1,
+                duration: 0.8,
+                stagger: 0.15,
+                ease: "power3.out",
+                scrollTrigger: {
+                    trigger: ".values-grid",
+                    start: "top 75%",
+                }
+            }
+        );
+
+    }, containerRef);
+    
+    return () => {
+        ctx.revert();
+        lenis.destroy();
+    };
+  }, [loading]); // Re-run animations once loading finishes
+
+  const handleScrollTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setMobileMenuOpen(false);
+  };
+
+  const navLinks = [
+    { name: "Home", path: "/" },
+    { name: "About", path: "/about" },
+    { name: "Services", path: "/services" },
+    { name: "Contact", path: "/contact" },
+    { name: "Terms of Service", path: "/terms" },
+    { name: "Privacy Policy", path: "/privacy" },
+
+  ];
+
+>>>>>>> Stashed changes
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#1A1A40] via-[#0057B8] to-[#00A8E8] text-white">
       {/* Navigation */}
