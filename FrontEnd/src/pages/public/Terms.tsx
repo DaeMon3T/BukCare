@@ -1,25 +1,31 @@
-import React, { useRef, useLayoutEffect, useState } from "react";
+import React, { useState, useRef, useLayoutEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { 
+  ShieldCheck, 
+  FileText, 
+  Lock, 
+  Menu, 
+  X, 
   CheckCircle2, 
   AlertTriangle, 
+  Server,
   Scale,
+  Eye,
   ScrollText,
   Mail,
-  Menu,
-  X
 } from "lucide-react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import Lenis from "@studio-freight/lenis";
 import Footer from "@/components/Footer";
-import logo from "@/assets/images/icon_logo_name.png";
+import logo from "@/assets/images/icon_logo_name.png"
 
 gsap.registerPlugin(ScrollTrigger);
 
-const Terms: React.FC = () => {
+const TermsAndPrivacy: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
+  const [activeTab, setActiveTab] = useState<"terms" | "privacy">("terms");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Animation & Scroll
@@ -44,7 +50,7 @@ const Terms: React.FC = () => {
             { y: 0, opacity: 1, duration: 1, stagger: 0.1, ease: "power3.out" }
         );
 
-        // Content Fade In
+        // Content Fade In when switching tabs
         gsap.fromTo(".content-area",
             { opacity: 0, y: 20 },
             { opacity: 1, y: 0, duration: 0.5, ease: "power2.out", delay: 0.2 }
@@ -56,7 +62,7 @@ const Terms: React.FC = () => {
         ctx.revert();
         lenis.destroy();
     };
-  }, []);
+  }, [activeTab]); // Re-run animation when tab changes
 
   const handleScrollTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -68,8 +74,7 @@ const Terms: React.FC = () => {
     { name: "About", path: "/about" },
     { name: "Services", path: "/services" },
     { name: "Contact", path: "/contact" },
-    { name: "Terms of Services", path: "/Terms" },
-    { name: "Privacy Policy", path: "/Privacy" },
+    { name: "Terms of Services & Privacy Policy", path: "/Terms" },
   ];
 
   return (
@@ -80,7 +85,12 @@ const Terms: React.FC = () => {
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
             <Link to="/" className="flex items-center gap-2 md:gap-3 group">
                 <div className="flex items-center gap-1 hover:scale-105 transition-transform cursor-pointer">
-                    <img src={logo} className="h-25 md:h-30 lg:h-35 w-auto object-contain transition-all duration-300" alt="BukCare Logo" />
+                    {/* Logo */}
+                    <img 
+                        src={logo} 
+                        className="h-25 md:h-30 lg:h-35 w-auto object-contain transition-all duration-300" 
+                        alt="BukCare Logo" 
+                    />
                 </div>
             </Link>
 
@@ -91,7 +101,9 @@ const Terms: React.FC = () => {
                     to={link.path} 
                     onClick={handleScrollTop}
                     className={`text-sm font-bold uppercase tracking-wider transition-colors ${
-                        location.pathname === link.path ? "text-[#00aeef]" : "text-slate-500 hover:text-[#00aeef]"
+                        location.pathname === link.path 
+                        ? "text-[#00aeef]" 
+                        : "text-slate-500 hover:text-[#00aeef]"
                     }`}
                 >
                     {link.name}
@@ -108,7 +120,12 @@ const Terms: React.FC = () => {
         <div className={`md:hidden absolute top-20 left-0 w-full bg-white border-b border-slate-100 shadow-xl overflow-hidden transition-all duration-300 ${mobileMenuOpen ? "max-h-96 opacity-100" : "max-h-0 opacity-0"}`}>
             <div className="flex flex-col p-6 gap-4">
                 {navLinks.map((link) => (
-                    <Link key={link.name} to={link.path} onClick={handleScrollTop} className="text-lg font-medium text-slate-700 hover:text-[#00aeef]">
+                    <Link 
+                        key={link.name} 
+                        to={link.path} 
+                        onClick={handleScrollTop}
+                        className="text-lg font-medium text-slate-700 hover:text-[#00aeef]"
+                    >
                         {link.name}
                     </Link>
                 ))}
@@ -117,118 +134,213 @@ const Terms: React.FC = () => {
       </nav>
 
       {/* --- 2. HERO SECTION --- */}
-      <section className="relative pt-32 pb-16 lg:pt-48 lg:pb-24 px-6 bg-slate-50 border-b border-slate-100">
+      <section className="relative pt-32 pb-24 lg:pt-48 lg:pb-32 px-6 bg-slate-50">
          <div className="max-w-4xl mx-auto text-center">
             <div className="hero-reveal inline-flex items-center gap-2 px-3 py-1 bg-slate-200 text-slate-600 rounded-full text-xs font-bold uppercase tracking-widest mb-6">
                 <Scale className="w-3 h-3" /> Legal & Compliance
             </div>
             
             <h1 className="hero-reveal text-4xl lg:text-6xl font-extrabold text-slate-900 mb-6 tracking-tight leading-tight">
-                Terms of <span className="text-[#00aeef]">Service</span>
+                Transparency is the <br/> foundation of <span className="text-[#00aeef]">care.</span>
             </h1>
             
-            <p className="hero-reveal text-xl text-slate-500 max-w-2xl mx-auto">
-                Please read these terms carefully before using our platform to ensure a safe experience for everyone.
+            <p className="hero-reveal text-xl text-slate-500 mb-10 max-w-2xl mx-auto">
+                Read how we protect your data, secure your privacy, and maintain a safe platform for everyone.
             </p>
+
+            {/* TAB SWITCHER */}
+            <div className="hero-reveal inline-flex p-1 bg-white border border-slate-200 rounded-xl shadow-sm">
+                <button 
+                    onClick={() => setActiveTab("terms")}
+                    className={`px-8 py-3 rounded-lg text-sm font-bold transition-all ${
+                        activeTab === 'terms' 
+                        ? 'bg-slate-900 text-white shadow-md' 
+                        : 'text-slate-500 hover:bg-slate-50'
+                    }`}
+                >
+                    Terms of Service
+                </button>
+                <button 
+                    onClick={() => setActiveTab("privacy")}
+                    className={`px-8 py-3 rounded-lg text-sm font-bold transition-all ${
+                        activeTab === 'privacy' 
+                        ? 'bg-[#00aeef] text-white shadow-md' 
+                        : 'text-slate-500 hover:bg-slate-50'
+                    }`}
+                >
+                    Privacy Policy
+                </button>
+            </div>
          </div>
       </section>
 
       {/* --- 3. MAIN CONTENT --- */}
       <div className="max-w-7xl mx-auto px-6 py-20 grid lg:grid-cols-12 gap-12">
           
-          {/* SIDEBAR (Table of Contents)
-             - Mobile: Order 2 (Appears below content)
-             - Desktop: Order 1 (Appears on the left)
-          */}
-          <aside className="lg:col-span-4 lg:sticky lg:top-32 h-fit order-2 lg:order-1">
+          {/* Left Sidebar (Sticky Nav) */}
+          <aside className="lg:col-span-4 lg:sticky lg:top-32 h-fit">
               <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-xl shadow-slate-200/50">
                   <div className="mb-6 pb-6 border-b border-slate-100">
                       <h3 className="font-bold text-slate-900 text-lg flex items-center gap-2">
-                          <ScrollText className="w-5 h-5 text-[#00aeef]"/>
+                          {activeTab === "terms" ? <ScrollText className="w-5 h-5 text-[#00aeef]"/> : <Lock className="w-5 h-5 text-[#00aeef]"/>}
                           Table of Contents
                       </h3>
                       <p className="text-xs text-slate-400 mt-1">Effective: January 2026</p>
                   </div>
                   
                   <ul className="space-y-4 text-sm font-medium text-slate-500">
-                      <li className="flex items-center gap-3 text-[#00aeef]"><span className="w-1.5 h-1.5 rounded-full bg-[#00aeef]"></span> Purpose of System</li>
-                      <li className="flex items-center gap-3"><span className="w-1.5 h-1.5 rounded-full bg-slate-300"></span> User Responsibilities</li>
-                      <li className="flex items-center gap-3"><span className="w-1.5 h-1.5 rounded-full bg-slate-300"></span> Intellectual Property</li>
-                      <li className="flex items-center gap-3"><span className="w-1.5 h-1.5 rounded-full bg-slate-300"></span> Disclaimers</li>
+                      {activeTab === "terms" ? (
+                          <>
+                              <li className="flex items-center gap-3 text-[#00aeef]"><span className="w-1.5 h-1.5 rounded-full bg-[#00aeef]"></span> Purpose of System</li>
+                              <li className="flex items-center gap-3"><span className="w-1.5 h-1.5 rounded-full bg-slate-300"></span> User Responsibilities</li>
+                              <li className="flex items-center gap-3"><span className="w-1.5 h-1.5 rounded-full bg-slate-300"></span> Intellectual Property</li>
+                              <li className="flex items-center gap-3"><span className="w-1.5 h-1.5 rounded-full bg-slate-300"></span> Disclaimers</li>
+                          </>
+                      ) : (
+                          <>
+                              <li className="flex items-center gap-3 text-[#00aeef]"><span className="w-1.5 h-1.5 rounded-full bg-[#00aeef]"></span> Data Collection</li>
+                              <li className="flex items-center gap-3"><span className="w-1.5 h-1.5 rounded-full bg-slate-300"></span> Usage of Info</li>
+                              <li className="flex items-center gap-3"><span className="w-1.5 h-1.5 rounded-full bg-slate-300"></span> Security Measures</li>
+                              <li className="flex items-center gap-3"><span className="w-1.5 h-1.5 rounded-full bg-slate-300"></span> Patient Rights</li>
+                          </>
+                      )}
                   </ul>
 
                   <div className="mt-8 pt-6 border-t border-slate-100">
                       <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-3">Contact Legal</p>
-                      <a href="mailto:bukcare.app@gmail.com" className="flex items-center gap-2 text-slate-700 hover:text-[#00aeef] transition-colors text-sm font-bold">
+                      <a href="bukcare.app@gmail.com" className="flex items-center gap-2 text-slate-700 hover:text-[#00aeef] transition-colors text-sm font-bold">
                           <Mail className="w-4 h-4" /> bukcare.app@gmail.com
                       </a>
                   </div>
               </div>
           </aside>
 
-          {/* MAIN CONTENT
-             - Mobile: Order 1 (Appears first)
-             - Desktop: Order 2 (Appears on the right)
-          */}
-          <main className="lg:col-span-8 content-area order-1 lg:order-2">
-              <div className="space-y-12">
-                  <div>
-                      <h2 className="text-3xl font-bold text-slate-900 mb-6">Terms of Service</h2>
-                      <p className="text-lg text-slate-500 leading-relaxed">
-                          Welcome to the BUKCARE system. By accessing or using this system, you agree to comply with these Terms. We are committed to operational integrity and providing a seamless experience for patients and doctors in Bukidnon.
-                      </p>
-                  </div>
+          {/* Right Content Area */}
+          <main className="lg:col-span-8 content-area">
+              
+              {activeTab === "terms" ? (
+                  /* ============= TERMS CONTENT ============= */
+                  <div className="space-y-12">
+                      <div>
+                          <h2 className="text-3xl font-bold text-slate-900 mb-6">Terms of Service</h2>
+                          <p className="text-lg text-slate-500 leading-relaxed">
+                              Welcome to the BUKCARE system. By accessing or using this system, you agree to comply with these Terms. We are committed to operational integrity and providing a seamless experience for patients and doctors in Bukidnon.
+                          </p>
+                      </div>
 
-                  <div className="space-y-8">
-                      <section>
-                          <h3 className="text-xl font-bold text-slate-800 mb-3 flex items-center gap-3">
-                              <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-slate-100 text-slate-600 text-sm font-bold">1</span>
-                              Purpose of the System
-                          </h3>
-                          <ul className="space-y-3 pl-11 text-slate-500">
-                              <li className="flex items-start gap-2"><CheckCircle2 className="w-5 h-5 text-[#00aeef] shrink-0 mt-0.5" /> Centralized platform for scheduling and managing appointments.</li>
-                              <li className="flex items-start gap-2"><CheckCircle2 className="w-5 h-5 text-[#00aeef] shrink-0 mt-0.5" /> Real-time availability updates for doctors.</li>
-                              <li className="flex items-start gap-2"><CheckCircle2 className="w-5 h-5 text-[#00aeef] shrink-0 mt-0.5" /> Automated notifications via SMS and Email.</li>
-                          </ul>
-                      </section>
+                      <div className="space-y-8">
+                          <section>
+                              <h3 className="text-xl font-bold text-slate-800 mb-3 flex items-center gap-3">
+                                  <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-slate-100 text-slate-600 text-sm font-bold">1</span>
+                                  Purpose of the System
+                              </h3>
+                              <ul className="space-y-3 pl-11 text-slate-500">
+                                  <li className="flex items-start gap-2"><CheckCircle2 className="w-5 h-5 text-[#00aeef] shrink-0 mt-0.5" /> Centralized platform for scheduling and managing appointments.</li>
+                                  <li className="flex items-start gap-2"><CheckCircle2 className="w-5 h-5 text-[#00aeef] shrink-0 mt-0.5" /> Real-time availability updates for doctors.</li>
+                                  <li className="flex items-start gap-2"><CheckCircle2 className="w-5 h-5 text-[#00aeef] shrink-0 mt-0.5" /> Automated notifications via SMS and Email.</li>
+                              </ul>
+                          </section>
 
-                      <section>
-                          <h3 className="text-xl font-bold text-slate-800 mb-3 flex items-center gap-3">
-                              <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-slate-100 text-slate-600 text-sm font-bold">2</span>
-                              User Responsibilities
-                          </h3>
-                          <p className="pl-11 text-slate-500 mb-4">Users must ensure integrity when using the platform:</p>
-                          <ul className="grid md:grid-cols-2 gap-4 pl-11">
-                              <li className="bg-slate-50 p-4 rounded-xl border border-slate-100 text-sm text-slate-600">
-                                  <strong>Accuracy:</strong> Provide truthful information during registration.
-                              </li>
-                              <li className="bg-slate-50 p-4 rounded-xl border border-slate-100 text-sm text-slate-600">
-                                  <strong>Security:</strong> Keep login credentials confidential.
-                              </li>
-                              <li className="bg-slate-50 p-4 rounded-xl border border-slate-100 text-sm text-slate-600">
-                                  <strong>Reporting:</strong> Notify admins immediately of any unauthorized access.
-                              </li>
-                              <li className="bg-slate-50 p-4 rounded-xl border border-slate-100 text-sm text-slate-600">
-                                  <strong>Usage:</strong> Use the system only for intended medical purposes.
-                              </li>
-                          </ul>
-                      </section>
+                          <section>
+                              <h3 className="text-xl font-bold text-slate-800 mb-3 flex items-center gap-3">
+                                  <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-slate-100 text-slate-600 text-sm font-bold">2</span>
+                                  User Responsibilities
+                              </h3>
+                              <p className="pl-11 text-slate-500 mb-4">Users must ensure integrity when using the platform:</p>
+                              <ul className="grid md:grid-cols-2 gap-4 pl-11">
+                                  <li className="bg-slate-50 p-4 rounded-xl border border-slate-100 text-sm text-slate-600">
+                                      <strong>Accuracy:</strong> Provide truthful information during registration.
+                                  </li>
+                                  <li className="bg-slate-50 p-4 rounded-xl border border-slate-100 text-sm text-slate-600">
+                                      <strong>Security:</strong> Keep login credentials confidential.
+                                  </li>
+                                  <li className="bg-slate-50 p-4 rounded-xl border border-slate-100 text-sm text-slate-600">
+                                      <strong>Reporting:</strong> Notify admins immediately of any unauthorized access.
+                                  </li>
+                                  <li className="bg-slate-50 p-4 rounded-xl border border-slate-100 text-sm text-slate-600">
+                                      <strong>Usage:</strong> Use the system only for intended medical purposes.
+                                  </li>
+                              </ul>
+                          </section>
 
-                      <section>
-                          <h3 className="text-xl font-bold text-slate-800 mb-3 flex items-center gap-3">
-                              <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-slate-100 text-slate-600 text-sm font-bold">3</span>
-                              System Limitations
-                          </h3>
-                          <div className="pl-11 bg-amber-50 p-6 rounded-2xl border border-amber-100 text-amber-800 text-sm leading-relaxed flex gap-4">
-                              <AlertTriangle className="w-6 h-6 shrink-0 mt-1" />
-                              <div>
-                                  <p className="font-bold mb-2">Important Notice</p>
-                                  <p>The system depends on stable internet connectivity. The hospital and developers are not liable for missed appointments due to ISP downtime or technical errors. This system does not provide medical advice.</p>
+                          <section>
+                              <h3 className="text-xl font-bold text-slate-800 mb-3 flex items-center gap-3">
+                                  <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-slate-100 text-slate-600 text-sm font-bold">3</span>
+                                  System Limitations
+                              </h3>
+                              <div className="pl-11 bg-amber-50 p-6 rounded-2xl border border-amber-100 text-amber-800 text-sm leading-relaxed flex gap-4">
+                                  <AlertTriangle className="w-6 h-6 shrink-0 mt-1" />
+                                  <div>
+                                      <p className="font-bold mb-2">Important Notice</p>
+                                      <p>The system depends on stable internet connectivity. The hospital and developers are not liable for missed appointments due to ISP downtime or technical errors. This system does not provide medical advice.</p>
+                                  </div>
                               </div>
-                          </div>
-                      </section>
+                          </section>
+                      </div>
                   </div>
-              </div>
+              ) : (
+                  /* ============= PRIVACY CONTENT ============= */
+                  <div className="space-y-12">
+                      <div>
+                          <h2 className="text-3xl font-bold text-slate-900 mb-6">Privacy Policy</h2>
+                          <p className="text-lg text-slate-500 leading-relaxed">
+                              Your privacy is paramount. This policy explains how we collect, use, and secure your data in compliance with <strong>HIPAA</strong> and the <strong>Data Privacy Act of 2012 (RA 10173)</strong>.
+                          </p>
+                      </div>
+
+                      <div className="space-y-10">
+                          <section>
+                              <h3 className="text-xl font-bold text-slate-900 mb-4 flex items-center gap-2">
+                                  <FileText className="w-5 h-5 text-[#00aeef]" /> Information We Collect
+                              </h3>
+                              <div className="grid md:grid-cols-2 gap-4">
+                                  <div className="p-5 rounded-2xl border border-slate-100 hover:border-blue-100 transition-colors">
+                                      <h4 className="font-bold text-slate-800 mb-2">Personal Identity</h4>
+                                      <p className="text-sm text-slate-500">Full name, contact details, date of birth, and address.</p>
+                                  </div>
+                                  <div className="p-5 rounded-2xl border border-slate-100 hover:border-blue-100 transition-colors">
+                                      <h4 className="font-bold text-slate-800 mb-2">Medical Context</h4>
+                                      <p className="text-sm text-slate-500">Appointment dates, doctor visited, and basic reason for consultation.</p>
+                                  </div>
+                              </div>
+                          </section>
+
+                          <section>
+                              <h3 className="text-xl font-bold text-slate-900 mb-4 flex items-center gap-2">
+                                  <Server className="w-5 h-5 text-[#00aeef]" /> Data Security
+                              </h3>
+                              <div className="bg-[#0f172a] text-slate-300 p-8 rounded-3xl">
+                                  <p className="mb-6">We employ industry-standard security measures to ensure your data never leaks.</p>
+                                  <ul className="space-y-4">
+                                      <li className="flex items-center gap-3">
+                                          <ShieldCheck className="w-5 h-5 text-green-400" />
+                                          <span><strong>Secure Transit:</strong> All data moves via HTTPS/SSL protocols.</span>
+                                      </li>
+                                      <li className="flex items-center gap-3">
+                                          <Eye className="w-5 h-5 text-green-400" />
+                                          <span><strong>Access Control:</strong> Strict Role-Based Access Control(RBAC) </span>
+                                      </li>
+                                  </ul>
+                              </div>
+                          </section>
+
+                          <section>
+                              <h3 className="text-xl font-bold text-slate-900 mb-4 flex items-center gap-2">
+                                  <Scale className="w-5 h-5 text-[#00aeef]" /> Your Rights
+                              </h3>
+                              <p className="text-slate-500 mb-4">Under the Data Privacy Act, you have the right to:</p>
+                              <div className="flex flex-wrap gap-3">
+                                  {["Access Data", "Correct Errors", "Withdraw Consent", "File Complaint", "Data Portability"].map((right, i) => (
+                                      <span key={i} className="px-4 py-2 bg-slate-100 text-slate-600 rounded-lg text-sm font-bold hover:bg-[#00aeef] hover:text-white transition-colors cursor-default">
+                                          {right}
+                                      </span>
+                                  ))}
+                              </div>
+                          </section>
+                      </div>
+                  </div>
+              )}
+
           </main>
       </div>
 
@@ -237,4 +349,4 @@ const Terms: React.FC = () => {
   );
 };
 
-export default Terms;
+export default TermsAndPrivacy;
