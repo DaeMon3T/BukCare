@@ -25,8 +25,8 @@ import Landing from './pages/public/Landing';
 import About from './pages/public/About';
 import Contact from './pages/public/Contact';
 import Services from './pages/public/Services';
-import Terms from './pages/public/Terms';
 import Privacy from './pages/public/Privacy';
+import Terms from './pages/public/Terms';
 
 // Admin Pages
 import AdminDashboard from './pages/admin/Dashboard';
