@@ -1,13 +1,15 @@
 import React, { useRef, useLayoutEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { 
-  CheckCircle2, 
-  AlertTriangle, 
+  ShieldCheck, 
+  FileText, 
+  Lock, 
+  Menu, 
+  X, 
+  Server,
   Scale,
-  ScrollText,
   Mail,
-  Menu,
-  X
+  Eye
 } from "lucide-react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
@@ -17,7 +19,7 @@ import logo from "@/assets/images/icon_logo_name.png";
 
 gsap.registerPlugin(ScrollTrigger);
 
-const Terms: React.FC = () => {
+const Privacy: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -120,15 +122,15 @@ const Terms: React.FC = () => {
       <section className="relative pt-32 pb-16 lg:pt-48 lg:pb-24 px-6 bg-slate-50 border-b border-slate-100">
          <div className="max-w-4xl mx-auto text-center">
             <div className="hero-reveal inline-flex items-center gap-2 px-3 py-1 bg-slate-200 text-slate-600 rounded-full text-xs font-bold uppercase tracking-widest mb-6">
-                <Scale className="w-3 h-3" /> Legal & Compliance
+                <ShieldCheck className="w-3 h-3" /> Data Protection
             </div>
             
             <h1 className="hero-reveal text-4xl lg:text-6xl font-extrabold text-slate-900 mb-6 tracking-tight leading-tight">
-                Terms of <span className="text-[#00aeef]">Service</span>
+                Privacy <span className="text-[#00aeef]">Policy</span>
             </h1>
             
             <p className="hero-reveal text-xl text-slate-500 max-w-2xl mx-auto">
-                Please read these terms carefully before using our platform to ensure a safe experience for everyone.
+                Read how we protect your data, secure your privacy, and maintain a safe platform for everyone.
             </p>
          </div>
       </section>
@@ -144,17 +146,17 @@ const Terms: React.FC = () => {
               <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-xl shadow-slate-200/50">
                   <div className="mb-6 pb-6 border-b border-slate-100">
                       <h3 className="font-bold text-slate-900 text-lg flex items-center gap-2">
-                          <ScrollText className="w-5 h-5 text-[#00aeef]"/>
+                          <Lock className="w-5 h-5 text-[#00aeef]"/>
                           Table of Contents
                       </h3>
                       <p className="text-xs text-slate-400 mt-1">Effective: January 2026</p>
                   </div>
                   
                   <ul className="space-y-4 text-sm font-medium text-slate-500">
-                      <li className="flex items-center gap-3 text-[#00aeef]"><span className="w-1.5 h-1.5 rounded-full bg-[#00aeef]"></span> Purpose of System</li>
-                      <li className="flex items-center gap-3"><span className="w-1.5 h-1.5 rounded-full bg-slate-300"></span> User Responsibilities</li>
-                      <li className="flex items-center gap-3"><span className="w-1.5 h-1.5 rounded-full bg-slate-300"></span> Intellectual Property</li>
-                      <li className="flex items-center gap-3"><span className="w-1.5 h-1.5 rounded-full bg-slate-300"></span> Disclaimers</li>
+                      <li className="flex items-center gap-3 text-[#00aeef]"><span className="w-1.5 h-1.5 rounded-full bg-[#00aeef]"></span> Data Collection</li>
+                      <li className="flex items-center gap-3"><span className="w-1.5 h-1.5 rounded-full bg-slate-300"></span> Usage of Info</li>
+                      <li className="flex items-center gap-3"><span className="w-1.5 h-1.5 rounded-full bg-slate-300"></span> Security Measures</li>
+                      <li className="flex items-center gap-3"><span className="w-1.5 h-1.5 rounded-full bg-slate-300"></span> Patient Rights</li>
                   </ul>
 
                   <div className="mt-8 pt-6 border-t border-slate-100">
@@ -173,58 +175,59 @@ const Terms: React.FC = () => {
           <main className="lg:col-span-8 content-area order-1 lg:order-2">
               <div className="space-y-12">
                   <div>
-                      <h2 className="text-3xl font-bold text-slate-900 mb-6">Terms of Service</h2>
+                      <h2 className="text-3xl font-bold text-slate-900 mb-6">Privacy Policy</h2>
                       <p className="text-lg text-slate-500 leading-relaxed">
-                          Welcome to the BUKCARE system. By accessing or using this system, you agree to comply with these Terms. We are committed to operational integrity and providing a seamless experience for patients and doctors in Bukidnon.
+                          Your privacy is paramount. This policy explains how we collect, use, and secure your data in compliance with <strong>HIPAA</strong> and the <strong>Data Privacy Act of 2012 (RA 10173)</strong>.
                       </p>
                   </div>
 
-                  <div className="space-y-8">
+                  <div className="space-y-10">
                       <section>
-                          <h3 className="text-xl font-bold text-slate-800 mb-3 flex items-center gap-3">
-                              <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-slate-100 text-slate-600 text-sm font-bold">1</span>
-                              Purpose of the System
+                          <h3 className="text-xl font-bold text-slate-900 mb-4 flex items-center gap-2">
+                              <FileText className="w-5 h-5 text-[#00aeef]" /> Information We Collect
                           </h3>
-                          <ul className="space-y-3 pl-11 text-slate-500">
-                              <li className="flex items-start gap-2"><CheckCircle2 className="w-5 h-5 text-[#00aeef] shrink-0 mt-0.5" /> Centralized platform for scheduling and managing appointments.</li>
-                              <li className="flex items-start gap-2"><CheckCircle2 className="w-5 h-5 text-[#00aeef] shrink-0 mt-0.5" /> Real-time availability updates for doctors.</li>
-                              <li className="flex items-start gap-2"><CheckCircle2 className="w-5 h-5 text-[#00aeef] shrink-0 mt-0.5" /> Automated notifications via SMS and Email.</li>
-                          </ul>
-                      </section>
-
-                      <section>
-                          <h3 className="text-xl font-bold text-slate-800 mb-3 flex items-center gap-3">
-                              <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-slate-100 text-slate-600 text-sm font-bold">2</span>
-                              User Responsibilities
-                          </h3>
-                          <p className="pl-11 text-slate-500 mb-4">Users must ensure integrity when using the platform:</p>
-                          <ul className="grid md:grid-cols-2 gap-4 pl-11">
-                              <li className="bg-slate-50 p-4 rounded-xl border border-slate-100 text-sm text-slate-600">
-                                  <strong>Accuracy:</strong> Provide truthful information during registration.
-                              </li>
-                              <li className="bg-slate-50 p-4 rounded-xl border border-slate-100 text-sm text-slate-600">
-                                  <strong>Security:</strong> Keep login credentials confidential.
-                              </li>
-                              <li className="bg-slate-50 p-4 rounded-xl border border-slate-100 text-sm text-slate-600">
-                                  <strong>Reporting:</strong> Notify admins immediately of any unauthorized access.
-                              </li>
-                              <li className="bg-slate-50 p-4 rounded-xl border border-slate-100 text-sm text-slate-600">
-                                  <strong>Usage:</strong> Use the system only for intended medical purposes.
-                              </li>
-                          </ul>
-                      </section>
-
-                      <section>
-                          <h3 className="text-xl font-bold text-slate-800 mb-3 flex items-center gap-3">
-                              <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-slate-100 text-slate-600 text-sm font-bold">3</span>
-                              System Limitations
-                          </h3>
-                          <div className="pl-11 bg-amber-50 p-6 rounded-2xl border border-amber-100 text-amber-800 text-sm leading-relaxed flex gap-4">
-                              <AlertTriangle className="w-6 h-6 shrink-0 mt-1" />
-                              <div>
-                                  <p className="font-bold mb-2">Important Notice</p>
-                                  <p>The system depends on stable internet connectivity. The hospital and developers are not liable for missed appointments due to ISP downtime or technical errors. This system does not provide medical advice.</p>
+                          <div className="grid md:grid-cols-2 gap-4">
+                              <div className="p-5 rounded-2xl border border-slate-100 hover:border-blue-100 transition-colors">
+                                  <h4 className="font-bold text-slate-800 mb-2">Personal Identity</h4>
+                                  <p className="text-sm text-slate-500">Full name, contact details, date of birth, and address.</p>
                               </div>
+                              <div className="p-5 rounded-2xl border border-slate-100 hover:border-blue-100 transition-colors">
+                                  <h4 className="font-bold text-slate-800 mb-2">Medical Context</h4>
+                                  <p className="text-sm text-slate-500">Appointment dates, doctor visited, and basic reason for consultation.</p>
+                              </div>
+                          </div>
+                      </section>
+
+                      <section>
+                          <h3 className="text-xl font-bold text-slate-900 mb-4 flex items-center gap-2">
+                              <Server className="w-5 h-5 text-[#00aeef]" /> Data Security
+                          </h3>
+                          <div className="bg-[#0f172a] text-slate-300 p-8 rounded-3xl">
+                              <p className="mb-6">We employ industry-standard security measures to ensure your data never leaks.</p>
+                              <ul className="space-y-4">
+                                  <li className="flex items-center gap-3">
+                                      <ShieldCheck className="w-5 h-5 text-green-400" />
+                                      <span><strong>Secure Transit:</strong> All data moves via HTTPS/SSL protocols.</span>
+                                  </li>
+                                  <li className="flex items-center gap-3">
+                                      <Eye className="w-5 h-5 text-green-400" />
+                                      <span><strong>Access Control:</strong> Strict Role-Based Access Control(RBAC) </span>
+                                  </li>
+                              </ul>
+                          </div>
+                      </section>
+
+                      <section>
+                          <h3 className="text-xl font-bold text-slate-900 mb-4 flex items-center gap-2">
+                              <Scale className="w-5 h-5 text-[#00aeef]" /> Your Rights
+                          </h3>
+                          <p className="text-slate-500 mb-4">Under the Data Privacy Act, you have the right to:</p>
+                          <div className="flex flex-wrap gap-3">
+                              {["Access Data", "Correct Errors", "Withdraw Consent", "File Complaint", "Data Portability"].map((right, i) => (
+                                  <span key={i} className="px-4 py-2 bg-slate-100 text-slate-600 rounded-lg text-sm font-bold hover:bg-[#00aeef] hover:text-white transition-colors cursor-default">
+                                      {right}
+                                  </span>
+                              ))}
                           </div>
                       </section>
                   </div>
@@ -237,4 +240,4 @@ const Terms: React.FC = () => {
   );
 };
 
-export default Terms;
+export default Privacy;

@@ -23,6 +23,7 @@ import {
     Eye, 
     EyeOff,
     Plus,
+    Info,
 } from "lucide-react";
 import gsap from "gsap";
 import logo from "@/assets/images/icon_logo_name.png";
@@ -509,10 +510,21 @@ const CompleteProfile: React.FC = () => {
                                             {showPassword ? <><EyeOff className="w-3 h-3" /> Hide</> : <><Eye className="w-3 h-3" /> Show</>}
                                         </button>
                                     </div>
+
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <input type={showPassword ? "text" : "password"} name="password" value={formData.password} onChange={handleChange} placeholder="Create Password" required className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-[#00aeef] outline-none transition-all" />
                                         <input type={showPassword ? "text" : "password"} name="confirmPassword" value={formData.confirmPassword} onChange={handleChange} placeholder="Confirm Password" required className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-[#00aeef] outline-none transition-all" />
                                     </div>
+
+                                    {/* --- NEW LABEL ADDED HERE --- */}
+                                    <div className="flex items-start gap-2 px-1">
+                                        <Info className="w-3.5 h-3.5 text-slate-400 mt-0.5 flex-shrink-0" />
+                                        <p className="text-xs text-slate-500 font-medium leading-tight">
+                                            Password must contain at least <span className="text-slate-700 font-bold">1 uppercase letter</span> and a <span className="text-slate-700 font-bold">mix of letters & numbers</span>.
+                                        </p>
+                                    </div>
+                                    {/* --------------------------- */}
+
                                     {formData.confirmPassword && (
                                         <div className={`text-xs font-bold flex items-center gap-1.5 transition-all duration-300 ${formData.password === formData.confirmPassword ? "text-emerald-500" : "text-rose-500"}`}>
                                             {formData.password === formData.confirmPassword ? <><CheckCircle2 className="w-3.5 h-3.5" /> Passwords match perfectly.</> : <><X className="w-3.5 h-3.5" /> Passwords do not match.</>}

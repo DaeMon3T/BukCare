@@ -92,7 +92,8 @@ const Landing: React.FC = () => {
     { name: "About", path: "/about" },
     { name: "Services", path: "/services" },
     { name: "Contact", path: "/contact" },
-    { name: "Terms of Services & Privacy Policy", path: "/Terms" },
+    { name: "Terms of Services", path: "/Terms" },
+    { name: "Privacy Policy", path: "/Privacy" },
   ];
 
   useLayoutEffect(() => {
@@ -472,8 +473,8 @@ const Landing: React.FC = () => {
                     <li><Link to="/" className="hover:text-[#00aeef] transition-colors">Home</Link></li>
                     <li><Link to="/about" className="hover:text-[#00aeef] transition-colors">About Us</Link></li>
                     <li><Link to="/services" className="hover:text-[#00aeef] transition-colors">Services</Link></li>
-                    <li><Link to="/terms" className="hover:text-[#00aeef] transition-colors">Terms of Services & Privacy Policy</Link></li>
-
+                    <li><Link to="/terms" className="hover:text-[#00aeef] transition-colors">Terms of Services</Link></li>
+                    <li><Link to="/privacy" className="hover:text-[#00aeef] transition-colors">Privacy Policy</Link></li>
                 </ul>
             </div>
 
