@@ -1,0 +1,26 @@
+version: "3.9"
+
+services:
+  backend1:
+    image: bukcare/bukcare-backend:latest
+    network_mode: host
+    env_file:
+      - .env
+    restart: always
+    command: >
+      gunicorn main:app
+      -k uvicorn.workers.UvicornWorker
+      -w 2
+      -b 127.0.0.1:8000
+
+  backend2:
+    image: bukcare/bukcare-backend:latest
+    network_mode: host
+    env_file:
+      - .env
+    restart: always
+    command: >
+      gunicorn main:app
+      -k uvicorn.workers.UvicornWorker
+      -w 2
+      -b 127.0.0.1:8001
