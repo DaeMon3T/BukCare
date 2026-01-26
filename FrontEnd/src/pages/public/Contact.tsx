@@ -111,8 +111,7 @@ const Contact: React.FC = () => {
     { name: "About", path: "/about" },
     { name: "Services", path: "/services" },
     { name: "Contact", path: "/contact" },
-    { name: "Terms of Services", path: "/Terms" },
-    { name: "Privacy Policy", path: "/Privacy" },
+    { name: "Terms of Services & Privacy Policy", path: "/Terms" },
   ];
 
   return (

@@ -77,7 +77,6 @@ const App: FC = () => {
                 <Route path="/contact" element={<Contact />} />
                 <Route path="/services" element={<Services />} />
                 <Route path="/terms" element={<Terms />} />
-                <Route path="/privacy" element={<Privacy />} />
 
                 {/* -------------------- Auth Routes -------------------- */}
                 <Route path="/signin" element={<SignIn />} />
