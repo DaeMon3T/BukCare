@@ -177,7 +177,7 @@ export default function SignUp() {
                     <div className="mt-6 pt-6 border-t border-slate-50">
                         <div className="space-y-3">
                             {[
-                                "HIPAA Compliant Security",
+                                
                                 "Instant Account Activation",
                                 "24/7 Access to Records"
                             ].map((item, i) => (

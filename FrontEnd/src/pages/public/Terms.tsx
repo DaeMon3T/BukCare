@@ -187,8 +187,8 @@ const Terms: React.FC = () => {
                           </h3>
                           <ul className="space-y-3 pl-11 text-slate-500">
                               <li className="flex items-start gap-2"><CheckCircle2 className="w-5 h-5 text-[#00aeef] shrink-0 mt-0.5" /> Centralized platform for scheduling and managing appointments.</li>
-                              <li className="flex items-start gap-2"><CheckCircle2 className="w-5 h-5 text-[#00aeef] shrink-0 mt-0.5" /> Real-time availability updates for doctors.</li>
-                              <li className="flex items-start gap-2"><CheckCircle2 className="w-5 h-5 text-[#00aeef] shrink-0 mt-0.5" /> Automated notifications via SMS and Email.</li>
+                              <li className="flex items-start gap-2"><CheckCircle2 className="w-5 h-5 text-[#00aeef] shrink-0 mt-0.5" /> Real-time availability updates for doctors and patient.</li>
+                              <li className="flex items-start gap-2"><CheckCircle2 className="w-5 h-5 text-[#00aeef] shrink-0 mt-0.5" /> Automated notifications via Email and App Notification via Web Socket.</li>
                           </ul>
                       </section>
 

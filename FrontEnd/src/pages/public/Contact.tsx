@@ -274,7 +274,7 @@ const Contact: React.FC = () => {
                     <h3 className="text-xl font-bold text-slate-900 mb-2">Email Us</h3>
                     <p className="text-slate-500 leading-relaxed">
                         Support Team<br/>
-                        <span className="font-bold text-slate-700">support@bukcare.app</span>
+                        <span className="font-bold text-slate-700">bukcare.app@gmail    .com</span>
                     </p>
                 </div>
 
