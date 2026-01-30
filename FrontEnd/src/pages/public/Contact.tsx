@@ -13,7 +13,7 @@ import {
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import Lenis from "@studio-freight/lenis";
-import Footer from "@/components/Footer";
+import Footer from "./Footer";
 import logo from "@/assets/images/icon_logo_name.png"
 
 gsap.registerPlugin(ScrollTrigger);
@@ -262,7 +262,7 @@ const Contact: React.FC = () => {
                     <h3 className="text-xl font-bold text-slate-900 mb-2">Call Us</h3>
                     <p className="text-slate-500 leading-relaxed">
                         Mon-Fri from 8am to 5pm<br/>
-                        <span className="font-bold text-slate-700">+63 (912) 345-6789</span>
+                        <span className="font-bold text-slate-700">+63 (970) 400-8428</span>
                     </p>
                 </div>
 
@@ -274,7 +274,7 @@ const Contact: React.FC = () => {
                     <h3 className="text-xl font-bold text-slate-900 mb-2">Email Us</h3>
                     <p className="text-slate-500 leading-relaxed">
                         Support Team<br/>
-                        <span className="font-bold text-slate-700">bukcare.app@gmail    .com</span>
+                        <span className="font-bold text-slate-700">bukcare.app@gmail.com</span>
                     </p>
                 </div>
 
@@ -361,22 +361,40 @@ const Contact: React.FC = () => {
             </div>
 
             {/* Right: Map & FAQ */}
+            {/* Right: Map & FAQ */}
             <div className="map-section space-y-12">
                 
-                {/* Map */}
-                <div className="rounded-[2rem] overflow-hidden shadow-2xl shadow-slate-200/50 border border-slate-100 h-[400px] relative group">
+                {/* Map Container */}
+                <div className="rounded-[2.5rem] overflow-hidden shadow-2xl shadow-slate-200/50 border border-slate-100 h-[450px] relative group isolate">
+                    
+                    {/* Google Map Iframe */}
                     <iframe 
-                        title="BPH Maramag Map"
-                        src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3950.485304627196!2d125.00627797405628!3d7.755452207196023!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x32ff3b3e3e007d4d%3A0xc3f7a2d8e3b1c6d!2sBukidnon%20Provincial%20Hospital%20-%20Maramag!5e0!3m2!1sen!2sph!4v1709650000000!5m2!1sen!2sph" 
+                        title="BPH Maramag Location"
+                        src="https://maps.google.com/maps?q=Q275%2BQC3%2C+North+Poblacion%2C+Maramag%2C+Bukidnon&t=&z=17&ie=UTF8&iwloc=&output=embed" 
                         width="100%" 
                         height="100%" 
                         style={{ border: 0, filter: "grayscale(100%) contrast(1.2)" }} 
                         allowFullScreen 
                         loading="lazy"
-                        className="group-hover:filter-none transition-all duration-700"
+                        className="group-hover:filter-none transition-all duration-700 w-full h-full"
                     ></iframe>
-                    {/* Hover Hint */}
-                    <div className="absolute inset-0 bg-slate-900/10 pointer-events-none group-hover:bg-transparent transition-colors"></div>
+
+                    {/* Custom Pin Overlay (Fades out on hover) */}
+                    <div className="absolute inset-0 bg-slate-900/5 group-hover:bg-transparent pointer-events-none transition-all duration-500 flex items-center justify-center z-10">
+                        <div className="bg-white/80 backdrop-blur-md p-4 rounded-2xl shadow-xl border border-white/50 group-hover:scale-110 group-hover:opacity-0 transition-all duration-500 flex flex-col items-center gap-3">
+                            <div className="relative">
+                                <span className="absolute -inset-1 bg-[#00aeef] rounded-full opacity-20 animate-ping"></span>
+                                <div className="bg-[#00aeef] text-white p-3 rounded-full shadow-lg relative">
+                                    <MapPin className="w-6 h-6" />
+                                </div>
+                            </div>
+                            <div className="text-center">
+                                <p className="text-xs font-bold text-[#00aeef] uppercase tracking-wider mb-0.5">Locate Us</p>
+                                <p className="text-sm font-bold text-slate-800">Bukidnon Provincial Hospital</p>
+                                <p className="text-xs text-slate-500">Maramag, Bukidnon</p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 {/* FAQ Mini */}
