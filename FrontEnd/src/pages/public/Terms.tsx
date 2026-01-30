@@ -12,7 +12,7 @@ import {
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import Lenis from "@studio-freight/lenis";
-import Footer from "@/components/Footer";
+import Footer from "./Footer";
 import logo from "@/assets/images/icon_logo_name.png";
 
 gsap.registerPlugin(ScrollTrigger);

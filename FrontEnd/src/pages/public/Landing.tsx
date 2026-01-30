@@ -1,26 +1,15 @@
 import React, { useState, useRef, useLayoutEffect } from "react";
 import { Link, useLocation } from "react-router-dom"; // Added useLocation
-import { Globe, Menu, X } from "lucide-react"; // Added Icons for Mobile Menu
+import { Menu, X } from "lucide-react"; // Added Icons for Mobile Menu
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import logo from "@/assets/images/icon_logo_name.png"
 import preview from "@/assets/images/preview.png"
+import Footer from "./Footer";
 
 gsap.registerPlugin(ScrollTrigger);
 
 // --- ICONS ---
-const IconMapPin: React.FC = () => (
-  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-  </svg>
-);
-
-const IconPhone: React.FC = () => (
-  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-  </svg>
-);
 
 const IconCheck: React.FC = () => (
   <svg className="w-5 h-5 text-[#00aeef]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -455,55 +444,7 @@ const Landing: React.FC = () => {
       </section>
 
       {/* 6. FOOTER */}
-      <footer className="bg-[#0f172a] text-white pt-20 pb-10 px-6">
-        <div className="max-w-7xl mx-auto grid md:grid-cols-4 gap-12 border-b border-slate-800 pb-16">
-            <div className="col-span-1 md:col-span-1">
-                <div className="text-2xl font-bold text-white tracking-tight mb-6 flex items-center gap-2">
-                    <div className="w-6 h-6 bg-[#00aeef] rounded-md"></div>
-                    <span>Buk<span className="text-[#00aeef]">Care</span></span>
-                </div>
-                <p className="text-slate-400 text-sm leading-relaxed">
-                    Connecting patients and doctors in Bukidnon. Better healthcare access for everyone, everywhere.
-                </p>
-            </div>
-            
-            <div>
-                <h4 className="font-bold text-xs uppercase tracking-widest mb-6 text-slate-500">Platform</h4>
-                <ul className="space-y-4 text-slate-400 text-sm">
-                    <li><Link to="/" className="hover:text-[#00aeef] transition-colors">Home</Link></li>
-                    <li><Link to="/about" className="hover:text-[#00aeef] transition-colors">About Us</Link></li>
-                    <li><Link to="/services" className="hover:text-[#00aeef] transition-colors">Services</Link></li>
-                    <li><Link to="/terms" className="hover:text-[#00aeef] transition-colors">Terms of Services</Link></li>
-                    <li><Link to="/privacy" className="hover:text-[#00aeef] transition-colors">Privacy Policy</Link></li>
-                </ul>
-            </div>
-
-            <div>
-                <h4 className="font-bold text-xs uppercase tracking-widest mb-6 text-slate-500">Legal</h4>
-                <ul className="space-y-4 text-slate-400 text-sm">
-                    <li><Link to="/terms" className="hover:text-[#00aeef] transition-colors">Privacy Policy</Link></li>
-                    <li><Link to="/terms" className="hover:text-[#00aeef] transition-colors">Terms of Service</Link></li>
-                </ul>
-            </div>
-
-            <div>
-                <h4 className="font-bold text-xs uppercase tracking-widest mb-6 text-slate-500">Contact</h4>
-                <div className="text-slate-400 text-sm space-y-4">
-                    <div className="flex items-center gap-3"><IconMapPin /> Maramag, Bukidnon</div>
-                    <div className="flex items-center gap-3"><IconPhone /> bukcare.app@gmail.com </div>
-                    <div className="flex items-center gap-3"><Globe/> www.bukcare.com </div>
-                </div>
-            </div>
-        </div>
-        
-        <div className="max-w-7xl mx-auto pt-8 flex flex-col md:flex-row justify-between items-center text-slate-600 text-xs">
-            <p>&copy; 2026 BukCare. All rights reserved.</p>
-            <div className="flex gap-4 mt-4 md:mt-0">
-                <span>Designed for Bukidnon</span>
-            </div>
-        </div>
-      </footer>
-
+      <Footer />
     </div>
   );
 };
