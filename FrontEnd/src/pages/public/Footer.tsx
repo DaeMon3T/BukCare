@@ -61,12 +61,10 @@ const Footer: React.FC = () => {
       </div>
       
       {/* Copyright */}
-      <div className="max-w-7xl mx-auto pt-8 flex flex-col md:flex-row justify-between items-center text-slate-600 text-xs">
-          <p>&copy; {new Date().getFullYear()} BukCare. All rights reserved.</p>
-          <div className="flex gap-4 mt-4 md:mt-0">
-              <span>Designed for Bukidnon</span>
-          </div>
+      <div className="max-w-7xl mx-auto pt-8 flex flex-col md:flex-row justify-center items-center text-slate-600 text-xs gap-2 md:gap-4">
+        <p className="text-center">&copy; {new Date().getFullYear()} BukCare. All rights reserved.</p>
       </div>
+
     </footer>
   );
 };
