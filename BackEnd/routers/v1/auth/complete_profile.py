@@ -3,7 +3,7 @@ from fastapi.concurrency import run_in_threadpool
 from sqlalchemy.orm import Session
 from datetime import datetime
 from typing import Optional
-import json 
+import json
 import asyncio
 
 from core.database import get_db
@@ -16,6 +16,7 @@ import cloudinary.uploader
 
 router = APIRouter(tags=["Authentication"])
 
+
 @router.post("/complete-profile")
 async def complete_profile(
     user_id: int = Form(...),
@@ -23,11 +24,11 @@ async def complete_profile(
     sex: str = Form(...),
     dob: str = Form(...),
     contact_number: str = Form(...),
-    province_id: str = Form(...), 
+    province_id: str = Form(...),
     city_id: str = Form(...),
     barangay_id: str = Form(...),
     province_name: str = Form(...),
-    city_name: str = Form(...),  
+    city_name: str = Form(...),
     barangay_name: str = Form(...),
     password: str = Form(...),
     license_number: Optional[str] = Form(None),
@@ -38,43 +39,50 @@ async def complete_profile(
     prc_license_selfie: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db),
 ):
-    """
-    Completes a user's profile with address, personal info, and role.
-    """
-
-    # Find user
+    # ------------------------------------------------------------------
+    # USER
+    # ------------------------------------------------------------------
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # Convert IDs to integers (PSGC codes)
     province_code = int(province_id)
     city_code = int(city_id)
     barangay_code = int(barangay_id)
 
-    # Province - Create if doesn't exist
-    province_obj = db.query(Province).filter(Province.id == province_code).first()
-    if not province_obj:
-        province_obj = Province(id=province_code, name=province_name.strip())
-        db.add(province_obj)
-        db.commit()
+    # ------------------------------------------------------------------
+    # LOCATION UPSERT (NO COMMITS)
+    # ------------------------------------------------------------------
+    province = db.get(Province, province_code)
+    if not province:
+        province = Province(
+            id=province_code,
+            name=province_name.strip(),
+        )
+        db.add(province)
 
-    # City - Create if doesn't exist
-    city_obj = db.query(City).filter(City.id == city_code).first()
-    if not city_obj:
-        city_obj = City(id=city_code, name=city_name.strip(), province_id=province_code)
-        db.add(city_obj)
-        db.commit()
+    city = db.get(City, city_code)
+    if not city:
+        city = City(
+            id=city_code,
+            name=city_name.strip(),
+            province_id=province_code,
+        )
+        db.add(city)
 
-    # Barangay - Create if doesn't exist
-    barangay_obj = db.query(Barangay).filter(Barangay.id == barangay_code).first()
-    if not barangay_obj:
-        barangay_obj = Barangay(id=barangay_code, name=barangay_name.strip(), city_id=city_code)
-        db.add(barangay_obj)
-        db.commit()
+    barangay = db.get(Barangay, barangay_code)
+    if not barangay:
+        barangay = Barangay(
+            id=barangay_code,
+            name=barangay_name.strip(),
+            city_id=city_code,
+        )
+        db.add(barangay)
 
-    # Update user info
-    user.sex = str(sex).lower() in ["true", "false"]
+    # ------------------------------------------------------------------
+    # USER UPDATE
+    # ------------------------------------------------------------------
+    user.sex = sex.lower() == "true"
     user.dob = datetime.strptime(dob, "%Y-%m-%d").date()
     user.contact_number = contact_number
     user.password = get_password_hash(password)
@@ -83,105 +91,84 @@ async def complete_profile(
     user.city_id = city_code
     user.barangay_id = barangay_code
 
-    # Assign user role
-    if role.lower() == "doctor":
-        user.role = UserRole.DOCTOR
-    elif role.lower() == "patient":
-        user.role = UserRole.PATIENT
-    else:
-        user.role = UserRole.PENDING
+    user.role = (
+        UserRole.DOCTOR if role.lower() == "doctor"
+        else UserRole.PATIENT if role.lower() == "patient"
+        else UserRole.PENDING
+    )
 
-    # Handle doctor-specific fields
-    if role.lower() == "doctor":
-        # 🛡️ CHECK IF DOCTOR EXISTS TO PREVENT CRASH
-        doctor = db.query(Doctor).filter(Doctor.user_id == user.id).first()
-
+    # ------------------------------------------------------------------
+    # DOCTOR LOGIC
+    # ------------------------------------------------------------------
+    if user.role == UserRole.DOCTOR:
+        doctor = db.query(Doctor).filter_by(user_id=user.id).first()
         if not doctor:
-            # Create new if doesn't exist
-            doctor = Doctor(
-                user_id=user.id,
-                license_number=license_number,
-                years_of_experience=int(years_of_experience) if years_of_experience else None
-            )
+            doctor = Doctor(user_id=user.id)
             db.add(doctor)
-        else:
-            # Update existing
-            if license_number: doctor.license_number = license_number
-            if years_of_experience: doctor.years_of_experience = int(years_of_experience)
 
-        # Upload all 3 images in parallel (Much Faster!)
-        async def upload_async(file_obj, folder_path):
-            if not file_obj: return None
-            try:
-                # run_in_threadpool prevents blocking the server
-                result = await run_in_threadpool(
-                    cloudinary.uploader.upload, 
-                    file_obj.file, 
-                    folder=folder_path
-                )
-                return result.get("secure_url")
-            except Exception as e:
-                print(f"Upload failed: {e}")
+        doctor.license_number = license_number
+        doctor.years_of_experience = int(years_of_experience) if years_of_experience else None
+
+        async def upload(file):
+            if not file:
                 return None
+            result = await run_in_threadpool(
+                cloudinary.uploader.upload,
+                file.file,
+                folder=f"licenses/{user.id}",
+            )
+            return result.get("secure_url")
 
-        # Prepare tasks
-        upload_tasks = [
-            upload_async(prc_license_front, f"licenses/{user.id}"),
-            upload_async(prc_license_back, f"licenses/{user.id}"),
-            upload_async(prc_license_selfie, f"licenses/{user.id}")
-        ]
+        front_url, back_url, selfie_url = await asyncio.gather(
+            upload(prc_license_front),
+            upload(prc_license_back),
+            upload(prc_license_selfie),
+        )
 
-        # Run them all at once
-        results = await asyncio.gather(*upload_tasks)
+        if front_url:
+            doctor.prc_license_front = front_url
+        if back_url:
+            doctor.prc_license_back = back_url
+        if selfie_url:
+            doctor.prc_license_selfie = selfie_url
 
-        # Assign results
-        if results[0]: doctor.prc_license_front = results[0]
-        if results[1]: doctor.prc_license_back = results[1]
-        if results[2]: doctor.prc_license_selfie = results[2]
-
-        
-        # ROBUST SPECIALIZATION HANDLING
+        # --------------------------------------------------------------
+        # SPECIALIZATIONS
+        # --------------------------------------------------------------
         if specializations:
             try:
                 specs = json.loads(specializations)
             except Exception:
                 specs = [specializations]
 
-            doctor.specializations = [] 
-            found_names = []  # To store names for the JSON column
+            doctor.specializations.clear()
+            found_names = []
 
-            for spec_name_or_id in specs:
-                # Find or Create Specialization
+            for item in specs:
                 spec = None
-                if isinstance(spec_name_or_id, int) or (isinstance(spec_name_or_id, str) and spec_name_or_id.isdigit()):
-                    spec = db.query(Specialization).filter(Specialization.specialization_id == int(spec_name_or_id)).first()
+
+                if str(item).isdigit():
+                    spec = db.query(Specialization).filter(
+                        Specialization.specialization_id == int(item)
+                    ).first()
                 else:
-                    spec = db.query(Specialization).filter(Specialization.name == str(spec_name_or_id).strip()).first()
+                    spec = db.query(Specialization).filter(
+                        Specialization.name == str(item).strip()
+                    ).first()
 
-                if not spec:
-                    # If frontend sent "6" and we didn't find it,
-                    # DO NOT create a specialization named "6". Skip it!
-                    if str(spec_name_or_id).isdigit():
-                        print(f"Warning: Specialization ID {spec_name_or_id} not found in DB. Skipping creation.")
-                        continue 
-
-                    # Only create if it's a real name (e.g., "Neuro-Surgery")
-                    spec = Specialization(name=str(spec_name_or_id).strip())
+                if not spec and not str(item).isdigit():
+                    spec = Specialization(name=str(item).strip())
                     db.add(spec)
-                    db.commit()
-                    db.refresh(spec)
 
-                doctor.specializations.append(spec)
-                found_names.append(spec.name)
+                if spec:
+                    doctor.specializations.append(spec)
+                    found_names.append(spec.name)
 
-            # SAVE TO JSON COLUMN (Fixes the empty column issue)
             doctor.specializations_json = json.dumps(found_names)
 
-    # Final commit for all data
-    db.commit()
-    db.refresh(user)
-
-    # Create tokens
+    # ------------------------------------------------------------------
+    # TOKENS & FINAL USER UPDATE
+    # ------------------------------------------------------------------
     access_token = create_access_token(
         data={"user_id": user.id, "email": user.email, "role": user.role.value}
     )
@@ -191,8 +178,10 @@ async def complete_profile(
 
     user.refresh_token = refresh_token
     user.last_login = datetime.utcnow()
-    db.commit()
 
+    # ------------------------------------------------------------------
+    # RESPONSE (AUTO-COMMIT HAPPENS IN get_db/db_session)
+    # ------------------------------------------------------------------
     return {
         "tokens": {
             "access_token": access_token,
@@ -209,6 +198,6 @@ async def complete_profile(
             "role": user.role.value,
             "is_verified": user.is_verified,
             "is_profile_complete": user.is_profile_complete,
-            "address": f"{barangay_obj.name}, {city_obj.name}, {province_obj.name}",
+            "address": f"{barangay.name}, {city.name}, {province.name}",
         },
     }
