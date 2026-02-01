@@ -144,24 +144,62 @@ const EditProfileModal = ({
                 <Phone className="w-4 h-4" /> Contact & Clinic Address
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                
+                {/* Phone Number */}
                 <div className="space-y-1.5">
                     <label className="text-xs font-bold text-slate-500 ml-1">Phone Number</label>
-                    <input type="text" name="contact_number" value={formData.contact_number || ""} onChange={handleChange} className="w-full p-3.5 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none bg-slate-50/50" />
+                    <input 
+                        type="text" 
+                        name="contact_number" 
+                        value={formData.contact_number || ""} 
+                        onChange={handleChange} 
+                        className="w-full p-3.5 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none bg-slate-50/50 font-medium" 
+                    />
                 </div>
+
+                {/* City */}
                 <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-500 ml-1">City</label>
-                    <input type="text" name="city" value={formData.address?.city || ""} onChange={handleChange} className="w-full p-3.5 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none bg-slate-50/50" />
+                    <label className="text-xs font-bold text-slate-500 ml-1 flex items-center gap-1">
+                        City <span className="text-[10px] font-normal text-slate-400">(Locked)</span>
+                    </label>
+                    <input 
+                        type="text" 
+                        name="city" 
+                        value={formData.address?.city || ""} 
+                        disabled={true} 
+                        className="w-full p-3.5 border border-slate-200 rounded-2xl outline-none bg-slate-200 text-slate-500 cursor-not-allowed font-medium select-none" 
+                    />
                 </div>
+
+                {/* Barangay */}
                 <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-500 ml-1">Barangay</label>
-                    <input type="text" name="barangay" value={formData.address?.barangay || ""} onChange={handleChange} className="w-full p-3.5 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none bg-slate-50/50" />
+                    <label className="text-xs font-bold text-slate-500 ml-1 flex items-center gap-1">
+                        Barangay <span className="text-[10px] font-normal text-slate-400">(Locked)</span>
+                    </label>
+                    <input 
+                        type="text" 
+                        name="barangay" 
+                        value={formData.address?.barangay || ""} 
+                        disabled={true} 
+                        className="w-full p-3.5 border border-slate-200 rounded-2xl outline-none bg-slate-200 text-slate-500 cursor-not-allowed font-medium select-none" 
+                    />
                 </div>
+
+                {/* Province */}
                 <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-500 ml-1">Province</label>
-                    <input type="text" name="province" value={formData.address?.province || ""} onChange={handleChange} className="w-full p-3.5 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none bg-slate-50/50" />
+                    <label className="text-xs font-bold text-slate-500 ml-1 flex items-center gap-1">
+                        Province <span className="text-[10px] font-normal text-slate-400">(Locked)</span>
+                    </label>
+                    <input 
+                        type="text" 
+                        name="province" 
+                        value={formData.address?.province || ""} 
+                        disabled={true} 
+                        className="w-full p-3.5 border border-slate-200 rounded-2xl outline-none bg-slate-200 text-slate-500 cursor-not-allowed font-medium select-none" 
+                    />
                 </div>
             </div>
-          </div>
+        </div>
         </div>
 
         <div className="sticky bottom-0 bg-white border-t border-slate-100 p-6 flex justify-end gap-3 rounded-b-3xl">
@@ -342,7 +380,7 @@ export default function DoctorProfile() {
                                 
                                 {formData.is_doctor_approved ? (
                                     <span className="flex items-center gap-1 bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-md text-xs font-bold border border-emerald-200">
-                                        <CheckCircle2 className="w-3 h-3" /> Authorized
+                                        <CheckCircle2 className="w-4 h-4" /> Verified
                                     </span>
                                 ) : (
                                     <span className="flex items-center gap-1 bg-amber-100 text-amber-700 px-2 py-0.5 rounded-md text-xs font-bold border border-amber-200">
