@@ -12,6 +12,7 @@ BackEnd/.env.development
 BackEnd/.env.production
 BackEnd/clean_cache.sh
 BackEnd/init_migration.sh
+BackEnd/Postgres*
 
 # # Python caches
 **/__pycache__/

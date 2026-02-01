@@ -177,7 +177,7 @@ const Privacy: React.FC = () => {
                   <div>
                       <h2 className="text-3xl font-bold text-slate-900 mb-6">Privacy Policy</h2>
                       <p className="text-lg text-slate-500 leading-relaxed">
-                          Your privacy is paramount. This policy explains how we collect, use, and secure your data in compliance with <strong>HIPAA</strong> and the <strong>Data Privacy Act of 2012 (RA 10173)</strong>.
+                          Your privacy is paramount. This policy explains how we collect, use, and secure your data.
                       </p>
                   </div>
 

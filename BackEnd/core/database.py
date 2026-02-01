@@ -1,35 +1,41 @@
 # core/database.py
 
+import logging
+from contextlib import contextmanager
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
-from core.config import settings 
+from core.config import settings
+
+logger = logging.getLogger(__name__)
 
 SQLALCHEMY_DATABASE_URL = settings.DATABASE_URL
 
-# Engine
-engine = create_engine(SQLALCHEMY_DATABASE_URL)
+engine = create_engine(
+    SQLALCHEMY_DATABASE_URL,
+    pool_pre_ping=True,
+)
 
-# Session
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+SessionLocal = sessionmaker(
+    autocommit=False,
+    autoflush=False,
+    bind=engine,
+)
 
-# Base class for models
 Base = declarative_base()
 
-# Dependency for FastAPI routers
-def get_db():
-    """Get database session with proper error handling."""
+@contextmanager
+def db_session():
     db = SessionLocal()
     try:
         yield db
-    except Exception as e:
+        db.commit()
+    except Exception:
         db.rollback()
-        # Log the error for debugging
-        import logging
-        logging.error(f"Database error: {str(e)}")
-        raise e
+        logger.exception("Database error")
+        raise
     finally:
-        try:
-            db.close()
-        except Exception as close_error:
-            import logging
-            logging.error(f"Error closing database session: {str(close_error)}")
+        db.close()
+
+def get_db():
+    with db_session() as db:
+        yield db

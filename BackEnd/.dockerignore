@@ -1,29 +1,27 @@
-# # =====================================================================
-# General Python ignores
+# =====================================================================
+# Python compiled / cache files
 # =====================================================================
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
-*.pdm
-*.pdb
-*.egg-info/
-*.eggs/
-*.so
+*$py.class
+# Python cache files
+**/__pycache__/
+**/*.py[cod]
+*$py.class
 
+# =====================================================================
 # Virtual environments
+# =====================================================================
 .venv/
 venv/
 ENV/
 env/
 env.bak/
 
-# Byte-compiled / cache
-*.py[cod]
-*$py.class
-
 # =====================================================================
-# Project build / temporary files
+# Logs / temporary files
 # =====================================================================
 logs/
 *.log
@@ -41,7 +39,7 @@ tmp/
 *.bak
 
 # =====================================================================
-# Environment files (Sensitive!)
+# Environment / secrets (Sensitive!)
 # =====================================================================
 .env
 .env.*
@@ -58,7 +56,7 @@ tmp/
 .github/
 
 # =====================================================================
-# System / OS files
+# OS / System files
 # =====================================================================
 .DS_Store
 Thumbs.db
@@ -74,14 +72,14 @@ desktop.ini
 *.code-workspace
 
 # =====================================================================
-# Database & Alembic
+# Alembic migrations (compiled) & local database
 # =====================================================================
 alembic/versions/*.pyc
 Postgres/data/
 *.db
 
 # =====================================================================
-# Node / Frontend (if you accidentally build inside backend)
+# Node / frontend leftovers (if accidentally built inside backend)
 # =====================================================================
 node_modules/
 npm-debug.log*
@@ -89,22 +87,21 @@ yarn-debug.log*
 yarn-error.log*
 
 # =====================================================================
-# Docker & Deployment
+# Docker & Deployment files not needed in image
 # =====================================================================
 Dockerfile
 docker-compose*.yml
 *.pid
 
 # =====================================================================
-# Miscellaneous
+# Misc / scripts / temporary folders
 # =====================================================================
 __MACOSX/
 *.old
 *.orig
 *.rej
-# 
-
 clean_cache.sh
 init_migration.sh
 
+# Ignore everything inside Postgres except necessary scripts
 Postgres/
