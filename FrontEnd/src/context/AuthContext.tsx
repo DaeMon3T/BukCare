@@ -1,4 +1,11 @@
-import React, { createContext, useContext, useState, useEffect, useMemo } from "react";
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useMemo,
+  useRef,
+} from "react";
 import type { ReactNode } from "react";
 
 interface Tokens {
@@ -32,7 +39,9 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
-  if (!context) throw new Error("useAuth must be used within an AuthProvider");
+  if (!context) {
+    throw new Error("useAuth must be used within an AuthProvider");
+  }
   return context;
 };
 
@@ -44,8 +53,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Initialize auth state
+  // 🔒 StrictMode-safe guard
+  const initializedRef = useRef(false);
+
   useEffect(() => {
+    if (initializedRef.current) return;
+    initializedRef.current = true;
+
     const initializeAuth = async () => {
       const token = localStorage.getItem("access_token");
       const userData = localStorage.getItem("user_data");
@@ -54,26 +68,31 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         try {
           const parsedUser: UserData = JSON.parse(userData);
 
-          // Check token expiration
-          const tokenParts = token.split(".");
-          if (tokenParts.length !== 3) throw new Error("Invalid token format");
-          const tokenPayload = JSON.parse(atob(tokenParts[1] || ""));
-          const currentTime = Date.now() / 1000;
+          // ✅ Safe JWT parsing
+          const parts = token.split(".");
+          if (parts.length !== 3) throw new Error("Invalid token");
 
-          if (tokenPayload.exp && tokenPayload.exp < currentTime) {
+          const payloadPart = parts[1];
+          if (!payloadPart) throw new Error("Invalid token payload");
+
+          const payload = JSON.parse(atob(payloadPart));
+          const now = Date.now() / 1000;
+
+          if (payload.exp && payload.exp < now) {
             localStorage.clear();
             setUser(null);
           } else {
             setUser(parsedUser);
           }
-        } catch (error) {
-          console.error("Error parsing stored auth data:", error);
+        } catch (err) {
+          console.error("Auth init failed:", err);
           localStorage.clear();
           setUser(null);
         }
       } else {
         setUser(null);
       }
+
       setLoading(false);
     };
 
@@ -104,49 +123,46 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Refresh token
   const refreshToken = async (): Promise<boolean> => {
     try {
-      const refreshTokenValue = localStorage.getItem("refresh_token");
-      if (!refreshTokenValue) return false;
+      const refresh = localStorage.getItem("refresh_token");
+      if (!refresh) return false;
 
       const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:8000";
-      const response = await fetch(`${apiUrl}/auth/refresh`, {
+
+      const res = await fetch(`${apiUrl}/auth/refresh`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ refresh_token: refreshTokenValue }),
+        body: JSON.stringify({ refresh_token: refresh }),
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        localStorage.setItem("access_token", data.access_token);
-        return true;
-      } else {
-        localStorage.clear();
-        setUser(null);
-        return false;
-      }
-    } catch (error) {
-      console.error("Token refresh failed:", error);
+      if (!res.ok) throw new Error("Refresh failed");
+
+      const data = await res.json();
+      localStorage.setItem("access_token", data.access_token);
+      return true;
+    } catch (err) {
+      console.error("Token refresh failed:", err);
       localStorage.clear();
       setUser(null);
       return false;
     }
   };
 
-  // Logout (does NOT navigate here)
+  // Logout
   const logout = async () => {
     try {
-      const accessToken = localStorage.getItem("access_token");
-      if (accessToken) {
+      const token = localStorage.getItem("access_token");
+      if (token) {
         const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:8000";
         await fetch(`${apiUrl}/auth/logout`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${accessToken}`,
+            Authorization: `Bearer ${token}`,
           },
         });
       }
-    } catch (error) {
-      console.error("Logout failed:", error);
+    } catch (err) {
+      console.error("Logout failed:", err);
     } finally {
       localStorage.clear();
       setUser(null);
@@ -166,7 +182,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     [user, loading]
   );
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+    </AuthContext.Provider>
+  );
 };
 
 export default AuthContext;
