@@ -116,24 +116,63 @@ const EditProfileModal = ({
                 <Phone className="w-4 h-4" /> Contact & Address
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                
+                {/* Phone Number */}
                 <div className="space-y-1.5">
                     <label className="text-xs font-bold text-slate-500 ml-1">Phone Number</label>
-                    <input type="text" name="contact_number" value={formData.contact_number || ""} onChange={handleChange} className="w-full p-3.5 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none bg-slate-50/50 transition-all font-medium" placeholder="09..." />
+                    <input 
+                        type="text" 
+                        name="contact_number" 
+                        value={formData.contact_number || ""} 
+                        onChange={handleChange} 
+                        className="w-full p-3.5 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none bg-slate-50/50 transition-all font-medium" 
+                        placeholder="09..." 
+                    />
                 </div>
+
+                {/* Barangay */}
                 <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-500 ml-1">Barangay</label>
-                    <input type="text" name="barangay" value={formData.address?.barangay || ""} onChange={handleChange} className="w-full p-3.5 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none bg-slate-50/50 transition-all font-medium" />
+                    <label className="text-xs font-bold text-slate-500 ml-1 flex items-center gap-1">
+                        Barangay <span className="text-[10px] font-normal text-slate-400">(Locked)</span>
+                    </label>
+                    <input 
+                        type="text" 
+                        name="barangay" 
+                        value={formData.address?.barangay || ""} 
+                        disabled={true}
+                        className="w-full p-3.5 border border-slate-200 rounded-2xl outline-none bg-slate-200 text-slate-500 cursor-not-allowed font-medium select-none" 
+                    />
                 </div>
+
+                {/* City */}
                 <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-500 ml-1">City</label>
-                    <input type="text" name="city" value={formData.address?.city || ""} onChange={handleChange} className="w-full p-3.5 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none bg-slate-50/50 transition-all font-medium" />
+                    <label className="text-xs font-bold text-slate-500 ml-1 flex items-center gap-1">
+                        City <span className="text-[10px] font-normal text-slate-400">(Locked)</span>
+                    </label>
+                    <input 
+                        type="text" 
+                        name="city" 
+                        value={formData.address?.city || ""} 
+                        disabled={true}
+                        className="w-full p-3.5 border border-slate-200 rounded-2xl outline-none bg-slate-200 text-slate-500 cursor-not-allowed font-medium select-none" 
+                    />
                 </div>
+
+                {/* Province */}
                 <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-500 ml-1">Province</label>
-                    <input type="text" name="province" value={formData.address?.province || ""} onChange={handleChange} className="w-full p-3.5 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none bg-slate-50/50 transition-all font-medium" />
+                    <label className="text-xs font-bold text-slate-500 ml-1 flex items-center gap-1">
+                        Province <span className="text-[10px] font-normal text-slate-400">(Locked)</span>
+                    </label>
+                    <input 
+                        type="text" 
+                        name="province" 
+                        value={formData.address?.province || ""} 
+                        disabled={true}
+                        className="w-full p-3.5 border border-slate-200 rounded-2xl outline-none bg-slate-200 text-slate-500 cursor-not-allowed font-medium select-none" 
+                    />
                 </div>
             </div>
-          </div>
+        </div>
         </div>
 
         {/* Modal Footer */}
