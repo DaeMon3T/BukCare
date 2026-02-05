@@ -9,11 +9,22 @@ class PatientVital(Base):
     id = Column(Integer, primary_key=True, index=True)
     patient_id = Column(Integer, ForeignKey("users.id"))
     
-    heart_rate = Column(Integer, nullable=True) # bpm
-    weight = Column(Float, nullable=True)       # kg
-    blood_pressure = Column(String, nullable=True) # e.g. "120/80"
-    sleep_hours = Column(Float, nullable=True)  # hours
+    # --- Heart Health ---
+    heart_rate = Column(Integer, nullable=True)
+    bp_systolic = Column(Integer, nullable=True)
+    bp_diastolic = Column(Integer, nullable=True)
     
+    # --- Respiratory & Temp ---
+    oxygen_saturation = Column(Integer, nullable=True)
+    temperature = Column(Float, nullable=True)
+    
+    # --- Body Composition ---
+    weight_kg = Column(Float, nullable=True)
+    height_cm = Column(Float, nullable=True)           
+    bmi = Column(Float, nullable=True)
+    
+    # --- Timestamps ---
+    logged_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationship

@@ -1,44 +1,36 @@
 import { useState, useEffect } from "react";
-import { Activity, Moon, Scale, Heart, Edit2, X, Save } from "lucide-react";
+import { 
+  Activity, 
+  Scale, 
+  Heart, 
+  Edit2, 
+  Thermometer, 
+  Wind, 
+  Ruler, 
+  Calculator,
+  Clock,
+} from "lucide-react";
 import api from "@/services/api";
-import toast from "react-hot-toast";
+import VitalsModal from "@/components/VitalsModal"; 
 
 // --- TYPES ---
 interface VitalsData {
-  heart_rate: number;
-  weight: number;
-  blood_pressure: string;
-  sleep_hours: number;
-}
-
-// Internal State for Form (Strings allow empty inputs)
-interface VitalsFormState {
-  heart_rate: string;
-  weight: string;
-  blood_pressure: string;
-  sleep_hours: string;
+  id: number;
+  heart_rate: number | null;
+  bp_systolic: number | null;
+  bp_diastolic: number | null;
+  temperature: number | null;
+  oxygen_saturation: number | null;
+  weight_kg: number | null;
+  height_cm: number | null;
+  bmi: number | null;
+  updated_at?: string;
 }
 
 const HealthVitals = () => {
-  // Data from API
-  const [vitals, setVitals] = useState<VitalsData>({
-    heart_rate: 0,
-    weight: 0,
-    blood_pressure: "--/--",
-    sleep_hours: 0
-  });
-
-  const [isEditing, setIsEditing] = useState(false);
+  const [vitals, setVitals] = useState<VitalsData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
-
-  // Form State (Strings)
-  const [formData, setFormData] = useState<VitalsFormState>({
-    heart_rate: "",
-    weight: "",
-    blood_pressure: "",
-    sleep_hours: ""
-  });
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     fetchVitals();
@@ -47,16 +39,7 @@ const HealthVitals = () => {
   const fetchVitals = async () => {
     try {
       const res = await api.get("/vitals/");
-      const data = res.data;
-      setVitals(data);
-      
-      // Initialize form with string values for editing
-      setFormData({
-        heart_rate: data.heart_rate ? data.heart_rate.toString() : "",
-        weight: data.weight ? data.weight.toString() : "",
-        blood_pressure: data.blood_pressure || "",
-        sleep_hours: data.sleep_hours ? data.sleep_hours.toString() : ""
-      });
+      setVitals(res.data);
     } catch (error) {
       console.error("Failed to load vitals");
     } finally {
@@ -64,33 +47,39 @@ const HealthVitals = () => {
     }
   };
 
-  const handleUpdate = async () => {
-    setIsSaving(true);
-    try {
-      // Convert strings back to numbers for API
-      const payload = {
-        heart_rate: Number(formData.heart_rate) || 0,
-        weight: Number(formData.weight) || 0,
-        blood_pressure: formData.blood_pressure,
-        sleep_hours: Number(formData.sleep_hours) || 0
-      };
-
-      const res = await api.post("/vitals/", payload);
-      setVitals(res.data);
-      setIsEditing(false);
-      toast.success("Vitals updated successfully!");
-    } catch (error) {
-      toast.error("Failed to update vitals");
-    } finally {
-      setIsSaving(false);
-    }
+  const formatValue = (val: number | null | undefined, suffix = "") => {
+    if (val === null || val === undefined || val === 0) return "--";
+    return `${val}${suffix}`;
   };
 
-  // Card Configuration
+  const formatBP = () => {
+    if (!vitals?.bp_systolic || !vitals?.bp_diastolic) return "--/--";
+    return `${vitals.bp_systolic}/${vitals.bp_diastolic}`;
+  };
+
+  const getLastUpdated = () => {
+    if (!vitals?.updated_at) return "No data logged yet";
+    let dateStr = vitals.updated_at;
+    if (!dateStr.endsWith("Z")) {
+       dateStr = dateStr.replace(" ", "T") + "Z";
+    }
+    
+    const date = new Date(dateStr);
+    
+    return new Intl.DateTimeFormat('en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: 'numeric',
+      hour12: true,
+      timeZone: 'Asia/Manila' 
+    }).format(date);
+  };
+
   const cards = [
     { 
       label: "Heart Rate", 
-      value: vitals.heart_rate, 
+      value: formatValue(vitals?.heart_rate), 
       unit: "bpm", 
       icon: Heart, 
       color: "text-rose-500", 
@@ -98,83 +87,132 @@ const HealthVitals = () => {
       borderColor: "border-rose-100"
     },
     { 
+      label: "Blood Pressure", 
+      value: formatBP(), 
+      unit: "mmHg", 
+      icon: Activity, 
+      color: "text-emerald-500", 
+      bg: "bg-sky-50",
+      borderColor: "border-emerald-100"
+    },
+    { 
+      label: "Oxygen", 
+      value: formatValue(vitals?.oxygen_saturation), 
+      unit: "%", 
+      icon: Wind, 
+      color: "text-sky-500", 
+      bg: "bg-sky-50",
+      borderColor: "border-sky-100"
+    },
+    { 
+      label: "Temp", 
+      value: formatValue(vitals?.temperature), 
+      unit: "°C", 
+      icon: Thermometer, 
+      color: "text-amber-500", 
+      bg: "bg-amber-50",
+      borderColor: "border-amber-100"
+    },
+    { 
       label: "Weight", 
-      value: vitals.weight, 
+      value: formatValue(vitals?.weight_kg), 
       unit: "kg", 
       icon: Scale, 
-      color: "text-[#00aeef]", // BukCare Blue
+      color: "text-blue-500", 
       bg: "bg-blue-50",
       borderColor: "border-blue-100"
     },
     { 
-      label: "Sleep", 
-      value: vitals.sleep_hours, 
-      unit: "hr", 
-      icon: Moon, 
+      label: "Height", 
+      value: formatValue(vitals?.height_cm), 
+      unit: "cm", 
+      icon: Ruler, 
       color: "text-indigo-500", 
       bg: "bg-indigo-50",
       borderColor: "border-indigo-100"
     },
     { 
-      label: "Blood Pressure", 
-      value: vitals.blood_pressure, 
-      unit: "mmHg", 
-      icon: Activity, 
-      color: "text-emerald-500", 
-      bg: "bg-emerald-50",
-      borderColor: "border-emerald-100"
+      label: "BMI", 
+      value: formatValue(vitals?.bmi), 
+      unit: "", 
+      icon: Calculator, 
+      color: "text-purple-500", 
+      bg: "bg-purple-50",
+      borderColor: "border-purple-100"
     },
   ];
 
   if (loading) return (
-    <div className="w-full h-48 bg-slate-50 rounded-[2rem] animate-pulse flex items-center justify-center text-slate-400">
+    <div className="w-full h-48 bg-slate-50 rounded-[2rem] animate-pulse flex items-center justify-center text-slate-400 font-medium mb-10">
         Loading Health Data...
     </div>
   );
 
   return (
-    <div className="relative bg-white rounded-[2rem] p-8 shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden group mb-10">
+    <div className="relative bg-white rounded-[2rem] p-6 md:p-8 shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden group mb-10">
       
-      {/* --- Abstract Background Shapes (Matches SignUp.tsx) --- */}
+      {/* Background Shapes */}
       <div className="absolute top-0 right-0 -mr-10 -mt-10 w-64 h-64 bg-blue-50/50 rounded-full blur-[60px] z-0 pointer-events-none"></div>
+      <div className="absolute bottom-0 left-0 -ml-10 -mb-10 w-40 h-40 bg-rose-50/50 rounded-full blur-[50px] z-0 pointer-events-none"></div>
       
-      {/* Header */}
-      <div className="relative z-10 flex justify-between items-end mb-8">
+      {/* --- HEADER --- */}
+      <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-end mb-6 gap-4">
         <div>
           <h2 className="text-2xl font-bold text-slate-900 tracking-tight leading-tight">
-            Static <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#00aeef] to-[#0077a3]">Vitals.</span>
+            Vital <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#00aeef] to-[#0077a3]">Logs</span>
           </h2>
-          <p className="text-slate-500 mt-1 text-sm font-medium">Please update it regularly</p>
+          <div className="flex items-center gap-2 mt-2 text-xs font-medium text-slate-400 bg-slate-50 px-3 py-1.5 rounded-full w-fit">
+            <Clock className="w-3.5 h-3.5" />
+            <span>Last updated: {getLastUpdated()}</span>
+          </div>
         </div>
 
         <button 
-          onClick={() => setIsEditing(true)}
-          className="group flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-600 hover:border-[#00aeef] hover:text-[#00aeef] hover:shadow-lg hover:shadow-blue-500/10 transition-all duration-300 active:scale-95"
+          onClick={() => setIsModalOpen(true)}
+          className="group flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs md:text-sm font-bold text-slate-600 hover:border-[#00aeef] hover:text-[#00aeef] hover:shadow-lg hover:shadow-blue-500/10 transition-all duration-300 active:scale-95 whitespace-nowrap self-end md:self-auto"
         >
-          <Edit2 className="w-4 h-4" />
-          <span>Update</span>
+          <Edit2 className="w-3.5 h-3.5" />
+          <span>Update Log</span>
         </button>
       </div>
 
-      {/* Cards Grid */}
-      <div className="relative z-10 grid grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* --- VIEW 1: MOBILE TABLE LIST (Visible on small screens) --- */}
+      <div className="relative z-10 block lg:hidden bg-slate-50/50 rounded-2xl border border-slate-100 overflow-hidden">
+         {cards.map((vital, index) => (
+             <div key={index} className="flex items-center justify-between p-4 border-b border-slate-100 last:border-0 hover:bg-white transition-colors">
+                 <div className="flex items-center gap-3">
+                     <div className={`p-2 rounded-xl ${vital.bg} ${vital.color}`}>
+                         <vital.icon className="w-4 h-4" />
+                     </div>
+                     <span className="text-sm font-bold text-slate-700">{vital.label}</span>
+                 </div>
+                 <div className="text-right">
+                     <span className="text-base font-bold text-slate-900">{vital.value}</span>
+                     {vital.unit && <span className="text-xs text-slate-400 ml-1">{vital.unit}</span>}
+                 </div>
+             </div>
+         ))}
+      </div>
+
+      {/* --- VIEW 2: DESKTOP GRID CARDS (Visible on Large screens) --- */}
+      <div className="relative z-10 hidden lg:grid grid-cols-4 xl:grid-cols-7 gap-3">
         {cards.map((vital, index) => (
           <div 
             key={index} 
             className={`
-                relative p-5 rounded-3xl border ${vital.borderColor} ${vital.bg} bg-opacity-40
-                flex flex-col items-center justify-center text-center gap-3
+                relative p-3 rounded-2xl border ${vital.borderColor} ${vital.bg} bg-opacity-40
+                flex flex-col items-center justify-center text-center gap-2
                 hover:scale-[1.02] transition-transform duration-300 cursor-default
             `}
           >
-            <div className={`p-3 bg-white rounded-2xl shadow-sm ${vital.color}`}>
-                <vital.icon className="w-6 h-6" />
+            <div className={`p-2 bg-white rounded-xl shadow-sm ${vital.color}`}>
+                <vital.icon className="w-5 h-5" /> 
             </div>
             <div>
-                <p className="text-2xl font-bold text-slate-800 tracking-tight">
-                    {vital.value || <span className="text-slate-400 text-lg">--</span>}
+                <p className="text-lg md:text-xl font-bold text-slate-800 tracking-tight leading-none">
+                    {vital.value}
                 </p>
-                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500/80 mt-1">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500/80 mt-1">
                     {vital.label} <span className="lowercase opacity-70">({vital.unit})</span>
                 </p>
             </div>
@@ -182,115 +220,12 @@ const HealthVitals = () => {
         ))}
       </div>
 
-      {/* --- EDIT MODAL --- */}
-      {isEditing && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          {/* Backdrop */}
-          <div 
-            className="absolute inset-0 bg-slate-900/20 backdrop-blur-md transition-opacity" 
-            onClick={() => setIsEditing(false)}
-          />
-
-          {/* Modal Content */}
-          <div className="bg-white w-full max-w-lg rounded-[2rem] shadow-2xl p-8 relative z-10 animate-in zoom-in-95 duration-200 border border-slate-100">
-            
-            <div className="flex justify-between items-center mb-8">
-                <div>
-                    <h3 className="text-xl font-bold text-slate-900">Update Health Data</h3>
-                    <p className="text-slate-500 text-sm">Keep your records up to date.</p>
-                </div>
-                <button 
-                    onClick={() => setIsEditing(false)}
-                    className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-full transition-colors"
-                >
-                    <X className="w-5 h-5"/>
-                </button>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                {/* Heart Rate */}
-                <div className="space-y-2">
-                    <label className="text-xs font-bold uppercase tracking-wide text-slate-500 ml-1">Heart Rate</label>
-                    <div className="relative group">
-                        <input 
-                            type="number" 
-                            value={formData.heart_rate}
-                            onChange={e => setFormData({...formData, heart_rate: e.target.value})}
-                            placeholder="0"
-                            className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-[#00aeef] focus:ring-4 focus:ring-[#00aeef]/10 transition-all font-semibold text-slate-700 placeholder:text-slate-300"
-                        />
-                        <Heart className="w-4 h-4 text-rose-400 absolute left-3.5 top-3.5 group-focus-within:text-rose-500 transition-colors" />
-                        <span className="absolute right-3.5 top-3.5 text-xs font-bold text-slate-400">bpm</span>
-                    </div>
-                </div>
-
-                {/* Weight */}
-                <div className="space-y-2">
-                    <label className="text-xs font-bold uppercase tracking-wide text-slate-500 ml-1">Weight</label>
-                    <div className="relative group">
-                        <input 
-                            type="number" 
-                            value={formData.weight}
-                            onChange={e => setFormData({...formData, weight: e.target.value})}
-                            placeholder="0"
-                            className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-[#00aeef] focus:ring-4 focus:ring-[#00aeef]/10 transition-all font-semibold text-slate-700 placeholder:text-slate-300"
-                        />
-                        <Scale className="w-4 h-4 text-[#00aeef]/70 absolute left-3.5 top-3.5 group-focus-within:text-[#00aeef] transition-colors" />
-                        <span className="absolute right-3.5 top-3.5 text-xs font-bold text-slate-400">kg</span>
-                    </div>
-                </div>
-
-                {/* Blood Pressure */}
-                <div className="space-y-2">
-                    <label className="text-xs font-bold uppercase tracking-wide text-slate-500 ml-1">Blood Pressure</label>
-                    <div className="relative group">
-                        <input 
-                            type="text" 
-                            value={formData.blood_pressure}
-                            onChange={e => setFormData({...formData, blood_pressure: e.target.value})}
-                            placeholder="120/80"
-                            className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-[#00aeef] focus:ring-4 focus:ring-[#00aeef]/10 transition-all font-semibold text-slate-700 placeholder:text-slate-300"
-                        />
-                        <Activity className="w-4 h-4 text-emerald-400 absolute left-3.5 top-3.5 group-focus-within:text-emerald-500 transition-colors" />
-                        <span className="absolute right-3.5 top-3.5 text-xs font-bold text-slate-400">mmHg</span>
-                    </div>
-                </div>
-
-                {/* Sleep */}
-                <div className="space-y-2">
-                    <label className="text-xs font-bold uppercase tracking-wide text-slate-500 ml-1">Sleep</label>
-                    <div className="relative group">
-                        <input 
-                            type="number" 
-                            value={formData.sleep_hours}
-                            onChange={e => setFormData({...formData, sleep_hours: e.target.value})}
-                            placeholder="0"
-                            className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-[#00aeef] focus:ring-4 focus:ring-[#00aeef]/10 transition-all font-semibold text-slate-700 placeholder:text-slate-300"
-                        />
-                        <Moon className="w-4 h-4 text-indigo-400 absolute left-3.5 top-3.5 group-focus-within:text-indigo-500 transition-colors" />
-                        <span className="absolute right-3.5 top-3.5 text-xs font-bold text-slate-400">hrs</span>
-                    </div>
-                </div>
-            </div>
-
-            <button 
-                onClick={handleUpdate}
-                disabled={isSaving}
-                className="w-full mt-8 flex items-center justify-center gap-3 py-4 bg-[#00aeef] text-white font-bold rounded-xl hover:bg-[#009bc5] hover:shadow-lg hover:shadow-blue-500/30 transition-all duration-300 active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
-            >
-                {isSaving ? (
-                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                ) : (
-                    <>
-                        <Save className="w-5 h-5" />
-                        Save Updates
-                    </>
-                )}
-            </button>
-
-          </div>
-        </div>
-      )}
+      <VitalsModal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)} 
+        onSuccess={fetchVitals} 
+      />
+      
     </div>
   );
 };

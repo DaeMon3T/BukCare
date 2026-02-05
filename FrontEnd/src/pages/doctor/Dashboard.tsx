@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import type { FC } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -49,6 +49,7 @@ interface Appointment {
   id: number;
   patient_id: number;
   patient_name: string;
+  patient_avatar?: string;
   doctor_id: number;
   doctor_name: string;
   appointment_date: string;
@@ -143,13 +144,13 @@ const DoctorDashboard: FC = () => {
   };
 
   const calculateStats = (appointmentsData: Appointment[]) => {
-    // FIX: Get "Today" as a clean string using your new helper
+    // Get "Today" as a clean string using your new helper
     const todayStr = toDateString(new Date()); 
 
     const stats: DashboardStats = {
       totalAppointments: appointmentsData.length,
       
-      // FIX: Compare Strings directly to ignore timezone shifts
+      // Compare Strings directly to ignore timezone shifts
       todayAppointments: appointmentsData.filter((apt) => {
         const aptDateStr = apt.appointment_date.split('T')[0] ?? "";
         return aptDateStr === todayStr && apt.status !== 'cancelled';
@@ -168,6 +169,9 @@ const DoctorDashboard: FC = () => {
 
     setStats(stats);
   };
+
+  // Mag buhat ug ref para sa appointments list aron ma handle nato ang auto-scroll sa new appointments
+  const appointmentsListRef = useRef<HTMLDivElement>(null);
 
   const getWeeklyTrendData = () => {
     const today = new Date();
@@ -320,6 +324,13 @@ const DoctorDashboard: FC = () => {
       toast.error("Failed to update appointment status");
     }
   };
+  // Initialize with today's date
+const [selectedDate, setSelectedDate] = useState(new Date());
+
+// Helper to format date to YYYY-MM-DD for comparison with your DB data
+// const formatDateKey = (date: Date) => {
+//     return date.toISOString().split('T')[0];
+// };
 
   // Calendar functions
   const getDaysInMonth = (date: Date) => {
@@ -345,7 +356,7 @@ const DoctorDashboard: FC = () => {
   };
 
   const getSchedulesForDate = (date: Date) => {
-  const dateStr = toDateString(date); // Fixed: Uses your new helper
+  const dateStr = toDateString(date); // : Uses your new helper
   return schedules.filter((sch) => sch.date === dateStr && sch.is_available);
   };
 
@@ -353,17 +364,21 @@ const DoctorDashboard: FC = () => {
     const { daysInMonth, startingDayOfWeek } = getDaysInMonth(currentMonth);
     const days = [];
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    // Empty cells for days before month starts
+    
+    // Empty cells
     for (let i = 0; i < startingDayOfWeek; i++) {
-      days.push(<div key={`empty-${i}`} className="h-14"></div>);
+      days.push(<div key={`empty-${i}`} className="h-14 bg-slate-50/50"></div>);
     }
 
-    // Days of the month
+    // Days
     for (let day = 1; day <= daysInMonth; day++) {
       const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
-      const isToday = date.getTime() === today.getTime();
+      
+      // Use toDateString for consistent local string comparison
+      const dateStr = toDateString(date);
+      const isToday = dateStr === toDateString(today);
+      const isSelected = dateStr === toDateString(selectedDate);
+
       const dayAppointments = getAppointmentsForDate(date);
       const daySchedules = getSchedulesForDate(date);
       const hasEvents = dayAppointments.length > 0 || daySchedules.length > 0;
@@ -371,27 +386,37 @@ const DoctorDashboard: FC = () => {
       days.push(
         <div
           key={day}
-          className={`h-14 border border-slate-100 p-1 text-sm transition-colors cursor-pointer ${
-            isToday ? "bg-blue-50 border-blue-300" : "hover:bg-slate-50"
-          }`}
+          onClick={() => setSelectedDate(date)}
+          className={`
+            h-14 border border-slate-100 p-1 text-sm transition-all cursor-pointer relative group
+            ${isSelected 
+                ? "bg-[#00aeef] border-[#00aeef] text-white shadow-md rounded-lg scale-105 z-10" 
+                : isToday 
+                    ? "bg-blue-50 border-blue-300" 
+                    : "hover:bg-slate-50 bg-white" 
+            }
+          `}
         >
-          <div className={`font-medium ${isToday ? "text-blue-600" : "text-slate-700"}`}>
+          <div className={`font-medium flex justify-between items-start ${
+              isSelected ? "text-white" : isToday ? "text-blue-600" : "text-slate-700"
+          }`}>
             {day}
           </div>
+
+          {/* Event Dots */}
           {hasEvents && (
-            <div className="flex gap-0.5 mt-0.5">
+            <div className="flex gap-1 mt-1 absolute bottom-1.5 right-1.5">
               {dayAppointments.length > 0 && (
-                <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
+                <div className={`w-1.5 h-1.5 rounded-full ${isSelected ? "bg-white" : "bg-blue-500"}`}></div>
               )}
               {daySchedules.length > 0 && (
-                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
+                <div className={`w-1.5 h-1.5 rounded-full ${isSelected ? "bg-emerald-200" : "bg-emerald-500"}`}></div>
               )}
             </div>
           )}
         </div>
       );
     }
-
     return days;
   };
 
@@ -410,213 +435,165 @@ const DoctorDashboard: FC = () => {
   // Appointment Details Modal
   const AppointmentDetailsModal: FC = () =>
   selectedAppointment ? (
-    <div className="fixed inset-0 bg-gradient-to-br from-black/70 via-slate-900/60 to-black/70 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-in fade-in duration-300">
-      <div className="bg-white rounded-3xl max-w-2xl w-full shadow-2xl max-h-[95vh] overflow-hidden transform animate-in zoom-in-95 duration-300 border border-white/20">
-        {/* Premium Header with Glass Effect */}
-        <div className="relative bg-gradient-to-r from-blue-700 to-[#2dc7f8] p-4 overflow-hidden">
-          {/* Decorative pattern overlay */}
-          <div className="absolute inset-0 opacity-10">
-            <div className="absolute top-0 left-0 w-full h-full" 
-                 style={{backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', 
-                         backgroundSize: '40px 40px'}}></div>
+    // 1. Overlay: Added z-[9999] to ensure it sits on top of everything
+    <div className="fixed inset-0 bg-gradient-to-br from-black/70 via-slate-900/60 to-black/70 backdrop-blur-md flex items-center justify-center z-[9999] p-4 sm:p-6 animate-in fade-in duration-300">
+      
+      {/* 2. Modal Card: Used 'flex flex-col' and 'max-h' so it adapts to screen height */}
+      <div className="bg-white rounded-2xl sm:rounded-3xl w-full max-w-lg md:max-w-2xl shadow-2xl flex flex-col max-h-[90vh] sm:max-h-[95vh] overflow-hidden transform animate-in zoom-in-95 duration-300 border border-white/20">
+        
+        {/* --- HEADER (Fixed) --- */}
+        <div className="relative bg-gradient-to-r from-blue-700 to-[#2dc7f8] p-4 sm:p-5 flex-none z-10">
+          <div className="absolute inset-0 opacity-10 pointer-events-none">
+            <div className="absolute top-0 left-0 w-full h-full" style={{backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '40px 40px'}}></div>
           </div>
-          <div className="relative z-10 flex justify-between items-start">
-            <div className="flex items-center gap-4">
-              {/* Icon placeholder - replace with your image */}
-              <div className="w-16 h-16 bg-white backdrop-blur-lg rounded-2xl flex items-center justify-center border border-white/30 shadow-xl hidden sm:flex">
-                <img 
-                  src={bukcarelogo} 
-                  alt="Appointment" 
-                  className="w-30 h-30 object-contain"
-                />
+          <div className="relative z-10 flex justify-between items-start gap-3">
+            <div className="flex items-center gap-3 sm:gap-4">
+              {/* Icon: Hidden on very small screens to save space */}
+              <div className="hidden xs:flex w-12 h-12 sm:w-16 sm:h-16 bg-white backdrop-blur-lg rounded-xl sm:rounded-2xl items-center justify-center border border-white/30 shadow-xl flex-shrink-0">
+                <img src={bukcarelogo} alt="Appointment" className="w-8 h-8 sm:w-10 sm:h-10 object-contain" />
               </div>
               <div>
-                <h2 className="text-2xl sm:text-3xl font-bold text-white mb-1 tracking-tight">
+                <h2 className="text-xl sm:text-3xl font-bold text-white mb-0.5 sm:mb-1 tracking-tight">
                   Appointment Details
                 </h2>
-                <p className="text-blue-100 text-sm font-medium">Complete appointment information</p>
+                <p className="text-blue-100 text-xs sm:text-sm font-medium">Complete information view</p>
               </div>
             </div>
             <button
               onClick={() => setShowAppointmentDetails(false)}
-              className="text-white/70 hover:text-white hover:bg-white/20 p-2.5 rounded-xl transition-all duration-200 hover:rotate-90 transform"
+              className="text-white/80 hover:text-white hover:bg-white/20 p-2 rounded-lg transition-all duration-200 hover:rotate-90"
             >
-              <XCircle className="w-6 h-6" />
+              <XCircle className="w-6 h-6 sm:w-7 sm:h-7" />
             </button>
           </div>
         </div>
 
-        <div className="p-6 sm:p-8 space-y-6 overflow-y-auto max-h-[calc(95vh-140px)]">
-          {/* Patient Information - Premium Card */}
-          <div className="relative bg-gradient-to-br from-emerald-50 to-teal-50/50 rounded-2xl p-6 border-2 border-slate-200/60 shadow-lg hover:shadow-xl transition-all duration-300 group overflow-hidden">
-            {/* Subtle shine effect */}
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 transform -skew-x-12 group-hover:translate-x-full" 
-                 style={{width: '50%', transition: 'transform 0.8s ease'}}></div>
-            <div className="relative z-10 flex flex-col sm:flex-row items-center sm:items-start gap-5 text-center sm:text-left">
-              <div className="relative">
-                <div className="w-20 h-20 bg-gradient-to-br from-blue-500 via-cyan-500 to-blue-600 rounded-2xl flex items-center justify-center text-white font-bold text-2xl shadow-xl border-4 border-white">
+        {/* --- SCROLLABLE CONTENT (Flex-1) --- */}
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5 sm:space-y-6 bg-slate-50/50">
+          
+          {/* Patient Info Card */}
+          <div className="relative bg-white rounded-2xl p-4 sm:p-6 border border-slate-200 shadow-sm flex flex-col sm:flex-row items-center sm:items-start gap-4 text-center sm:text-left">
+            <div className="relative flex-shrink-0">
+              
+              {/* Check if avatar exists, otherwise show initials */}
+              {selectedAppointment.patient_avatar ? (
+                <img 
+                  src={selectedAppointment.patient_avatar} 
+                  alt={selectedAppointment.patient_name}
+                  className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl object-cover shadow-lg border-4 border-white"
+                />
+              ) : (
+                <div className="w-20 h-20 sm:w-24 sm:h-24 bg-gradient-to-br from-blue-500 via-cyan-500 to-blue-600 rounded-2xl flex items-center justify-center text-white font-bold text-2xl sm:text-3xl shadow-lg border-4 border-white">
                   {selectedAppointment.patient_name.split(' ').map(n => n[0]).join('')}
                 </div>
-                <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-emerald-500 rounded-full border-3 border-white shadow-md"></div>
-              </div>
-              <div className="flex-1">
-                <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Patient Information</h3>
-                <p className="text-2xl font-bold text-slate-900 mb-1">{selectedAppointment.patient_name}</p>
-                <div className="flex items-center justify-center sm:justify-start gap-2">
-                  <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-semibold">
-                    Patient ID: {selectedAppointment.patient_id}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
+              )}
 
-          {/* Appointment Details Grid - Modern Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Date Card */}
-            <div className="relative bg-gradient-to-br from-emerald-50 to-teal-50/50 rounded-2xl p-5 border border-blue-200/60 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 group overflow-hidden">
-              <div className="absolute top-0 right-0 w-20 h-20 bg-blue-400/10 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-500"></div>
-              <div className="relative z-10">
-                <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-4 shadow-lg group-hover:scale-110 transition-transform">
-                  <img 
-                    src={appointmentpic} 
-                    alt="Date" 
-                    className="w-8 h-8 object-contain"
-                  />
-                </div>
-                <p className="text-xs text-black/80 font-bold uppercase tracking-wide mb-1">Date</p>
-                <p className="text-lg font-bold text-slate-900">
-                  {formatDate(selectedAppointment.appointment_date)}
-                </p>
-              </div>
+              {/* Status Dot */}
+              <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-emerald-500 rounded-full border-2 border-white shadow-sm"></div>
             </div>
 
-            {/* Time Card */}
-            <div className="relative bg-gradient-to-br from-emerald-50 to-teal-50/50 rounded-2xl p-5 border border-purple-200/60 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 group overflow-hidden">
-              <div className="absolute top-0 right-0 w-20 h-20 bg-purple-400/10 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-500"></div>
-              <div className="relative z-10">
-                <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-4 shadow-lg group-hover:scale-110 transition-transform">
-                  {/* Icon placeholder */}
-                  <img 
-                    src={pendingpic}
-                    alt="Time" 
-                    className="w-7 h-7 object-contain"
-                  />
-                </div>
-                <p className="text-xs text-black/80 font-bold uppercase tracking-wide mb-1">Time</p>
-                <p className="text-lg font-bold text-slate-900">
-                  {formatTime(selectedAppointment.appointment_date)}
-                </p>
-              </div>
-            </div>
-
-            {/* Status Card */}
-            <div className="relative bg-gradient-to-br from-emerald-50 to-teal-50/50 rounded-2xl p-5 border border-emerald-200/60 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 group overflow-hidden">
-              <div className="absolute top-0 right-0 w-20 h-20 bg-emerald-400/10 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-500"></div>
-              <div className="relative z-10">
-                <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-4 shadow-lg group-hover:scale-110 transition-transform">
-                  {/* Icon placeholder */}
-                  <img 
-                    src={confirmedpic}
-                    alt="Status" 
-                    className="w-8 h-8 object-contain"
-                  />
-                </div>
-                <p className="text-xs text-black/80 font-bold uppercase tracking-wide mb-1">Status</p>
-                <span
-                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border-2 ${getStatusColor(
-                    selectedAppointment.status
-                  )}`}
-                >
-                  {getStatusIcon(selectedAppointment.status)}
-                  {selectedAppointment.status.toUpperCase()}
+            <div className="flex-1 min-w-0 pt-1">
+              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Patient</h3>
+              <p className="text-xl sm:text-2xl font-bold text-slate-900 truncate leading-tight">
+                {selectedAppointment.patient_name}
+              </p>
+              <div className="flex items-center justify-center sm:justify-start gap-2 mt-2">
+                <span className="px-2.5 py-1 bg-blue-100 text-blue-700 rounded-lg text-xs font-bold font-mono">
+                  ID: {selectedAppointment.patient_id}
                 </span>
               </div>
             </div>
           </div>
 
-          {/* Reason for Visit - Enhanced */}
-          {selectedAppointment.reason && (
-            <div className="relative bg-gradient-to-br from-blue-50 via-cyan-50/50 to-blue-50/30 rounded-2xl p-6 border-2 border-blue-200/70 shadow-md hover:shadow-lg transition-all duration-300 group overflow-hidden">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-blue-400/10 rounded-full blur-3xl"></div>
-              <div className="relative z-10 flex flex-col sm:flex-row items-start gap-4">
-                <div className="w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg group-hover:scale-110 transition-transform">
-                  {/* Icon placeholder */}
-                  <img 
-                    src={history}
-                    alt="Reason" 
-                    className="w-10 h-10 object-contain"
-                  />
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-xs font-bold text-blue-700 uppercase tracking-wider mb-3 flex items-center gap-2">
-                    Reason for Visit
-                    <span className="w-12 h-0.5 bg-blue-300 rounded-full"></span>
-                  </h3>
-                  <p className="text-base text-slate-800 leading-relaxed font-medium">{selectedAppointment.reason}</p>
-                </div>
+          {/* Details Grid (Stacks on mobile) */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+            {/* Date */}
+            <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm flex items-center gap-3 sm:block sm:text-center">
+              <div className="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center sm:mx-auto sm:mb-2">
+                <img src={appointmentpic} alt="Date" className="w-6 h-6 object-contain"/>
+              </div>
+              <div>
+                <p className="text-xs text-slate-400 font-bold uppercase">Date</p>
+                <p className="font-bold text-slate-900">{formatDate(selectedAppointment.appointment_date)}</p>
               </div>
             </div>
-          )}
 
-          {/* Notes - Enhanced */}
-          {selectedAppointment.notes && (
-            <div className="relative bg-gradient-to-br from-purple-50 via-fuchsia-50/50 to-purple-50/30 rounded-2xl p-6 border-2 border-purple-200/70 shadow-md hover:shadow-lg transition-all duration-300 group overflow-hidden">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-purple-400/10 rounded-full blur-3xl"></div>
-              <div className="relative z-10 flex flex-col sm:flex-row items-start gap-4">
-                <div className="w-14 h-14 bg-gradient-to-br from-purple-500 to-fuchsia-600 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg group-hover:scale-110 transition-transform">
-                  {/* Icon placeholder */}
-                  <img 
-                    src="/path-to-your-notes-icon.png" 
-                    alt="Notes" 
-                    className="w-7 h-7 object-contain"
-                  />
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-xs font-bold text-purple-700 uppercase tracking-wider mb-3 flex items-center gap-2">
-                    Additional Notes
-                    <span className="w-12 h-0.5 bg-purple-300 rounded-full"></span>
-                  </h3>
-                  <p className="text-base text-slate-800 leading-relaxed font-medium">{selectedAppointment.notes}</p>
-                </div>
+            {/* Time */}
+            <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm flex items-center gap-3 sm:block sm:text-center">
+              <div className="w-10 h-10 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center sm:mx-auto sm:mb-2">
+                <img src={pendingpic} alt="Time" className="w-6 h-6 object-contain"/>
+              </div>
+              <div>
+                <p className="text-xs text-slate-400 font-bold uppercase">Time</p>
+                <p className="font-bold text-slate-900">{formatTime(selectedAppointment.appointment_date)}</p>
               </div>
             </div>
-          )}
 
-          {/* Action Buttons - Premium Style */}
-          <div className="flex flex-col sm:flex-row gap-4 pt-6 border-t-2 border-slate-200">
+            {/* Status */}
+            <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm flex items-center gap-3 sm:block sm:text-center">
+              <div className="w-10 h-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center sm:mx-auto sm:mb-2">
+                <img src={confirmedpic} alt="Status" className="w-6 h-6 object-contain"/>
+              </div>
+              <div>
+                <p className="text-xs text-slate-400 font-bold uppercase">Status</p>
+                <span className={`inline-block px-2 py-0.5 rounded text-xs font-bold capitalize mt-0.5 border ${getStatusColor(selectedAppointment.status)}`}>
+                  {selectedAppointment.status}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Reason & Notes */}
+          <div className="space-y-3">
+            {selectedAppointment.reason && (
+              <div className="bg-blue-50/50 p-4 sm:p-5 rounded-xl border border-blue-100">
+                <h4 className="text-xs font-bold text-blue-700 uppercase mb-2 flex items-center gap-2">
+                  <img src={history} className="w-4 h-4" alt="Reason"/> Reason
+                </h4>
+                <p className="text-sm sm:text-base text-slate-700 leading-relaxed">{selectedAppointment.reason}</p>
+              </div>
+            )}
+            {selectedAppointment.notes && (
+              <div className="bg-purple-50/50 p-4 sm:p-5 rounded-xl border border-purple-100">
+                <h4 className="text-xs font-bold text-purple-700 uppercase mb-2 flex items-center gap-2">
+                  <span className="w-4 h-4 bg-purple-200 rounded-full flex items-center justify-center text-[10px]">📝</span> Notes
+                </h4>
+                <p className="text-sm sm:text-base text-slate-700 leading-relaxed">{selectedAppointment.notes}</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* --- FOOTER ACTIONS (Fixed at bottom) --- */}
+        <div className="p-4 sm:p-6 border-t border-slate-200 bg-white flex-none z-10">
+          <div className="flex flex-col sm:flex-row gap-3">
             {selectedAppointment.status === "pending" && (
               <>
                 <button
                   onClick={() => handleUpdateStatus(selectedAppointment.id, "confirmed")}
-                  className="flex-1 px-6 py-4 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-600 text-white rounded-2xl hover:from-emerald-700 hover:via-teal-700 hover:to-emerald-700 font-bold transition-all shadow-lg shadow-emerald-500/40 hover:shadow-2xl hover:shadow-emerald-500/50 hover:scale-[1.03] active:scale-[0.98] flex items-center justify-center gap-3 text-base tracking-wide relative overflow-hidden group"
+                  className="flex-1 py-3.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold shadow-lg shadow-emerald-200 transition-all flex items-center justify-center gap-2 active:scale-95"
                 >
-                  <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 opacity-0 group-hover:opacity-100 transform -skew-x-12 group-hover:translate-x-full transition-all duration-700"></div>
-                  <CheckCircle className="w-5 h-5 relative z-10" />
-                  <span className="relative z-10">Confirm Appointment</span>
+                  <CheckCircle className="w-5 h-5" /> Confirm
                 </button>
                 <button
                   onClick={() => handleUpdateStatus(selectedAppointment.id, "cancelled")}
-                  className="flex-1 px-6 py-4 bg-gradient-to-r from-rose-600 via-red-600 to-rose-600 text-white rounded-2xl hover:from-rose-700 hover:via-red-700 hover:to-rose-700 font-bold transition-all shadow-lg shadow-rose-500/40 hover:shadow-2xl hover:shadow-rose-500/50 hover:scale-[1.03] active:scale-[0.98] flex items-center justify-center gap-3 text-base tracking-wide relative overflow-hidden group"
+                  className="flex-1 py-3.5 px-4 bg-white border-2 border-rose-100 text-rose-600 hover:bg-rose-50 rounded-xl font-bold transition-all flex items-center justify-center gap-2 active:scale-95"
                 >
-                  <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 opacity-0 group-hover:opacity-100 transform -skew-x-12 group-hover:translate-x-full transition-all duration-700"></div>
-                  <XCircle className="w-5 h-5 relative z-10" />
-                  <span className="relative z-10">Cancel Appointment</span>
+                  <XCircle className="w-5 h-5" /> Cancel
                 </button>
               </>
             )}
             {selectedAppointment.status === "confirmed" && (
               <button
                 onClick={() => handleUpdateStatus(selectedAppointment.id, "completed")}
-                className="flex-1 px-6 py-4 bg-gradient-to-r from-blue-600 via-cyan-600 to-blue-600 text-white rounded-2xl hover:from-blue-700 hover:via-cyan-700 hover:to-blue-700 font-bold transition-all shadow-lg shadow-blue-500/40 hover:shadow-2xl hover:shadow-blue-500/50 hover:scale-[1.03] active:scale-[0.98] flex items-center justify-center gap-3 text-base tracking-wide relative overflow-hidden group"
+                className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-lg shadow-blue-200 transition-all flex items-center justify-center gap-2 active:scale-95"
               >
-                <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 opacity-0 group-hover:opacity-100 transform -skew-x-12 group-hover:translate-x-full transition-all duration-700"></div>
-                <CheckCircle className="w-5 h-5 relative z-10" />
-                <span className="relative z-10">Mark as Completed</span>
+                <CheckCircle className="w-5 h-5" /> Mark as Completed
               </button>
             )}
           </div>
         </div>
+
       </div>
     </div>
   ) : null;
@@ -638,7 +615,7 @@ const DoctorDashboard: FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50">
-      <div className="fixed inset-0 pointer-events-none z-0">
+      <div className=" inset-0 pointer-events-none z-0">
           <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-blue-400/20 rounded-full blur-[100px] mix-blend-multiply" />
           <div className="absolute top-[20%] right-[-10%] w-[600px] h-[600px] bg-purple-400/20 rounded-full blur-[100px] mix-blend-multiply" />
           <div className="absolute bottom-[-10%] left-[20%] w-[500px] h-[500px] bg-emerald-400/20 rounded-full blur-[100px] mix-blend-multiply" />
@@ -1080,7 +1057,10 @@ const DoctorDashboard: FC = () => {
             
 
             {/* Appointments List */}
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-200">
+            <div 
+              ref={appointmentsListRef}
+              className="bg-white rounded-2xl shadow-sm border border-slate-200"
+            >
               <div className="p-6 border-b border-slate-200">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
                   <h2 className="text-xl font-semibold text-slate-900">Appointments</h2>
@@ -1153,9 +1133,21 @@ const DoctorDashboard: FC = () => {
                       <div className="flex justify-between items-start">
                         <div className="flex-1">
                           <div className="flex items-center space-x-3 mb-3">
-                            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">
-                              {appointment.patient_name.split(' ').map(n => n[0]).join('')}
+                            {/* ✅ UPDATED: Avatar Logic */}
+                            <div className="flex-shrink-0">
+                              {appointment.patient_avatar ? (
+                                <img
+                                  src={appointment.patient_avatar}
+                                  alt={appointment.patient_name}
+                                  className="w-10 h-10 rounded-full object-cover border border-slate-200 shadow-sm"
+                                />
+                              ) : (
+                                <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-semibold text-sm shadow-sm">
+                                  {appointment.patient_name.split(' ').map(n => n[0]).join('')}
+                                </div>
+                              )}
                             </div>
+
                             <div className="min-w-0">
                               <h3 className="font-semibold text-slate-800 text-base truncate">
                                 {appointment.patient_name}
@@ -1172,12 +1164,16 @@ const DoctorDashboard: FC = () => {
                               </div>
                             </div>
                           </div>
+
+                          {/* Reason Section (Preserved) */}
                           {appointment.reason && (
                             <p className="text-sm text-slate-600 line-clamp-2 bg-slate-50 rounded-lg px-3 py-2">
                               <span className="font-medium text-slate-700">Reason:</span> {appointment.reason}
                             </p>
                           )}
                         </div>
+
+                        {/* Status & Action Button (Preserved) */}
                         <div className="flex items-center space-x-2 ml-4">
                           <div
                             className={`flex items-center space-x-2 px-3 py-1.5 rounded-full text-xs font-medium border ${getStatusColor(
@@ -1211,108 +1207,175 @@ const DoctorDashboard: FC = () => {
           <div className="space-y-8">
             {/* Calendar Widget */}
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-lg font-semibold text-slate-900">
-                  {currentMonth.toLocaleDateString("en-US", { month: "long", year: "numeric" })}
-                </h3>
-                <div className="flex space-x-1">
-                  <button
-                    onClick={() => changeMonth('prev')}
-                    className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
-                  >
-                    <ChevronLeft className="w-5 h-5 text-slate-600" />
-                  </button>
-                  <button
-                    onClick={() => changeMonth('next')}
-                    className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
-                  >
-                    <ChevronRight className="w-5 h-5 text-slate-600" />
-                  </button>
+                <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-lg font-semibold text-slate-900">
+                        {currentMonth.toLocaleDateString("en-US", { month: "long", year: "numeric" })}
+                    </h3>
+                    <div className="flex space-x-1">
+                        <button
+                            onClick={() => changeMonth('prev')}
+                            className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                        >
+                            <ChevronLeft className="w-5 h-5 text-slate-600" />
+                        </button>
+                        <button
+                            onClick={() => changeMonth('next')}
+                            className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                        >
+                            <ChevronRight className="w-5 h-5 text-slate-600" />
+                        </button>
+                    </div>
                 </div>
-              </div>
 
-              {/* Calendar Header */}
-              <div className="grid grid-cols-7 gap-1 mb-3">
-                {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, index) => (
-                  <div key={index} className="text-center text-sm font-medium text-slate-500 py-2">
-                    {day}
-                  </div>
-                ))}
-              </div>
-
-              {/* Calendar Body */}
-              <div className="grid grid-cols-7 gap-1">
-                {renderCalendar()}
-              </div>
-
-              {/* Legend */}
-              <div className="mt-6 pt-4 border-t border-slate-200 flex items-center justify-center space-x-4 text-xs">
-                <div className="flex items-center space-x-2">
-                  <div className="w-2 h-2 rounded-full bg-blue-500"></div>
-                  <span className="text-slate-600">Appointments</span>
+                {/* Calendar Header */}
+                <div className="grid grid-cols-7 gap-1 mb-3">
+                    {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, index) => (
+                        <div key={index} className="text-center text-sm font-medium text-slate-500 py-2">
+                            {day}
+                        </div>
+                    ))}
                 </div>
-                <div className="flex items-center space-x-2">
-                  <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
-                  <span className="text-slate-600">Available</span>
+
+                {/* Calendar Body (Now Clickable) */}
+                <div className="grid grid-cols-7 gap-1">
+                    {renderCalendar()}
                 </div>
-              </div>
+
+                {/* Legend */}
+                <div className="mt-6 pt-4 border-t border-slate-200 flex items-center justify-center space-x-4 text-xs">
+                    <div className="flex items-center space-x-2">
+                        <div className="w-2 h-2 rounded-full bg-[#00aeef]"></div>
+                        <span className="text-slate-600">Selected</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                        <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
+                        <span className="text-slate-600">Has Activities</span>
+                    </div>
+                </div>
             </div>
 
-            {/* Today's Schedule */}
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-lg font-semibold text-slate-900 flex items-center">
-                  <img
-                    src={clockpic}
-                    alt="Clock"
-                    className="w-10 h-10 mr-2 object-contain"
-                  />
-                  Today's Schedule
-                </h3>
-                <span className="text-sm text-slate-500 bg-slate-100 px-2 py-1 rounded">
-                  {schedules.filter(sch => {
-                    const today = new Date().toISOString().split('T')[0];
-                    return sch.date === today && sch.is_available;
-                  }).length} slots
-                </span>
-              </div>
-              <div className="space-y-3 max-h-80 overflow-y-auto">
-                {schedules
-                  .filter((sch) => {
-                    const today = new Date().toISOString().split('T')[0];
-                    return sch.date === today && sch.is_available;
-                  })
-                  .sort((a, b) => a.start_time.localeCompare(b.start_time))
-                  .map((sch, _index) => (
+          {/* Dynamic Schedule List with Booking Indicator */}
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
+                <img src={clockpic} alt="Clock" className="w-10 h-10 object-contain" />
+                <div>
+                  {toDateString(selectedDate) === toDateString(new Date()) 
+                    ? "Today's Schedule" 
+                    : `Schedule for ${selectedDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
+                  }
+                </div>
+              </h3>
+            </div>
+
+            <div className="space-y-3 h-80 overflow-y-auto pr-2 custom-scrollbar">
+              {(() => {
+                const selectedDateStr = toDateString(selectedDate);
+                
+                // 1. Get ALL schedules for this date (Available OR Booked)
+                // We assume if it's NOT available, it might be booked.
+                const daysSchedules = schedules
+                  .filter(sch => sch.date === selectedDateStr) 
+                  .sort((a, b) => a.start_time.localeCompare(b.start_time));
+
+                if (daysSchedules.length === 0) {
+                  return (
+                    <div className="h-full flex flex-col items-center justify-center text-center text-slate-500">
+                      <Clock className="w-12 h-12 mx-auto mb-3 text-slate-300" />
+                      <p className="text-sm font-medium">No schedule set for this date</p>
+                      <p className="text-xs text-slate-400 mt-1">Click "New Schedule" to add slots</p>
+                    </div>
+                  );
+                }
+
+                return daysSchedules.map((sch) => {
+                  // 🕵️‍♂️ CHECK FOR APPOINTMENT
+                  const bookedAppt = appointments.find(appt => {
+                     // Extract Time from ISO string (e.g., "2023-10-10T09:00:00")
+                     const apptTime = appt.appointment_date.split('T')[1]?.substring(0, 5); // "09:00"
+                     const schTime = sch.start_time.substring(0, 5); // "09:00"
+                     
+                     // Match Date AND Time AND valid status
+                     return (
+                        toDateString(appt.appointment_date) === selectedDateStr &&
+                        apptTime === schTime && 
+                        appt.status !== 'cancelled'
+                     );
+                  });
+
+                  const isBooked = !!bookedAppt;
+
+                  return (
                     <div
                       key={sch.id}
-                      className="p-4 rounded-xl bg-gradient-to-r from-emerald-50 to-green-50 border border-emerald-200 hover:shadow-sm transition-all"
+                      onClick={() => {
+                        if (isBooked) {
+                          // 🚀 NAVIGATION LOGIC
+                          setSearchTerm(bookedAppt.patient_name); // Auto-filter for the user
+                          setActiveTab("all"); // Ensure tab doesn't hide it
+                          appointmentsListRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                          toast.success(`Locating appointment for ${bookedAppt.patient_name}...`);
+                        }
+                      }}
+                      className={`
+                        p-4 rounded-xl border transition-all duration-300 relative group
+                        ${isBooked 
+                           ? "bg-blue-50 border-blue-200 cursor-pointer hover:shadow-md hover:border-blue-300" 
+                           : sch.is_available 
+                              ? "bg-gradient-to-r from-emerald-50 to-green-50 border-emerald-200" 
+                              : "bg-slate-50 border-slate-100 opacity-60" // Just blocked/unavailable
+                        }
+                      `}
                     >
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-sm font-semibold text-slate-800">
-                            {sch.start_time} - {sch.end_time}
+                          <p className={`text-sm font-bold ${isBooked ? "text-blue-800" : "text-slate-800"}`}>
+                            {sch.start_time.substring(0, 5)} - {sch.end_time.substring(0, 5)}
                           </p>
-                          {sch.notes && (
-                            <p className="text-xs text-slate-600 mt-1">{sch.notes}</p>
+                          
+                          {/* Indicator Text */}
+                          {isBooked ? (
+                             <div className="flex items-center gap-1.5 mt-1">
+                                <span className="text-xs font-semibold text-blue-600 bg-blue-100 px-2 py-0.5 rounded-full flex items-center gap-1">
+                                  <CheckCircle className="w-3 h-3" /> Booked
+                                </span>
+                                <span className="text-xs text-slate-500 truncate max-w-[100px]">
+                                   by {bookedAppt.patient_name}
+                                </span>
+                             </div>
+                          ) : sch.is_available ? (
+                             <p className="text-xs text-emerald-600 font-medium mt-1 flex items-center gap-1">
+                                Available
+                             </p>
+                          ) : (
+                             <p className="text-xs text-slate-400 mt-1">Unavailable</p>
                           )}
                         </div>
-                        <div className="w-3 h-3 rounded-full bg-emerald-500 animate-pulse"></div>
+
+                        {/* Status Icon */}
+                        <div className={`
+                           w-8 h-8 rounded-full flex items-center justify-center
+                           ${isBooked ? "bg-blue-100 text-blue-600" : "bg-emerald-100 text-emerald-600"}
+                        `}>
+                           {isBooked ? <Eye className="w-4 h-4" /> : <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />}
+                        </div>
                       </div>
+
+                      {/* Hover Hint for Booked Items */}
+                      {isBooked && (
+                        <div className="absolute inset-0 bg-blue-600/5 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl flex items-center justify-center backdrop-blur-[1px]">
+                           <span className="text-xs font-bold text-blue-700 bg-white/90 px-3 py-1.5 rounded-full shadow-sm">
+                              View Appointment →
+                           </span>
+                        </div>
+                      )}
                     </div>
-                  ))}
-                {schedules.filter((sch) => {
-                  const today = new Date().toISOString().split('T')[0];
-                  return sch.date === today && sch.is_available;
-                }).length === 0 && (
-                  <div className="text-center py-8 text-slate-500">
-                    <Clock className="w-12 h-12 mx-auto mb-3 text-slate-300" />
-                    <p className="text-sm font-medium">No schedule set for today</p>
-                  </div>
-                )}
-              </div>
+                  );
+                });
+              })()}
             </div>
           </div>
+        </div>
         </div>
       </main>
 
