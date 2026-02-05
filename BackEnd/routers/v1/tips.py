@@ -1,10 +1,8 @@
 import os
-import logging
 from fastapi import APIRouter, Depends, status
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from datetime import datetime
-from google import genai
-from google.api_core.exceptions import ResourceExhausted, NotFound 
+from groq import Groq
 from dotenv import load_dotenv
 
 from core.database import get_db
@@ -15,17 +13,17 @@ from .dependencies import get_current_user
 
 load_dotenv()
 
-# LOAD CONFIG FROM ENV
-API_KEY = os.getenv("GEMINI_API_KEY")
+# LOAD CONFIG
+API_KEY = os.getenv("GROQ_API_KEY")
 
-# FIX: Use the EXACT version number to avoid 404s
-MODEL_NAME = os.getenv("GEMINI_MODEL", "gemini-1.5-flash-001") 
+# INITIALIZE GROQ CLIENT
+MODEL_NAME = "llama-3.3-70b-versatile"
 
 if API_KEY:
-    client = genai.Client(api_key=API_KEY)
+    client = Groq(api_key=API_KEY)
 else:
     client = None
-    print("[WARNING] GEMINI_API_KEY is missing.")
+    print("[WARNING] GROQ_API_KEY is missing.")
 
 router = APIRouter(
     prefix="/tips",
@@ -37,7 +35,7 @@ def get_daily_tip(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    # FAIL FAST: If no client, return fallback immediately
+    # Fail fast if no API key
     if not client:
         return {"category": "System", "text": "Stay hydrated and get enough sleep.", "source": "BukCare System"}
 
@@ -48,6 +46,7 @@ def get_daily_tip(
         start_of_day = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
 
         upcoming_appointment = db.query(Appointment)\
+            .options(joinedload(Appointment.doctor))\
             .filter(Appointment.patient_id == current_user.id)\
             .filter(Appointment.status.in_(["pending", "confirmed"]))\
             .filter(Appointment.appointment_date >= start_of_day)\
@@ -60,61 +59,48 @@ def get_daily_tip(
 
         if upcoming_appointment:
             appt_status = upcoming_appointment.status
-            doctor = db.query(Doctor).filter(Doctor.doctor_id == upcoming_appointment.doctor_id).first()
-            if doctor:
-                specialization = doctor.specialization or "Medical Specialist"
-                doctor_name = doctor.name
+            if upcoming_appointment.doctor:
+                doctor_name = upcoming_appointment.doctor.lname
+            
+            doctor_profile = db.query(Doctor).filter(Doctor.user_id == upcoming_appointment.doctor_id).first()
+            if doctor_profile:
+                 if hasattr(doctor_profile, "specializations_json") and doctor_profile.specializations_json:
+                    specs = doctor_profile.specializations_json
+                    specialization = specs[0] if isinstance(specs, list) and len(specs) > 0 else str(specs)
+                 elif hasattr(doctor_profile, "specialization") and doctor_profile.specialization:
+                    specialization = doctor_profile.specialization
 
         # --- PROMPT ---
-        prompt = f"""
-        You are "BukCare AI", a professional medical assistant.
+        system_prompt = "You are BukCare AI. Output ONE short, actionable health tip (max 20 words)."
+        
+        user_prompt = f"""
         User: {current_user.fname}
         Time: {time_of_day}
         Context: Appointment with {specialization} (Dr. {doctor_name}). Status: {appt_status}.
-        
-        Task: Write ONE short, professional health tip (max 20 words).
-        
-        CRITICAL INSTRUCTIONS:
-        1. BE CLINICAL & ACTIONABLE: Focus on preparation and symptom tracking.
-        2. IF PENDING: "While waiting for confirmation, document your symptoms daily."
-        3. TONE: Professional, concise, objective.
         """
 
-        # --- CALL GEMINI ---
-        response = client.models.generate_content(
-            model=MODEL_NAME, 
-            contents=prompt
+        # --- CALL GROQ ---
+        response = client.chat.completions.create(
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ],
+            model=MODEL_NAME,
+            temperature=0.5,
+            max_tokens=50,
         )
         
-        ai_tip = response.text.strip().replace('"', '').replace("'", "")
+        ai_tip = response.choices[0].message.content.strip().replace('"', '').replace("'", "")
         
         return {
-            "category": specialization if upcoming_appointment else time_of_day,
+            "category": specialization if upcoming_appointment else "Daily Wellness",
             "text": ai_tip,
-            "source": "BukCare AI"
+            "source": "BukCare AI (Llama 3)"
         }
 
-    # HANDLE RATE LIMITS (429)
-    except ResourceExhausted:
-        print(f"[WARNING] Gemini Rate Limit Hit ({MODEL_NAME}). Serving fallback.")
-        return {
-            "category": "Wellness",
-            "text": "Prioritize sleep and hydration while our AI recharges.",
-            "source": "BukCare System"
-        }
-
-    # HANDLE MODEL NOT FOUND (404)
-    except NotFound:
-        print(f"[WARNING] Gemini Model '{MODEL_NAME}' Not Found. Check .env or API version.")
-        return {
-            "category": "Wellness",
-            "text": "Daily Tip: A short walk improves circulation and mood.",
-            "source": "BukCare System"
-        }
-
-    # CATCH EVERYTHING ELSE
     except Exception as e:
         print(f"[ERROR] AI Generation Failed: {e}")
+        # Return fallback so app doesn't crash
         return {
             "category": "Wellness",
             "text": "Maintain a balanced diet and stay hydrated for optimal health.",

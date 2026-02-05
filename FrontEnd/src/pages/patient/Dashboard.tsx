@@ -4,7 +4,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useWebSocket } from "@/context/WebSocketContext"; 
 import api from "@/services/api";
 import Navbar from "@/components/Navbar";
-import QuickActions from "@/components/QuickActions";
+// import QuickActions from "@/components/QuickActions";
 import HealthVitals from "@/components/thVitals";
 import MedicalIDCard from '@/components/MedicalIDCard';
 
@@ -373,9 +373,9 @@ const PatientDashboard = () => {
             </div>
 
             {/* QUICK ACTIONS & VITALS */}
-            <div className="bg-white/40 backdrop-blur-xl rounded-[2rem] p-6 border border-white/50 shadow-sm">
+            {/* <div className="bg-white/40 backdrop-blur-xl rounded-[2rem] p-6 border border-white/50 shadow-sm">
                 <QuickActions />
-            </div>
+            </div> */}
             
             <div className="bg-white/40 backdrop-blur-xl rounded-[2rem] p-6 border border-white/50 shadow-sm">
                 <HealthVitals />
