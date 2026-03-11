@@ -34,7 +34,7 @@ class ReviewOut(BaseModel):
 
 # --- ENDPOINTS ---
 
-# 1. Post a Review (Verified Patients Only)
+# Mag post ug Review (Verified Patients Only)
 @router.post("/", response_model=ReviewOut)
 def create_review(
     review: ReviewCreate,
