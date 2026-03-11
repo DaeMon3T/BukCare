@@ -148,7 +148,7 @@ const BookingModal: React.FC<BookingModalProps> = ({
                     with <span className="font-semibold text-blue-600">Dr. {doctor.name}</span>
                 </p>
                 <p className="text-xs text-slate-400 mt-0.5">
-                    {doctor.specializations?.name || "General Practice"}
+                    {doctor.specializations || "General Practice"}
                 </p>
             </div>
             <button

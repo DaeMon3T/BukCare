@@ -25,7 +25,7 @@ router = APIRouter()
 class RescheduleRequest(BaseModel):
     new_date: date
     new_time: time
-    reason: Optional[str] = None
+    reason: str
 
 # ----------------------------------------------------
 # EXISTING ENDPOINTS (UNCHANGED LOGIC)
