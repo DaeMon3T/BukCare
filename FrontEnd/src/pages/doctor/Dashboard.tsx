@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import type { FC } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/context/AuthContext";
 import {
   Clock,
   Eye,
@@ -101,6 +102,8 @@ const toDateString = (dateInput: string | Date): string => {
 
 const DoctorDashboard: FC = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isStaff = (user?.role || "") === "staff";
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [stats, setStats] = useState<DashboardStats>({
@@ -567,7 +570,7 @@ const [selectedDate, setSelectedDate] = useState(new Date());
         {/* --- FOOTER ACTIONS (Fixed at bottom) --- */}
         <div className="p-4 sm:p-6 border-t border-slate-200 bg-white flex-none z-10">
           <div className="flex flex-col sm:flex-row gap-3">
-            {selectedAppointment.status === "pending" && (
+            {!isStaff && selectedAppointment.status === "pending" && (
               <>
                 <button
                   onClick={() => handleUpdateStatus(selectedAppointment.id, "confirmed")}
@@ -583,13 +586,18 @@ const [selectedDate, setSelectedDate] = useState(new Date());
                 </button>
               </>
             )}
-            {selectedAppointment.status === "confirmed" && (
+            {!isStaff && selectedAppointment.status === "confirmed" && (
               <button
                 onClick={() => handleUpdateStatus(selectedAppointment.id, "completed")}
                 className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-lg shadow-blue-200 transition-all flex items-center justify-center gap-2 active:scale-95"
               >
                 <CheckCircle className="w-5 h-5" /> Mark as Completed
               </button>
+            )}
+            {isStaff && (
+              <p className="text-center text-sm text-slate-400 py-2 w-full">
+                You have view-only access. Contact a doctor to update appointments.
+              </p>
             )}
           </div>
         </div>
@@ -632,20 +640,22 @@ const [selectedDate, setSelectedDate] = useState(new Date());
             </div>
             <div className="flex flex-wrap items-center gap-3">
               <button 
-                  onClick={() => navigate('/doctor/scan')}
+                  onClick={() => isStaff ? navigate('/staff/scan') : navigate('/doctor/scan')}
                   className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition shadow-sm text-sm sm:text-base"
               >
                   <QrCode className="w-5 h-5" />
                   <span>Scan Patient ID</span>
               </button>
               
-              <button 
-                onClick={() => navigate('/doctor/set-availability')}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2 text-sm sm:text-base"
-              >
-                <Plus className="w-4 h-4" />
-                <span>New Schedule</span>
-              </button>
+              {!isStaff && (
+                <button 
+                  onClick={() => navigate('/doctor/set-availability')}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2 text-sm sm:text-base"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>New Schedule</span>
+                </button>
+              )}
             </div>
           </div>
         </div>

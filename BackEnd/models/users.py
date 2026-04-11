@@ -8,6 +8,7 @@ class UserRole(str, enum.Enum):
     ADMIN = "admin"
     DOCTOR = "doctor"
     PATIENT = "patient"
+    STAFF = "staff"
     PENDING = "pending"
 
 class User(Base):
@@ -34,6 +35,9 @@ class User(Base):
 
     # Doctor approval fields
     is_doctor_approved = Column(Boolean, default=False)
+    # Staff approval fields
+    is_staff_approved = Column(Boolean, default=False)
+    
     approval_date = Column(DateTime, nullable=True)
     approved_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
@@ -69,6 +73,14 @@ class User(Base):
     # Relationships - Doctor Profile
     doctor_profile = relationship(
         "Doctor",
+        back_populates="user",
+        uselist=False,
+        cascade="all, delete-orphan"
+    )
+
+    # Relationships - Staff Profile
+    staff_profile = relationship(
+        "Staff",
         back_populates="user",
         uselist=False,
         cascade="all, delete-orphan"
@@ -129,7 +141,7 @@ class User(Base):
         else:
             role = UserRole.PENDING
 
-        if role == UserRole.DOCTOR:
+        if role in [UserRole.DOCTOR, UserRole.STAFF]:
             role = UserRole.PENDING  # Always pending until approved
 
         return cls(

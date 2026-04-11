@@ -8,6 +8,7 @@ from datetime import datetime, timedelta, time
 from core.database import get_db
 from models.users import User, UserRole
 from models.doctor import Doctor
+from models.staff import Staff
 from routers.v1.dependencies import get_current_admin
 from core.services.email import send_doctor_approval_email, send_doctor_rejection_email
 
@@ -168,6 +169,84 @@ def reject_doctor(
     db.commit()
 
     return {"message": "Doctor application rejected and all data deleted successfully"}
+
+# -----------------------------
+# GET pending staff
+# -----------------------------
+@router.get("/staff/pending", response_model=List[dict])
+def get_pending_staff(
+    current_user: User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    staff_list = db.query(Staff).join(User).filter(
+        User.role == UserRole.PENDING,
+        User.is_staff_approved == False
+    ).all()
+    return [
+        {
+            "staff_id": s.staff_id,
+            "user_id": s.user_id,
+            "name": f"{s.user.fname} {s.user.lname}",
+            "email": s.user.email,
+            "job_title": s.job_title,
+            "created_at": s.user.created_at,
+            "proof_front": s.proof_front,
+            "proof_back": s.proof_back,
+            "proof_selfie": s.proof_selfie
+        }
+        for s in staff_list
+    ]
+
+# -----------------------------
+# Approve staff
+# -----------------------------
+@router.put("/staff/{user_id}/approve")
+async def approve_staff(user_id: int, current_user: User = Depends(get_current_admin), db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if user.is_staff_approved:
+        return {"message": "Staff is already approved"}
+
+    user.is_staff_approved = True
+    user.role = UserRole.STAFF
+    user.approval_date = func.now()
+    user.approved_by = current_user.id
+    db.commit()
+
+    try:
+        await manager.send_personal_message(
+            {
+                "type": "STAFF_APPROVED",
+                "title": "Application Approved",
+                "message": "Congratulations! Your staff application has been approved. You can now log in."
+            },
+            user_id=str(user_id)
+        )
+    except Exception as e:
+        logger.error(f"Failed to send staff approval notification to {user.email}: {e}")
+
+    return {"message": "Staff approved successfully"}
+
+# -----------------------------
+# Reject staff
+# -----------------------------
+@router.put("/staff/{user_id}/reject")
+def reject_staff(
+    user_id: int,
+    reason: Optional[str] = None,
+    current_user: User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    db.delete(user)
+    db.commit()
+
+    return {"message": "Staff application rejected and account deleted"}
 
 
 # -----------------------------

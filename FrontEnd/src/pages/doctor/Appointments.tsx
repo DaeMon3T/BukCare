@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import toast from "react-hot-toast";
 import api from "@/services/api";
 import Navbar from "@/components/Navbar";
+import { useAuth } from "@/context/AuthContext";
 import { 
   Calendar, 
   Clock, 
@@ -35,6 +36,8 @@ interface Appointment {
 
 const DoctorAppointments = () => {
   const { lastMessage } = useWebSocket();
+  const { user } = useAuth();
+  const isStaff = (user?.role || "") === "staff";
   
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -412,8 +415,13 @@ const DoctorAppointments = () => {
                         <td className="py-5 px-6 text-right">
                           <div className="flex items-center justify-end gap-2 opacity-90 group-hover:opacity-100 transition-opacity">
                             
+                            {/* STAFF: Read-Only Label */}
+                            {isStaff && (
+                              <span className="text-[10px] text-slate-400 italic">View only</span>
+                            )}
+
                             {/* PENDING: Confirm / Reschedule / Cancel */}
-                            {appt.status === "pending" && (
+                            {!isStaff && appt.status === "pending" && (
                               <>
                                 <button onClick={() => updateStatus(appt.id, "confirmed")} className="p-2 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition-colors" title="Confirm">
                                     <Check className="w-4 h-4" />
@@ -428,7 +436,7 @@ const DoctorAppointments = () => {
                             )}
 
                             {/* CONFIRMED: Complete / Reschedule / Cancel */}
-                            {appt.status === "confirmed" && (
+                            {!isStaff && appt.status === "confirmed" && (
                               <>
                                 <button onClick={() => updateStatus(appt.id, "completed")} className="px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-bold hover:bg-blue-700 shadow-sm transition-colors">
                                     Complete
@@ -443,7 +451,7 @@ const DoctorAppointments = () => {
                             )}
 
                             {/* COMPLETED/CANCELLED: Delete / Follow-Up */}
-                            {(appt.status === "completed" || appt.status === "cancelled") && (
+                            {!isStaff && (appt.status === "completed" || appt.status === "cancelled") && (
                               <>
                                 {appt.status === "completed" && (
                                     <button onClick={() => setFollowUpData({ patientId: appt.patient_id, name: appt.patient_name })} className="p-2 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors" title="Follow Up">
@@ -513,7 +521,7 @@ const DoctorAppointments = () => {
 
                     <div className="flex gap-2 flex-wrap">
                       {/* PENDING MOBILE */}
-                      {appt.status === "pending" && (
+                      {!isStaff && appt.status === "pending" && (
                         <>
                           <button onClick={() => updateStatus(appt.id, "confirmed")} className="flex-1 py-2.5 bg-emerald-600 text-white rounded-lg text-sm font-bold shadow-sm">Confirm</button>
                           <button onClick={() => setRescheduleData({ id: appt.id, date: displayString })} className="p-2.5 bg-amber-100 text-amber-700 rounded-lg"><RefreshCw className="w-5 h-5"/></button>
@@ -522,7 +530,7 @@ const DoctorAppointments = () => {
                       )}
                       
                       {/* CONFIRMED MOBILE */}
-                      {appt.status === "confirmed" && (
+                      {!isStaff && appt.status === "confirmed" && (
                         <>
                           <button onClick={() => updateStatus(appt.id, "completed")} className="flex-1 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-bold shadow-sm">Complete</button>
                           <button onClick={() => openCancelModal(appt.id, appt.patient_name)} className="p-2.5 bg-slate-100 text-slate-600 rounded-lg border border-slate-200">Cancel</button>
@@ -530,7 +538,7 @@ const DoctorAppointments = () => {
                       )}
 
                       {/* DELETE MOBILE */}
-                      {(appt.status === "completed" || appt.status === "cancelled") && (
+                      {!isStaff && (appt.status === "completed" || appt.status === "cancelled") && (
                           deleteConfirm === appt.id ? (
                             <div className="flex gap-2 w-full">
                                 <button onClick={() => deleteAppointment(appt.id)} className="flex-1 py-2 bg-red-600 text-white rounded-lg text-sm font-bold">Yes, Delete</button>

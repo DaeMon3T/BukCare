@@ -39,3 +39,27 @@ def get_current_admin(current_user: User = Depends(get_current_user)) -> User:
             detail="Admin privileges required",
         )
     return current_user
+
+def get_current_doctor(current_user: User = Depends(get_current_user)) -> User:
+    if current_user.role != UserRole.DOCTOR:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Doctor privileges required",
+        )
+    return current_user
+
+def get_current_staff(current_user: User = Depends(get_current_user)) -> User:
+    if current_user.role != UserRole.STAFF:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Staff privileges required",
+        )
+    return current_user
+
+def get_current_doctor_or_staff(current_user: User = Depends(get_current_user)) -> User:
+    if current_user.role not in [UserRole.DOCTOR, UserRole.STAFF]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Doctor or Staff privileges required",
+        )
+    return current_user

@@ -4,7 +4,7 @@ import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 // Define allowed roles
-type UserRole = "admin" | "doctor" | "patient";
+type UserRole = "admin" | "doctor" | "patient" | "staff";
 
 // Define prop types
 interface ProtectedRouteProps {
@@ -54,6 +54,8 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
         return <Navigate to="/admin/dashboard" replace />;
       case "doctor":
         return <Navigate to="/doctor/dashboard" replace />;
+      case "staff":
+        return <Navigate to="/staff/dashboard" replace />;
       case "patient":
         return <Navigate to="/patient/home" replace />;
       default:
@@ -79,6 +81,10 @@ export const DoctorRoute: React.FC<{ children: ReactNode }> = ({ children }) => 
 
 export const PatientRoute: React.FC<{ children: ReactNode }> = ({ children }) => (
   <ProtectedRoute allowedRoles={["patient"]}>{children}</ProtectedRoute>
+);
+
+export const StaffRoute: React.FC<{ children: ReactNode }> = ({ children }) => (
+  <ProtectedRoute allowedRoles={["staff"]}>{children}</ProtectedRoute>
 );
 
 export const AuthenticatedRoute: React.FC<{ children: ReactNode }> = ({

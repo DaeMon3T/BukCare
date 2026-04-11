@@ -4,7 +4,7 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import toast from "react-hot-toast";
 import { useAuth } from "@/context/AuthContext";
 import { completeProfile } from "@/services/auth/CompleteProfileAPI";
-import { validateDoctorProfile, validatePatientProfile } from "@/services/validation";
+import { validateDoctorProfile, validatePatientProfile, validateStaffProfile } from "@/services/validation";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { useLocationData } from "./hooks/useLocationData";
 import type { FormData as ProfileFormData, GoogleData } from "./types";
@@ -92,7 +92,7 @@ const CustomSelect = ({ label, name, value, options, onChange, disabled = false,
 };
 
 // --- 2. UI COMPONENT: Role Card ---
-const RoleCard = ({ role, selected, onClick }: { role: "patient" | "doctor", selected: boolean, onClick: () => void }) => (
+const RoleCard = ({ role, selected, onClick }: { role: "patient" | "doctor" | "staff", selected: boolean, onClick: () => void }) => (
     <button 
         type="button"
         onClick={onClick}
@@ -105,14 +105,14 @@ const RoleCard = ({ role, selected, onClick }: { role: "patient" | "doctor", sel
         <div className={`w-16 h-16 rounded-full flex items-center justify-center transition-colors ${
             selected ? "bg-[#00aeef] text-white" : "bg-slate-100 text-slate-400 group-hover:bg-slate-200"
         }`}>
-            {role === "patient" ? <User className="w-8 h-8" /> : <Stethoscope className="w-8 h-8" />}
+            {role === "patient" ? <User className="w-8 h-8" /> : role === "doctor" ? <Stethoscope className="w-8 h-8" /> : <ShieldCheck className="w-8 h-8" />}
         </div>
         <div className="text-center">
             <h3 className={`text-lg font-bold transition-colors ${selected ? "text-[#00aeef]" : "text-slate-700"}`}>
-                {role === "patient" ? "I am a Patient" : "I am a Doctor"}
+                {role === "patient" ? "I am a Patient" : role === "doctor" ? "I am a Doctor" : "I am a Staff"}
             </h3>
             <p className="text-sm text-slate-500 mt-1">
-                {role === "patient" ? "Book appointments & manage health." : "Manage clinic & patients."}
+                {role === "patient" ? "Book appointments & manage health." : role === "doctor" ? "Manage clinic & patients." : "Assist clinic operations."}
             </p>
         </div>
         {selected && <div className="absolute top-4 right-4 text-[#00aeef]"><CheckCircle2 className="w-6 h-6 fill-current" /></div>}
@@ -154,7 +154,7 @@ const CompleteProfile: React.FC = () => {
   // --------------------------------------------
   // State (FROM ORIGINAL CODE)
   // --------------------------------------------
-  const [role, setRole] = useState<"doctor" | "patient" | null>(null);
+  const [role, setRole] = useState<"doctor" | "patient" | "staff" | null>(null);
   const [formData, setFormData] = useState<ProfileFormData>({
     sex: "",
     dob: "",
@@ -309,6 +309,8 @@ const CompleteProfile: React.FC = () => {
 
     const validationResult = role === "doctor"
         ? validateDoctorProfile(formData)
+        : role === "staff"
+        ? validateStaffProfile(formData)
         : validatePatientProfile(formData);
 
     if (!validationResult.isValid) {
@@ -340,11 +342,11 @@ const CompleteProfile: React.FC = () => {
       payload.append("city_name", cityName);
       payload.append("barangay_name", barangayName);
 
-      if (role === "doctor") {
+      if (role === "doctor" || role === "staff") {
         if (formData.license_number) payload.append("license_number", formData.license_number);
         if (formData.years_of_experience) payload.append("years_of_experience", formData.years_of_experience);
         // ✅ FIXED: Correctly stringify specializations
-        if (formData.specializations.length) payload.append("specializations", JSON.stringify(formData.specializations));
+        if (role === "doctor" && formData.specializations.length) payload.append("specializations", JSON.stringify(formData.specializations));
         if (formData.prc_license_front) payload.append("prc_license_front", formData.prc_license_front);
         if (formData.prc_license_back) payload.append("prc_license_back", formData.prc_license_back);
         if (formData.prc_license_selfie) payload.append("prc_license_selfie", formData.prc_license_selfie);
@@ -413,9 +415,10 @@ const CompleteProfile: React.FC = () => {
                         {/* STEP 1: ROLE SELECTION */}
                         {step === 1 && (
                             <div className="space-y-6 anim-entry">
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                     <RoleCard role="patient" selected={role === "patient"} onClick={() => setRole("patient")} />
                                     <RoleCard role="doctor" selected={role === "doctor"} onClick={() => setRole("doctor")} />
+                                    <RoleCard role="staff" selected={role === "staff"} onClick={() => setRole("staff")} />
                                 </div>
                                 <button
                                     onClick={handleNextStep}
@@ -532,64 +535,69 @@ const CompleteProfile: React.FC = () => {
                                     )}
                                 </div>
 
-                                {/* DOCTOR SPECIFIC FIELDS (WITH SPECIALIZATIONS FIXED) */}
-                                {role === "doctor" && (
+                                {/* DOCTOR / STAFF SPECIFIC FIELDS (WITH SPECIALIZATIONS FIXED) */}
+                                {(role === "doctor" || role === "staff") && (
                                     <div className="space-y-4 pt-2 p-4 bg-blue-50/50 rounded-2xl border border-blue-100">
                                         <h3 className="text-sm font-bold text-blue-700 uppercase tracking-wider flex items-center gap-2">
-                                            <Stethoscope className="w-4 h-4" /> Doctor Credentials
+                                            {role === "doctor" ? <Stethoscope className="w-4 h-4" /> : <ShieldCheck className="w-4 h-4" />}
+                                            {role === "doctor" ? "Doctor Credentials" : "Staff Credentials"}
                                         </h3>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <input type="text" name="license_number" value={formData.license_number} onChange={handleChange} placeholder="PRC License Number" className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#00aeef] outline-none" />
+                                            <input type="text" name="license_number" value={formData.license_number} onChange={handleChange} placeholder={role === "doctor" ? "PRC License Number" : "Employee/License ID"} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#00aeef] outline-none" />
                                             <input type="number" name="years_of_experience" value={formData.years_of_experience} onChange={handleChange} placeholder="Years Experience" className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#00aeef] outline-none" />
                                         </div>
 
                                         {/* ✅ SPECIALIZATION SELECTION RESTORED */}
-                                        <div className="space-y-2">
-                                            <label className="block text-xs font-bold text-slate-500 mb-1 ml-1 uppercase tracking-wider">Specialization</label>
-                                            <CustomSelect 
-                                                name="specializationSelect"
-                                                value=""
-                                                onChange={(e: any) => toggleSpecialization(e.target.value)}
-                                                options={[
-                                                    "General Practice", "Cardiology", "Dermatology", "Neurology", 
-                                                    "Pediatrics", "Psychiatry", "Surgery", "Orthopedics", 
-                                                    "Ophthalmology", "Radiology"
-                                                ].map(s => ({ value: s, label: s }))}
-                                                placeholder="Add Specialization..."
-                                            />
-                                            
-                                            {/* Other Specialization Input */}
-                                            <div className="flex gap-2">
-                                                <input 
-                                                    type="text" 
-                                                    name="otherSpecialization"
-                                                    value={formData.otherSpecialization}
-                                                    onChange={handleChange}
-                                                    placeholder="Or type other specialization..."
-                                                    className="flex-1 px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#00aeef] outline-none"
+                                        {role === "doctor" && (
+                                            <div className="space-y-2">
+                                                <label className="block text-xs font-bold text-slate-500 mb-1 ml-1 uppercase tracking-wider">Specialization</label>
+                                                <CustomSelect 
+                                                    name="specializationSelect"
+                                                    value=""
+                                                    onChange={(e: any) => toggleSpecialization(e.target.value)}
+                                                    options={[
+                                                        "General Practice", "Cardiology", "Dermatology", "Neurology", 
+                                                        "Pediatrics", "Psychiatry", "Surgery", "Orthopedics", 
+                                                        "Ophthalmology", "Radiology"
+                                                    ].map(s => ({ value: s, label: s }))}
+                                                    placeholder="Add Specialization..."
                                                 />
-                                                <button type="button" onClick={handleAddOtherSpecialization} className="bg-blue-600 text-white px-4 rounded-xl hover:bg-blue-700 transition-colors">
-                                                    <Plus className="w-5 h-5" />
-                                                </button>
-                                            </div>
-
-                                            {/* Selected Specializations Tags */}
-                                            {formData.specializations.length > 0 && (
-                                                <div className="flex flex-wrap gap-2 mt-2">
-                                                    {formData.specializations.map((spec, idx) => (
-                                                        <span key={idx} className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1">
-                                                            {spec}
-                                                            <button type="button" onClick={() => handleRemoveSpecialization(idx)} className="hover:text-red-500">
-                                                                <X className="w-3 h-3" />
-                                                            </button>
-                                                        </span>
-                                                    ))}
+                                                
+                                                {/* Other Specialization Input */}
+                                                <div className="flex gap-2">
+                                                    <input 
+                                                        type="text" 
+                                                        name="otherSpecialization"
+                                                        value={formData.otherSpecialization}
+                                                        onChange={handleChange}
+                                                        placeholder="Or type other specialization..."
+                                                        className="flex-1 px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#00aeef] outline-none"
+                                                    />
+                                                    <button type="button" onClick={handleAddOtherSpecialization} className="bg-blue-600 text-white px-4 rounded-xl hover:bg-blue-700 transition-colors">
+                                                        <Plus className="w-5 h-5" />
+                                                    </button>
                                                 </div>
-                                            )}
-                                        </div>
+
+                                                {/* Selected Specializations Tags */}
+                                                {formData.specializations.length > 0 && (
+                                                    <div className="flex flex-wrap gap-2 mt-2">
+                                                        {formData.specializations.map((spec, idx) => (
+                                                            <span key={idx} className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1">
+                                                                {spec}
+                                                                <button type="button" onClick={() => handleRemoveSpecialization(idx)} className="hover:text-red-500">
+                                                                    <X className="w-3 h-3" />
+                                                                </button>
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
 
                                         <div className="space-y-2">
-                                            <label className="text-xs font-bold text-slate-500 uppercase">Upload PRC ID (Front/Back/Selfie)</label>
+                                            <label className="text-xs font-bold text-slate-500 uppercase">
+                                                {role === "doctor" ? "Upload PRC ID (Front/Back/Selfie)" : "Upload Proof of Employment (Front/Back/Selfie)"}
+                                            </label>
                                             <div className="grid grid-cols-3 gap-2">
                                                 {['prc_license_front', 'prc_license_back', 'prc_license_selfie'].map((field) => {
                                                     // Get the current file from state

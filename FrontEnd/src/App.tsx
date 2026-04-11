@@ -6,7 +6,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './context/AuthContext';
 import { WebSocketProvider } from './context/WebSocketContext';
-import { AdminRoute, DoctorRoute, PatientRoute } from './routes/ProtectedRoutes';
+import { AdminRoute, DoctorRoute, PatientRoute, StaffRoute } from './routes/ProtectedRoutes';
 import ErrorBoundary from './components/ErrorBoundary';
 import { CallProvider } from './context/CallContext';
 
@@ -116,6 +116,16 @@ const App: FC = () => {
                   <Route path="/doctor/messages" element={<Messages />} />
                   <Route path="/doctor/scan" element={<ScanPatient />} />
                   <Route path="/doctor/patient/:id" element={<PatientDetails />} />
+                </Route>
+
+                {/* -------------------- Staff Routes -------------------- */}
+                <Route element={<StaffRoute><DoctorLayout /></StaffRoute>}>
+                  <Route path="/staff/dashboard" element={<DoctorDashboard />} />
+                  <Route path="/staff/appointments" element={<DoctorAppointments />} />
+                  <Route path="/staff/profile" element={<DoctorProfile />} />
+                  <Route path="/staff/messages" element={<Messages />} />
+                  <Route path="/staff/scan" element={<ScanPatient />} />
+                  <Route path="/staff/patient/:id" element={<PatientDetails />} />
                 </Route>
 
                 {/* -------------------- Patient Routes -------------------- */}

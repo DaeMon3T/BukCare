@@ -9,6 +9,7 @@ import asyncio
 from core.database import get_db
 from models.users import User, UserRole
 from models.doctor import Doctor, Specialization
+from models.staff import Staff
 from models.location import Province, City, Barangay
 from core.security import create_access_token, create_refresh_token, get_password_hash
 from core.services.cloudinary_config import cloudinary
@@ -93,6 +94,7 @@ async def complete_profile(
 
     user.role = (
         UserRole.DOCTOR if role.lower() == "doctor"
+        else UserRole.STAFF if role.lower() == "staff"
         else UserRole.PATIENT if role.lower() == "patient"
         else UserRole.PENDING
     )
@@ -165,6 +167,38 @@ async def complete_profile(
                     found_names.append(spec.name)
 
             doctor.specializations_json = json.dumps(found_names)
+
+    # ------------------------------------------------------------------
+    # STAFF LOGIC
+    # ------------------------------------------------------------------
+    elif user.role == UserRole.STAFF:
+        staff = db.query(Staff).filter_by(user_id=user.id).first()
+        if not staff:
+            staff = Staff(user_id=user.id)
+            db.add(staff)
+
+        async def upload(file):
+            if not file:
+                return None
+            result = await run_in_threadpool(
+                cloudinary.uploader.upload,
+                file.file,
+                folder=f"staffs/{user.id}",
+            )
+            return result.get("secure_url")
+
+        front_url, back_url, selfie_url = await asyncio.gather(
+            upload(prc_license_front),  # the front-end will just use these same fields
+            upload(prc_license_back),
+            upload(prc_license_selfie),
+        )
+
+        if front_url:
+            staff.proof_front = front_url
+        if back_url:
+            staff.proof_back = back_url
+        if selfie_url:
+            staff.proof_selfie = selfie_url
 
     # ------------------------------------------------------------------
     # TOKENS & FINAL USER UPDATE
