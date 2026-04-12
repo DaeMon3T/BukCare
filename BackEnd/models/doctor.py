@@ -54,6 +54,7 @@ class Doctor(Base):
     # Additional doctor information
     bio = Column(Text, nullable=True)
     consultation_fee = Column(Numeric(10, 2), default=500.00, nullable=True)
+    status = Column(String(20), default="available") # e.g., "available", "on_leave", "busy"
     is_accepting_patients = Column(Boolean, default=True)
     
     # ADDED: Timestamps
@@ -63,6 +64,7 @@ class Doctor(Base):
     user = relationship("User", back_populates="doctor_profile")
     
     specializations = relationship("Specialization", secondary=doctor_specializations, back_populates="doctors")
+    specialization_requests = relationship("SpecializationRequest", back_populates="doctor", cascade="all, delete-orphan")
     availabilities = relationship("DoctorAvailability", back_populates="doctor", cascade="all, delete-orphan")
 
     # FIXED: Removed barangay_id, city_id, province_id that don't exist
@@ -94,3 +96,28 @@ class DoctorAvailability(Base):
 
     def __repr__(self):
         return f"<DoctorAvailability(doctor_id={self.doctor_id}, day={self.day_of_week})>"
+
+
+# ───────────────────────────────
+# Specialization Request (Pending Approval)
+# ───────────────────────────────
+class SpecializationRequest(Base):
+    __tablename__ = "specialization_requests"
+
+    id = Column(Integer, primary_key=True, index=True)
+    doctor_id = Column(Integer, ForeignKey("doctors.doctor_id", ondelete="CASCADE"), nullable=False)
+    specialization_id = Column(Integer, ForeignKey("specializations.specialization_id", ondelete="CASCADE"), nullable=False)
+    
+    document_url = Column(String, nullable=False)  # Proof (PDF/Image)
+    status = Column(String(20), default="pending")  # pending, approved, rejected
+    admin_notes = Column(Text, nullable=True)
+    
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
+    doctor = relationship("Doctor", back_populates="specialization_requests")
+    specialization = relationship("Specialization")
+
+    def __repr__(self):
+        return f"<SpecializationRequest(doctor_id={self.doctor_id}, spec_id={self.specialization_id}, status='{self.status}')>"

@@ -1,17 +1,23 @@
 import json
 from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 from typing import List, Optional
 
 from core.database import get_db
-from models.doctor import Doctor, DoctorAvailability
+from models.doctor import Doctor, DoctorAvailability, Specialization
 from models.users import User
+from models.review import Review
 from schemas.doctor import Doctor as DoctorSchema, DoctorResponse, DoctorUpdate
 from datetime import date
 from routers.v1.dependencies import get_current_user
 from schemas.appointment import Appointment, AppointmentCreate, AppointmentSchema
 from models.appointment import Appointment
 from models.medical_profile import MedicalProfile
+from models.doctor import SpecializationRequest
+from schemas.doctor import OCRResponse, SpecializationRequestCreate, SpecializationRequestResponse
+from utils.ocr import extract_license_info
+from fastapi import UploadFile, File
 
 
 router = APIRouter(prefix="/doctors", tags=["Doctors"])
@@ -81,8 +87,11 @@ def get_my_doctor_profile(
         consultation_fee=doctor.consultation_fee,
         is_verified=user.is_verified,
         is_doctor_approved=user.is_doctor_approved, 
+        status=doctor.status,
         avatar=user.picture or "/default-avatar.png",
         availabilities=availabilities,
+        average_rating=db.query(func.avg(Review.rating)).filter(Review.doctor_id == user.id).scalar() or 0.0,
+        total_reviews=db.query(func.count(Review.id)).filter(Review.doctor_id == user.id).scalar() or 0,
     )
 
 
@@ -133,6 +142,15 @@ def get_doctors(
         specs_list = [s.name for s in doc.specializations]
         spec_str = json.dumps(specs_list) if specs_list else "General Practice"
 
+        # Calculate Ratings
+        review_stats = db.query(
+            func.avg(Review.rating), 
+            func.count(Review.id)
+        ).filter(Review.doctor_id == doc.user_id).first()
+        
+        avg_rating = float(review_stats[0]) if review_stats[0] else 0.0
+        total_revs = int(review_stats[1]) if review_stats[1] else 0
+
         results.append(
             DoctorSchema(
                 doctor_id=doc.doctor_id,
@@ -144,6 +162,9 @@ def get_doctors(
                 avatar=doc.user.picture,
                 is_verified=doc.user.is_verified,
                 is_doctor_approved=doc.user.is_doctor_approved,
+                status=doc.status,
+                average_rating=avg_rating,
+                total_reviews=total_revs
             )
         )
 
@@ -213,8 +234,11 @@ def get_doctor_by_id(doctor_id: int, db: Session = Depends(get_db)):
         consultation_fee=doctor.consultation_fee,
         is_verified=user.is_verified,
         is_doctor_approved=user.is_doctor_approved,
+        status=doctor.status,
         avatar=user.picture or "/default-avatar.png",
         availabilities=availabilities,
+        average_rating=db.query(func.avg(Review.rating)).filter(Review.doctor_id == user.id).scalar() or 0.0,
+        total_reviews=db.query(func.count(Review.id)).filter(Review.doctor_id == user.id).scalar() or 0,
     )
 
 @router.delete("/availabilities/{availability_id}")
@@ -334,6 +358,9 @@ def update_my_doctor_profile(
     if update_data.consultation_fee is not None:
         doctor.consultation_fee = update_data.consultation_fee
 
+    if update_data.status is not None:
+        doctor.status = update_data.status
+
     # Save
     db.commit()
     db.refresh(doctor)
@@ -368,8 +395,115 @@ def update_my_doctor_profile(
         years_of_experience=doctor.years_of_experience,
         is_verified=user.is_verified,
         is_doctor_approved=user.is_doctor_approved,
+        status=doctor.status,
         avatar=user.picture or "/default-avatar.png",
         bio=doctor.bio,
         consultation_fee=doctor.consultation_fee,
-        availabilities=availabilities
+        availabilities=availabilities,
+        average_rating=db.query(func.avg(Review.rating)).filter(Review.doctor_id == user.id).scalar() or 0.0,
+        total_reviews=db.query(func.count(Review.id)).filter(Review.doctor_id == user.id).scalar() or 0,
     )
+
+
+# ============================================
+# PRC LICENSE OCR (Groq)
+# ============================================
+@router.post("/license-ocr", response_model=OCRResponse)
+async def perform_license_ocr(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Extracts license number and expiry from a PRC photo using Groq Vision.
+    """
+    contents = await file.read()
+    result = await extract_license_info(contents)
+    
+    if "error" in result:
+        raise HTTPException(status_code=500, detail=result["error"])
+        
+    return OCRResponse(**result)
+
+
+# ============================================
+# SPECIALIZATION MANAGEMENT
+# ============================================
+@router.post("/specializations/request", response_model=SpecializationRequestResponse)
+def request_new_specialization(
+    request_data: SpecializationRequestCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Doctors can request a new specialization by providing proof.
+    """
+    doctor = db.query(Doctor).filter(Doctor.user_id == current_user.id).first()
+    if not doctor:
+        raise HTTPException(status_code=404, detail="Doctor profile not found")
+
+    # Check if already has it
+    existing = db.query(SpecializationRequest).filter(
+        SpecializationRequest.doctor_id == doctor.doctor_id,
+        SpecializationRequest.specialization_id == request_data.specialization_id,
+        SpecializationRequest.status == "pending"
+    ).first()
+    
+    if existing:
+        raise HTTPException(status_code=400, detail="A request for this specialization is already pending")
+
+    new_request = SpecializationRequest(
+        doctor_id=doctor.doctor_id,
+        specialization_id=request_data.specialization_id,
+        document_url=request_data.document_url,
+        status="pending"
+    )
+    
+    db.add(new_request)
+    db.commit()
+    db.refresh(new_request)
+    
+    # Enrich with spec name
+    spec = db.query(Specialization).filter(Specialization.specialization_id == new_request.specialization_id).first()
+    
+    return SpecializationRequestResponse(
+        id=new_request.id,
+        doctor_id=new_request.doctor_id,
+        specialization_id=new_request.specialization_id,
+        specialization_name=spec.name if spec else "Unknown",
+        document_url=new_request.document_url,
+        status=new_request.status,
+        created_at=new_request.created_at
+    )
+
+
+@router.get("/specializations/requests/me", response_model=List[SpecializationRequestResponse])
+def get_my_specialization_requests(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    List all specialization requests for the current doctor.
+    """
+    doctor = db.query(Doctor).filter(Doctor.user_id == current_user.id).first()
+    if not doctor:
+        return []
+        
+    requests = db.query(SpecializationRequest).filter(
+        SpecializationRequest.doctor_id == doctor.doctor_id
+    ).all()
+    
+    results = []
+    for r in requests:
+        spec = db.query(Specialization).filter(Specialization.specialization_id == r.specialization_id).first()
+        results.append(SpecializationRequestResponse(
+            id=r.id,
+            doctor_id=r.doctor_id,
+            specialization_id=r.specialization_id,
+            specialization_name=spec.name if spec else "Unknown",
+            document_url=r.document_url,
+            status=r.status,
+            admin_notes=r.admin_notes,
+            created_at=r.created_at
+        ))
+        
+    return results

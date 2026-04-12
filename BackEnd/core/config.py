@@ -65,6 +65,9 @@ class Settings(BaseSettings):
     EMAIL_HOST_USER: str
     EMAIL_HOST_PASSWORD: str
     DEFAULT_FROM_EMAIL: str
+    
+    # LLM API
+    GROQ_API_KEY: Optional[str] = None
 
     # CORS Configuration
     CORS_ALLOWED_ORIGINS: str

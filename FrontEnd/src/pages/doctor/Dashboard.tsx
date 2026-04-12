@@ -591,13 +591,18 @@ const [selectedDate, setSelectedDate] = useState(new Date());
                 </button>
               </>
             )}
-            {!isStaff && selectedAppointment.status === "confirmed" && (
+            {!isStaff && selectedAppointment.status === "confirmed" && new Date(selectedAppointment.appointment_date) <= new Date() && (
               <button
                 onClick={() => handleUpdateStatus(selectedAppointment.id, "completed")}
                 className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-lg shadow-blue-200 transition-all flex items-center justify-center gap-2 active:scale-95"
               >
                 <CheckCircle className="w-5 h-5" /> Mark as Completed
               </button>
+            )}
+            {!isStaff && selectedAppointment.status === "confirmed" && new Date(selectedAppointment.appointment_date) > new Date() && (
+              <p className="text-center text-xs text-slate-400 py-3 bg-slate-50 rounded-xl border border-dashed border-slate-200 w-full px-4">
+                Completion will be available after the scheduled time: <span className="font-bold text-slate-500">{new Date(selectedAppointment.appointment_date).toLocaleString()}</span>
+              </p>
             )}
             {isStaff && (
               <p className="text-center text-sm text-slate-400 py-2 w-full">

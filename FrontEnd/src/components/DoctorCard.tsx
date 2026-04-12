@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { MapPin, Mail, Stethoscope } from "lucide-react";
+import { MapPin, Mail, Stethoscope, CheckCircle2, Star } from "lucide-react";
 
 export interface Doctor {
   doctor_id: number;
@@ -11,6 +11,10 @@ export interface Doctor {
   specializations?: string[] | string; 
   address: string;
   email: string;
+  is_doctor_approved?: boolean;
+  status?: string;
+  average_rating?: number;
+  total_reviews?: number;
 }
 
 interface DoctorCardProps {
@@ -110,15 +114,53 @@ const DoctorCard: React.FC<DoctorCardProps> = ({ doctor }) => {
 
       {/* 3. DETAILS */}
       <div className="flex-1 px-3 md:px-6 pt-3 md:pt-4 pb-4 md:pb-6 text-center flex flex-col">
-        <h3 className="text-base md:text-xl font-bold text-slate-800 mb-1 leading-tight">
+        <h3 className="text-base md:text-xl font-bold text-slate-800 mb-1 leading-tight flex items-center justify-center gap-1.5">
             {doctor.name}
+            {doctor.is_doctor_approved && (
+                <CheckCircle2 className="w-4 h-4 md:w-5 md:h-5 text-blue-500 fill-blue-50" />
+            )}
         </h3>
         
-        {/* Specialization Pill */}
-        <div className="mb-4 md:mb-6">
+        {/* Status Badge */}
+        {doctor.status && doctor.status !== "available" && (
+            <div className="mb-2">
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                    doctor.status === "on_leave" 
+                        ? "bg-rose-50 text-rose-600 border-rose-100" 
+                        : "bg-amber-50 text-amber-600 border-amber-100"
+                }`}>
+                    {doctor.status === "on_leave" ? "On Leave" : "Busy"}
+                </span>
+            </div>
+        )}
+        
+        {/* Specialization Pill & Rating */}
+        <div className="flex flex-col items-center gap-2 mb-4 md:mb-6">
             <span className="text-blue-600 font-medium text-[10px] md:text-sm bg-teal-50 inline-block px-2 py-0.5 md:px-3 md:py-1 rounded-full">
                 {specializationLabel}
             </span>
+            
+            {doctor.total_reviews && doctor.total_reviews > 0 ? (
+                <div className="flex items-center gap-1.5 mt-1">
+                    <div className="flex items-center">
+                        {[1, 2, 3, 4, 5].map((s) => (
+                            <Star 
+                                key={s} 
+                                className={`w-3 h-3 md:w-3.5 md:h-3.5 ${
+                                    s <= Math.round(doctor.average_rating || 0) 
+                                        ? "text-amber-400 fill-amber-400" 
+                                        : "text-slate-200 fill-slate-200"
+                                }`} 
+                            />
+                        ))}
+                    </div>
+                    <span className="text-[10px] md:text-xs font-bold text-slate-500">
+                        ({doctor.total_reviews})
+                    </span>
+                </div>
+            ) : (
+                <span className="text-[10px] md:text-xs text-slate-400 italic mt-1">No reviews yet</span>
+            )}
         </div>
 
         <div className="space-y-2 md:space-y-4 text-left mt-auto">
