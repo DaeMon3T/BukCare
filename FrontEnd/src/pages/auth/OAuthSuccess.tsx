@@ -34,11 +34,12 @@ const OAuthSuccess: React.FC = () => {
     // Redirect based on role / profile completeness
     if (role?.toLowerCase() === "admin") navigate("/admin/dashboard", { replace: true });
     else if (role?.toLowerCase() === "doctor") navigate("/doctor/dashboard", { replace: true });
+    else if (role?.toLowerCase() === "staff") navigate("/staff/dashboard", { replace: true });
     else if (role?.toLowerCase() === "patient") {
       if (is_profile_complete === "false") navigate("/complete-profile", { replace: true });
       else navigate("/patient/home", { replace: true });
     } else {
-      navigate("/", { replace: true });
+      navigate("/signin", { replace: true });
     }
   }, [location.search, login, navigate]);
 

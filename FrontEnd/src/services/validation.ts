@@ -395,3 +395,34 @@ export function validateDoctorProfile(data: {
 
   return { isValid: true, message: '' };
 }
+
+/**
+ * Complete validation for staff profile
+ * Similar to doctor but no specializations required. License/ID is optional.
+ */
+export function validateStaffProfile(data: {
+  sex: string;
+  dob: string;
+  contact_number: string;
+  password: string;
+  confirmPassword: string;
+  province_id: string;
+  city_id: string;
+  barangay: string;
+  prc_license_front?: File | null;
+  prc_license_back?: File | null;
+  prc_license_selfie?: File | null;
+}): ValidationResult {
+  const patientCheck = validatePatientProfile(data);
+  if (!patientCheck.isValid) return patientCheck;
+
+  // At least the front proof file is required for staff credential verification
+  const filesCheck = validateAllFiles(
+    data.prc_license_front,
+    data.prc_license_back,
+    data.prc_license_selfie
+  );
+  if (!filesCheck.isValid) return filesCheck;
+
+  return { isValid: true, message: '' };
+}

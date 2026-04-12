@@ -54,8 +54,8 @@ def get_appointments(
         query = query.filter(Appointment.patient_id == current_user.id)
     elif current_user.role.value == "doctor":
         query = query.filter(Appointment.doctor_id == current_user.id)
-    elif current_user.role.value == "admin":
-        pass
+    elif current_user.role.value in ("admin", "staff"):
+        pass  # admin and staff can see all appointments
     else:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -650,20 +650,23 @@ def get_doctor_appointments(
     """
     Fetch all appointments for the currently logged-in DOCTOR.
     """
-    # Security Check
-    if current_user.role != UserRole.DOCTOR:
+    # Security Check: Allow both doctors and staff
+    if current_user.role not in (UserRole.DOCTOR, UserRole.STAFF):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, 
-            detail="Only doctors can access this dashboard."
+            detail="Only doctors and staff can access this dashboard."
         )
 
-    # Fetch Appointments directly using current_user.id
-    # We use joinedload to prevent "Lazy Loading" errors when accessing patient data
-    appointments = db.query(Appointment)\
-        .options(joinedload(Appointment.patient))\
-        .filter(Appointment.doctor_id == current_user.id)\
-        .order_by(Appointment.appointment_date.asc())\
-        .all()
+    # Fetch Appointments
+    # Doctors see only their own; staff see all appointments
+    query = db.query(Appointment)\
+        .options(joinedload(Appointment.patient))
+
+    if current_user.role == UserRole.DOCTOR:
+        query = query.filter(Appointment.doctor_id == current_user.id)
+    # Staff can see all appointments (no filter)
+
+    appointments = query.order_by(Appointment.appointment_date.asc()).all()
 
     # Format the data
     return [

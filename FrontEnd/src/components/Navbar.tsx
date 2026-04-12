@@ -59,7 +59,7 @@ const Navbar: React.FC = () => {
         markAsRead(Number(notif.id));
     }
 
-    const baseRole = user?.role === 'doctor' ? '/doctor' : '/patient';
+    const baseRole = user?.role === 'doctor' ? '/doctor' : user?.role === 'staff' ? '/staff' : '/patient';
     if (notif.type === "CHAT_MESSAGE") {
 
         const senderId = notif.sender_id || notif.message?.sender_id; 
@@ -102,6 +102,14 @@ const Navbar: React.FC = () => {
           { label: "Appointments", path: "/doctor/appointments", icon: Calendar, badge: badgeCounts.appointments },
           { label: "Availability", path: "/doctor/set-availability", icon: ClipboardList },
           { label: "Messages", path: "/doctor/messages", icon: MessageCircle, badge: badgeCounts.messages },
+        ];
+        break;
+      case "staff":
+        items = [
+          { label: "Dashboard", path: "/staff/dashboard", icon: Home },
+          { label: "Appointments", path: "/staff/appointments", icon: Calendar, badge: badgeCounts.appointments },
+          { label: "Messages", path: "/staff/messages", icon: MessageCircle, badge: badgeCounts.messages },
+          { label: "Scan", path: "/staff/scan", icon: Search },
         ];
         break;
       case "patient":

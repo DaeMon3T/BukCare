@@ -133,8 +133,11 @@ const GoogleCallbackHandler: React.FC = () => {
           case 'patient':
             redirectPath = '/patient/home';
             break;
+          case 'staff':
+            redirectPath = '/staff/dashboard';
+            break;
           default:
-            redirectPath = '/';
+            redirectPath = '/signin';
             toast.error('Unknown user role. Please contact support.');
         }
 
