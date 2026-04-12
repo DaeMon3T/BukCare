@@ -4,12 +4,31 @@ from datetime import datetime
 from core.database import Base
 import enum
 
+import sqlalchemy.types as types
+
 class UserRole(str, enum.Enum):
     ADMIN = "admin"
     DOCTOR = "doctor"
     PATIENT = "patient"
     STAFF = "staff"
     PENDING = "pending"
+
+class UserRoleType(types.TypeDecorator):
+    impl = types.String
+    cache_ok = True
+
+    def process_bind_param(self, value, dialect):
+        if hasattr(value, 'value'):
+            return value.value
+        return value
+
+    def process_result_value(self, value, dialect):
+        if value is None:
+            return None
+        for member in UserRole:
+            if member.value == value:
+                return member
+        return value
 
 class User(Base):
     __tablename__ = "users"
@@ -21,7 +40,7 @@ class User(Base):
     mname = Column(String, nullable=True)
     lname = Column(String, nullable=False)
     sex = Column(Boolean, nullable=True)
-    role = Column(Enum(UserRole), nullable=False, default=UserRole.PENDING)
+    role = Column(UserRoleType, nullable=False, default=UserRole.PENDING)
     dob = Column(DateTime, nullable=True)
     contact_number = Column(String, nullable=True)
 

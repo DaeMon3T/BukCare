@@ -91,7 +91,7 @@ class APIInterceptor {
       const refreshTokenValue = localStorage.getItem('refresh_token');
       if (!refreshTokenValue) return false;
 
-      const response = await fetch(`${this.baseURL}/auth/refresh`, {
+      const response = await fetch(`${this.baseURL}/v1/auth/refresh`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

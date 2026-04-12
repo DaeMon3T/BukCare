@@ -39,7 +39,7 @@ export default function SignUp() {
   const handleGoogleRedirect = () => {
     setLoading(true);
     // Preserving your logic
-    window.location.href = `${BACKEND_URL}/auth/google/login`;
+    window.location.href = `${BACKEND_URL}/v1/auth/google/login`;
   };
 
   // Standard Animations (Matches About.tsx)

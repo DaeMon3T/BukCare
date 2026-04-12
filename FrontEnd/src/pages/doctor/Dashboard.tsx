@@ -130,14 +130,19 @@ const DoctorDashboard: FC = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [appointmentsRes, schedulesRes] = await Promise.all([
-        api.get<Appointment[]>("/appointments/doctor"),
-        api.get<Schedule[]>("/schedules"),
-      ]);
-      
+      const appointmentsRes = await api.get<Appointment[]>("/appointments/doctor");
       setAppointments(appointmentsRes.data);
-      setSchedules(schedulesRes.data);
       calculateStats(appointmentsRes.data);
+
+      // Only doctors can fetch schedules — staff gets 403
+      if (!isStaff) {
+        try {
+          const schedulesRes = await api.get<Schedule[]>("/schedules");
+          setSchedules(schedulesRes.data);
+        } catch {
+          console.warn("Could not load schedules (staff user).");
+        }
+      }
     } catch (error: any) {
       console.error("Failed to load data:", error);
       toast.error("Failed to load dashboard data");
