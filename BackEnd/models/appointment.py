@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, ForeignKey, DateTime, Text, Enum
+from sqlalchemy import Column, Integer, ForeignKey, DateTime, Text, Enum, String
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from core.database import Base
@@ -27,8 +27,9 @@ class Appointment(Base):
     doctor_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
 
     appointment_date = Column(DateTime, nullable=False)
-    status = Column(Enum(AppointmentStatus, name="appointment_status_enum"), default=AppointmentStatus.PENDING, nullable=False)
-    appointment_type = Column(Enum(AppointmentType, name="appointment_type_enum"), default=AppointmentType.ONLINE, nullable=False)
+    reason = Column(String, nullable=True)  # Added for appointment booking
+    status = Column(Enum(AppointmentStatus, name="appointment_status_enum", values_callable=lambda obj: [e.value for e in obj]), default=AppointmentStatus.PENDING, nullable=False)
+    appointment_type = Column(Enum(AppointmentType, name="appointment_type_enum", values_callable=lambda obj: [e.value for e in obj]), default=AppointmentType.ONLINE, nullable=False)
     notes = Column(Text, nullable=True)
 
     created_at = Column(DateTime, default=datetime.utcnow)

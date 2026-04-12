@@ -68,6 +68,10 @@ GLOBAL_RATE_LIMIT_EXEMPT = {
 
 async def rate_limit_middleware(request: Request, call_next):
     """Global rate limiting middleware - 100 requests per hour per IP"""
+    # Skip OPTIONS requests for CORS preflight
+    if request.method == "OPTIONS":
+        return await call_next(request)
+
     client_ip = request.client.host
     
     # Check global rate limit
@@ -125,6 +129,10 @@ ENDPOINT_RATE_LIMIT_EXEMPT = {
 
 async def endpoint_rate_limit_middleware(request: Request, call_next):
     """Endpoint-specific rate limiting (only for sensitive endpoints)"""
+    # Skip OPTIONS requests for CORS preflight
+    if request.method == "OPTIONS":
+        return await call_next(request)
+
     client_ip = request.client.host
     path = request.url.path
     
