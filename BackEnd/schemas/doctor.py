@@ -39,6 +39,31 @@ class Specialization(SpecializationBase):
 
 
 # ---------------------------
+# OCR & Verification Schemas
+# ---------------------------
+class OCRResponse(BaseModel):
+    license_number: Optional[str] = None
+    expiry_date: Optional[str] = None
+
+
+class SpecializationRequestCreate(BaseModel):
+    specialization_id: int
+    document_url: str
+
+
+class SpecializationRequestResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    doctor_id: int
+    specialization_id: int
+    specialization_name: Optional[str] = None
+    document_url: str
+    status: str
+    admin_notes: Optional[str] = None
+    created_at: datetime
+
+
+# ---------------------------
 # Doctor Schemas
 # ---------------------------
 class DoctorBase(BaseModel):
@@ -47,6 +72,7 @@ class DoctorBase(BaseModel):
     years_of_experience: Optional[int] = None
     bio: Optional[str] = None
     consultation_fee: Optional[float] = None 
+    status: Optional[str] = "available"
     is_accepting_patients: bool = True
 
 
@@ -62,6 +88,7 @@ class DoctorUpdate(BaseModel):
     years_of_experience: Optional[int] = None
     bio: Optional[str] = None
     consultation_fee: Optional[float] = None
+    status: Optional[str] = None
     is_accepting_patients: Optional[bool] = None
     prc_license_front: Optional[str] = None
     prc_license_back: Optional[str] = None
@@ -82,6 +109,7 @@ class DoctorResponse(BaseModel):
     years_of_experience: Optional[int] = None
     bio: Optional[str] = None
     consultation_fee: Optional[float] = None
+    status: str = "available"
     is_accepting_patients: Optional[bool] = None
     is_verified: bool
     is_doctor_approved: bool
@@ -89,6 +117,8 @@ class DoctorResponse(BaseModel):
     avatar: Optional[str] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
+    average_rating: Optional[float] = 0.0
+    total_reviews: Optional[int] = 0
 
 
 class Doctor(BaseModel):

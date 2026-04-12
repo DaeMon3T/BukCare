@@ -12,7 +12,8 @@ import {
   AlertTriangle,
   Calendar,
   FileText,
-  Check // <--- Added Check icon
+  Check,
+  ArrowUpDown
 } from "lucide-react";
 import { useWebSocket } from "@/context/WebSocketContext";
 import ReviewModal from "@/components/ReviewModal"; 
@@ -72,6 +73,7 @@ const PatientAppointments = () => {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<string>("all");
+  const [sortBy, setSortBy] = useState<"date_desc" | "date_asc" | "status">("date_desc");
 
   // REVIEW MODAL STATE
   const [isReviewOpen, setIsReviewOpen] = useState(false);
@@ -189,7 +191,16 @@ const PatientAppointments = () => {
       return appt.status === filter;
     })
     .sort((a, b) => {
-      return new Date(b.appointment_date).getTime() - new Date(a.appointment_date).getTime();
+      if (sortBy === "date_desc") {
+        return new Date(b.appointment_date).getTime() - new Date(a.appointment_date).getTime();
+      }
+      if (sortBy === "date_asc") {
+        return new Date(a.appointment_date).getTime() - new Date(b.appointment_date).getTime();
+      }
+      if (sortBy === "status") {
+        return a.status.localeCompare(b.status);
+      }
+      return 0;
     });
 
   const formatDateTime = (dateTimeString: string) => {
@@ -209,6 +220,8 @@ const PatientAppointments = () => {
         return { style: "bg-emerald-100 text-emerald-700 border-emerald-200", icon: CheckCircle, label: "Confirmed" };
       case "completed":
         return { style: "bg-blue-100 text-blue-700 border-blue-200", icon: CheckCircle, label: "Completed" };
+      case "expired":
+        return { style: "bg-gray-50 text-gray-400 border-gray-100 italic", icon: Clock, label: "Expired" };
       case "cancelled":
         return { style: "bg-rose-100 text-rose-700 border-rose-200", icon: XCircle, label: "Cancelled" };
       default:
@@ -291,8 +304,23 @@ const PatientAppointments = () => {
                 <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">My Appointments</h1>
                 <p className="text-slate-500 mt-1 text-sm md:text-base">Track your health journey and upcoming visits.</p>
             </div>
+            
+            {/* SORT DROPDOWN */}
+            <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-sm">
+                <ArrowUpDown className="w-4 h-4 text-slate-400" />
+                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Sort:</span>
+                <select 
+                    value={sortBy} 
+                    onChange={(e) => setSortBy(e.target.value as any)}
+                    className="text-sm font-bold text-slate-700 bg-transparent outline-none cursor-pointer"
+                >
+                    <option value="date_desc">Newest First</option>
+                    <option value="date_asc">Oldest First</option>
+                    <option value="status">By Status</option>
+                </select>
+            </div>
         </div>
-
+        
         {/* TABS / FILTERS */}
         <div className="flex overflow-x-auto pb-2 gap-1.5 md:gap-2 mb-4 md:mb-6 scrollbar-hide">
             {["all", "pending", "confirmed", "completed", "cancelled"].map((f) => {

@@ -1,8 +1,9 @@
-@import url('https://fonts.googleapis.com/css2?family=Sintony:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 @import "tailwindcss";
 
 @theme {
-  --font-display: "Sintony", sans-serif;
+  --font-display: "Plus Jakarta Sans", sans-serif;
+  --font-premium: "Fraunces", serif;
 }
 
 @keyframes slideIn {
@@ -18,4 +19,50 @@
 
 .animate-slideIn {
   animation: slideIn 0.3s ease-out;
+}
+
+@keyframes floatSlow {
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.animate-floatSlow {
+  animation: floatSlow 7s ease-in-out infinite;
+}
+
+.font-premium {
+  font-family: var(--font-premium);
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+html {
+  background: #f4f8fc;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: var(--font-display);
+  background:
+    radial-gradient(circle at top left, rgba(56, 189, 248, 0.16), transparent 28%),
+    radial-gradient(circle at top right, rgba(251, 191, 36, 0.12), transparent 24%),
+    linear-gradient(180deg, #f8fbff 0%, #eef4fa 100%);
+  color: #0f172a;
+}
+
+#root {
+  min-height: 100vh;
 }

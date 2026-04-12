@@ -7,9 +7,11 @@ import {
   updateProfilePicture,
 } from "@/services/users/UsersAPI";
 import api from "@/services/api"; 
+import DoctorReviews from "@/components/DoctorReviews";
 import { 
   CalendarRange, MapPin, User, Camera, Mail, Phone, Edit2, 
-  Stethoscope, Award, FileBadge, CheckCircle2, Clock, AlertCircle, Banknote, FileText 
+  Stethoscope, Award, FileBadge, CheckCircle2, Clock, AlertCircle, Banknote, FileText, Star,
+  Upload, Sparkles, Plus
 } from "lucide-react";
 
 // Updated Interface to include Doctor-specific fields for editing
@@ -31,15 +33,19 @@ interface UserProfile {
     city?: string;
     barangay?: string;
   };
+  status?: string;
 }
 
 interface DoctorData {
+    doctor_id: number;
     license_number: string;
     years_of_experience: number;
     specialization: string;
     is_doctor_approved: boolean;
     consultation_fee: number;
     bio: string;
+    average_rating?: number;
+    total_reviews?: number;
 }
 
 // --- MODAL COMPONENT ---
@@ -91,6 +97,24 @@ const EditProfileModal = ({
                             className="w-full pl-8 p-3.5 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-none bg-slate-50/50 font-bold text-slate-700" 
                             placeholder="e.g. 500"
                         />
+                    </div>
+                </div>
+                <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-500 ml-1">Availability Status</label>
+                    <div className="relative">
+                        <select 
+                            name="status" 
+                            value={formData.status || "available"} 
+                            onChange={handleChange} 
+                            className="w-full p-3.5 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-none bg-slate-50/50 font-bold text-slate-700 appearance-none"
+                        >
+                            <option value="available">Available</option>
+                            <option value="on_leave">On Leave</option>
+                            <option value="busy">Busy / Fully Booked</option>
+                        </select>
+                        <div className="absolute right-4 top-4 pointer-events-none text-slate-400">
+                           <Clock className="w-4 h-4" />
+                        </div>
                     </div>
                 </div>
                 <div className="space-y-1.5 md:col-span-2">
@@ -220,7 +244,7 @@ export default function DoctorProfile() {
 
   const [formData, setFormData] = useState<UserProfile>({
     fname: "", mname: "", lname: "", sex: null, dob: "", contact_number: "", email: "", picture: "", 
-    is_doctor_approved: false, bio: "", consultation_fee: 0,
+    is_doctor_approved: false, bio: "", consultation_fee: 0, status: "available",
     address: { province: "", city: "", barangay: "" },
   });
 
@@ -245,7 +269,8 @@ export default function DoctorProfile() {
                 ...prev, 
                 is_doctor_approved: docRes.data.is_doctor_approved,
                 consultation_fee: docRes.data.consultation_fee, 
-                bio: docRes.data.bio 
+                bio: docRes.data.bio,
+                status: docRes.data.status
             }));
         } catch (e) { console.error("Could not load doctor data", e); }
 
@@ -278,7 +303,8 @@ export default function DoctorProfile() {
       // 2. Update Doctor Table
       await api.put('/doctors/profile/me', {
           consultation_fee: formData.consultation_fee,
-          bio: formData.bio
+          bio: formData.bio,
+          status: formData.status
       });
 
       setIsEditModalOpen(false);
@@ -334,6 +360,71 @@ export default function DoctorProfile() {
     return `${formData.fname.charAt(0)}${formData.lname.charAt(0)}`.toUpperCase();
   };
 
+  // --- NEW: OCR & SPECIALIZATION LOGIC ---
+  const [verifyingLicense, setVerifyingLicense] = useState(false);
+  const [requestingSpec, setRequestingSpec] = useState(false);
+  const [availableSpecs, setAvailableSpecs] = useState<any[]>([]);
+  const [selectedSpecId, setSelectedSpecId] = useState<number | string>("");
+  const [specDocUrl, setSpecDocUrl] = useState("");
+  const [myRequests, setMyRequests] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchMetadata = async () => {
+      try {
+        const specsRes = await api.get('/specializations');
+        setAvailableSpecs(specsRes.data);
+        
+        if (doctorData?.doctor_id) {
+          const reqsRes = await api.get('/doctors/specializations/requests/me');
+          setMyRequests(reqsRes.data);
+        }
+      } catch (e) { console.error("Metadata fetch error", e); }
+    };
+    if (doctorData) fetchMetadata();
+  }, [doctorData]);
+
+  const handleLicenseOCR = async (file: File) => {
+    setVerifyingLicense(true);
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const res = await api.post('/doctors/license-ocr', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      
+      if (res.data.license_number) {
+        setFormData(prev => ({ ...prev, license_number: res.data.license_number }));
+        // Also update doctor data for immediate feedback
+        setDoctorData(prev => prev ? { ...prev, license_number: res.data.license_number } : null);
+        alert(`Extracted License: ${res.data.license_number}. Please save changes.`);
+      }
+    } catch (e) { 
+      console.error("OCR Error", e);
+      alert("Verification failed. Please ensure the image is clear.");
+    } finally {
+      setVerifyingLicense(false);
+    }
+  };
+
+  const handleSpecRequest = async () => {
+    if (!selectedSpecId || !specDocUrl) return;
+    setRequestingSpec(true);
+    try {
+      await api.post('/doctors/specializations/request', {
+        specialization_id: Number(selectedSpecId),
+        document_url: specDocUrl
+      });
+      alert("Specialization request submitted for approval.");
+      setSelectedSpecId("");
+      setSpecDocUrl("");
+      // Refresh requests
+      const reqsRes = await api.get('/doctors/specializations/requests/me');
+      setMyRequests(reqsRes.data);
+    } catch (e) { console.error("Request error", e); }
+    finally { setRequestingSpec(false); }
+  };
+
   if (loading) return <div className="min-h-screen bg-slate-50 flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-600 border-t-transparent"></div></div>;
 
   return (
@@ -387,6 +478,14 @@ export default function DoctorProfile() {
                                         <Clock className="w-3 h-3" /> Pending Approval
                                     </span>
                                 )}
+
+                                <div className="flex items-center gap-1.5 ml-1 text-sm font-bold text-slate-700">
+                                    <Star className="w-4 h-4 text-orange-400 fill-current" /> 
+                                    {doctorData?.average_rating ? doctorData.average_rating.toFixed(1) : "0.0"} 
+                                    <span className="font-normal text-slate-500 ml-1">
+                                        ({doctorData?.total_reviews || 0} Reviews)
+                                    </span>
+                                </div>
                             </div>
                         </div>
 
@@ -489,20 +588,37 @@ export default function DoctorProfile() {
                 </div>
                 
                 <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-6">
-                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                        <p className="text-xs font-bold text-slate-400 uppercase mb-1 tracking-wider">Medical License Number</p>
-                        <div className="flex items-center gap-2">
-                            <FileBadge className="w-5 h-5 text-teal-600" />
-                            <p className="text-xl font-mono font-bold text-slate-800 tracking-wide">
-                                {doctorData?.license_number || "PENDING"}
-                            </p>
+                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 flex flex-col justify-between">
+                        <div>
+                            <p className="text-xs font-bold text-slate-400 uppercase mb-1 tracking-wider">Medical License Number</p>
+                            <div className="flex items-center gap-2">
+                                <FileBadge className="w-5 h-5 text-teal-600" />
+                                <p className="text-xl font-mono font-bold text-slate-800 tracking-wide">
+                                    {doctorData?.license_number || "PENDING"}
+                                </p>
+                            </div>
                         </div>
+                        {!formData.is_doctor_approved && (
+                            <div className="mt-3">
+                                <label className="inline-flex items-center gap-2 px-3 py-1.5 bg-teal-600 text-white rounded-lg text-xs font-bold cursor-pointer hover:bg-teal-700 transition shadow-sm">
+                                    {verifyingLicense ? <div className="animate-spin h-3 w-3 border-2 border-white border-t-transparent rounded-full" /> : <Sparkles className="w-3 h-3" />}
+                                    {verifyingLicense ? "Processing..." : "Verify with Photo (AI)"}
+                                    <input type="file" className="hidden" accept="image/*" onChange={(e) => e.target.files?.[0] && handleLicenseOCR(e.target.files[0])} />
+                                </label>
+                            </div>
+                        )}
                     </div>
                     <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
                         <p className="text-xs font-bold text-slate-400 uppercase mb-1 tracking-wider">Primary Specialization</p>
-                        <p className="text-lg font-bold text-slate-700">
+                        <p className="text-lg font-bold text-slate-700 mb-2">
                             {doctorData?.specialization.replace(/[\[\]"]/g, "") || "General Practice"}
                         </p>
+                        <button 
+                            onClick={() => document.getElementById('spec-request-form')?.scrollIntoView({ behavior: 'smooth' })}
+                            className="text-[10px] font-bold text-blue-600 hover:text-blue-700 bg-blue-50 px-2 py-1 rounded border border-blue-100 flex items-center gap-1"
+                        >
+                            <Plus className="w-3 h-3" /> Add Specialization
+                        </button>
                     </div>
                     
                     {/* CONSULTATION FEE DISPLAY */}
@@ -537,13 +653,94 @@ export default function DoctorProfile() {
                         <p className="text-xs text-slate-400 font-bold uppercase">City</p>
                         <p className="font-medium text-slate-700 text-lg">{formData.address?.city || "-"}</p>
                     </div>
-                    <div className="space-y-1 sm:col-span-2 pt-2 border-t border-slate-50">
-                        <p className="text-xs text-slate-400 font-bold uppercase">Province</p>
-                        <p className="font-medium text-slate-700 text-lg">{formData.address?.province || "-"}</p>
+                    </div>
+                </div>
+
+                {/* SPECIALIZATION REQUESTS */}
+            <div id="spec-request-form" className="bg-white rounded-2xl shadow-sm p-6 border border-slate-100">
+                <h3 className="font-bold text-slate-900 mb-6 text-lg flex items-center gap-2">
+                    <Award className="w-5 h-5 text-purple-500" /> Additional Specializations
+                </h3>
+                
+                <div className="space-y-6">
+                    {/* Active Requests */}
+                    {myRequests.length > 0 && (
+                        <div className="space-y-3">
+                            <p className="text-xs font-bold text-slate-400 uppercase">My Requests</p>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                {myRequests.map(req => (
+                                    <div key={req.id} className="p-3 bg-slate-50 rounded-xl border border-slate-100 flex justify-between items-center">
+                                        <div>
+                                            <p className="text-sm font-bold text-slate-700">{req.specialization_name}</p>
+                                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                                                req.status === 'approved' ? 'bg-emerald-100 text-emerald-700' :
+                                                req.status === 'rejected' ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-700'
+                                            }`}>
+                                                {req.status.toUpperCase()}
+                                            </span>
+                                        </div>
+                                        <a href={req.document_url} target="_blank" className="p-2 text-slate-400 hover:text-blue-600 transition">
+                                            <FileText className="w-4 h-4" />
+                                        </a>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Request Form */}
+                    <div className="bg-slate-50 p-5 rounded-2xl border-2 border-dashed border-slate-200">
+                        <p className="font-bold text-slate-800 mb-4">Request New Qualification</p>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-1">
+                                <label className="text-xs font-bold text-slate-500">Specialization</label>
+                                <select 
+                                    className="w-full p-2.5 bg-white border border-slate-200 rounded-xl outline-none text-sm font-medium"
+                                    value={selectedSpecId}
+                                    onChange={(e) => setSelectedSpecId(e.target.value)}
+                                >
+                                    <option value="">Select Specialization...</option>
+                                    {availableSpecs.map(s => (
+                                        <option key={s.specialization_id} value={s.specialization_id}>{s.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-xs font-bold text-slate-500">Proof URL (Certificate)</label>
+                                <div className="flex gap-2">
+                                    <input 
+                                        type="text" 
+                                        placeholder="Cloudinary/Drive link..."
+                                        className="flex-1 p-2.5 bg-white border border-slate-200 rounded-xl outline-none text-sm"
+                                        value={specDocUrl}
+                                        onChange={(e) => setSpecDocUrl(e.target.value)}
+                                    />
+                                    <button 
+                                        disabled={!selectedSpecId || !specDocUrl || requestingSpec}
+                                        onClick={handleSpecRequest}
+                                        className="px-4 py-2 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition disabled:opacity-50 text-sm flex items-center gap-2"
+                                    >
+                                        {requestingSpec ? '...' : <Upload className="w-4 h-4" />}
+                                        Submit
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <p className="mt-4 text-[11px] text-slate-500 leading-relaxed italic">
+                            * Administrators will review your certification before it appears on your public profile.
+                        </p>
                     </div>
                 </div>
             </div>
 
+            {/* REVIEWS SECTION */}
+            {doctorData?.doctor_id && (
+                <div id="reviews" className="mt-8">
+                    <DoctorReviews 
+                        doctorId={doctorData.doctor_id} 
+                    />
+                </div>
+            )}
         </div>
       </main>
 

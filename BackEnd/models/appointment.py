@@ -10,6 +10,13 @@ class AppointmentStatus(str, enum.Enum):
     CONFIRMED = "confirmed"
     CANCELLED = "cancelled"
     COMPLETED = "completed"
+    EXPIRED = "expired"
+    # New: For walk-ins
+    IN_PROGRESS = "in_progress" 
+
+class AppointmentType(str, enum.Enum):
+    ONLINE = "online"
+    WALK_IN = "walk_in"
 
 
 class Appointment(Base):
@@ -20,8 +27,8 @@ class Appointment(Base):
     doctor_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
 
     appointment_date = Column(DateTime, nullable=False)
-    reason = Column(Text, nullable=True)
     status = Column(Enum(AppointmentStatus, name="appointment_status_enum"), default=AppointmentStatus.PENDING, nullable=False)
+    appointment_type = Column(Enum(AppointmentType, name="appointment_type_enum"), default=AppointmentType.ONLINE, nullable=False)
     notes = Column(Text, nullable=True)
 
     created_at = Column(DateTime, default=datetime.utcnow)

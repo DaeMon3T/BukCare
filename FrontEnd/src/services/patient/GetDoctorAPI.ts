@@ -30,6 +30,7 @@ export interface Doctor {
 
   is_verified: boolean;
   is_doctor_approved: boolean;
+  status?: string;
 
   created_at: string;
   updated_at: string;

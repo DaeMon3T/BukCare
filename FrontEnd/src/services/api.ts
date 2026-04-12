@@ -5,7 +5,7 @@ let baseURL = import.meta.env.VITE_API_URL || "http://localhost:8000/v1";
 
 // Prevent double "/api/v1/api/v1" issues
 if (baseURL.endsWith("/")) baseURL = baseURL.slice(0, -1);
-if (!baseURL.endsWith("/v1")) baseURL = `${baseURL}`;
+if (!baseURL.endsWith("/v1")) baseURL = `${baseURL}/v1`;
 
 const api = axios.create({
   baseURL,

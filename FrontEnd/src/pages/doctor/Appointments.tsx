@@ -14,7 +14,8 @@ import {
   RefreshCw, 
   UserPlus,
   Check,
-  AlertTriangle
+  AlertTriangle,
+  ArrowUpDown
 } from "lucide-react";
 import { useWebSocket } from "@/context/WebSocketContext";
 import RescheduleModal from "@/components/RescheduleModal";
@@ -43,6 +44,7 @@ const DoctorAppointments = () => {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "pending" | "confirmed" | "cancelled">("all");
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
+  const [sortBy, setSortBy] = useState<"date_desc" | "date_asc" | "status">("date_desc");
 
   // Modal States
   const [rescheduleData, setRescheduleData] = useState<{id: number, date: string} | null>(null);
@@ -187,7 +189,16 @@ const DoctorAppointments = () => {
       return appt.status === filter;
     })
     .sort((a, b) => {
-      return new Date(b.appointment_date).getTime() - new Date(a.appointment_date).getTime();
+      if (sortBy === "date_desc") {
+        return new Date(b.appointment_date).getTime() - new Date(a.appointment_date).getTime();
+      }
+      if (sortBy === "date_asc") {
+        return new Date(a.appointment_date).getTime() - new Date(b.appointment_date).getTime();
+      }
+      if (sortBy === "status") {
+        return a.status.localeCompare(b.status);
+      }
+      return 0;
     });
 
   const formatDateTime = (dateTimeString: string) => {
@@ -210,6 +221,8 @@ const DoctorAppointments = () => {
         return { badge: "bg-blue-100 text-blue-700 border-blue-200", icon: CheckCircle, label: "Completed" };
       case "cancelled":
         return { badge: "bg-rose-100 text-rose-700 border-rose-200", icon: XCircle, label: "Cancelled" };
+      case "expired":
+        return { badge: "bg-gray-50 text-gray-400 border-gray-100 italic", icon: Clock, label: "Expired" };
       default:
         return { badge: "bg-slate-100 text-slate-700 border-slate-200", icon: AlertCircle, label: status };
     }
@@ -305,6 +318,21 @@ const DoctorAppointments = () => {
           <div>
             <h2 className="text-3xl font-bold text-slate-900 tracking-tight">My Appointments</h2>
             <p className="text-slate-500 mt-1">View and manage your schedule</p>
+          </div>
+
+          {/* SORT DROPDOWN */}
+          <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-sm self-start md:self-auto">
+              <ArrowUpDown className="w-4 h-4 text-slate-400" />
+              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Sort:</span>
+              <select 
+                  value={sortBy} 
+                  onChange={(e) => setSortBy(e.target.value as any)}
+                  className="text-sm font-bold text-slate-700 bg-transparent outline-none cursor-pointer"
+              >
+                  <option value="date_desc">Newest First</option>
+                  <option value="date_asc">Oldest First</option>
+                  <option value="status">By Status</option>
+              </select>
           </div>
         </div>
 

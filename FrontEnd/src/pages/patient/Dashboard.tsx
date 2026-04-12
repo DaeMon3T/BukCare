@@ -104,7 +104,7 @@ const PatientDashboard = () => {
         if (!isBackground) setLoading(true);
 
         const [doctorsRes, apptRes, tipRes] = await Promise.allSettled([
-            api.get("/doctors/"),
+            api.get("/doctors/?approved=true"),
             api.get("/appointments/"),
             api.get("/tips/daily")
         ]);
@@ -412,7 +412,10 @@ const PatientDashboard = () => {
                                         <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 border-2 border-white rounded-full"></div>
                                     </div>
                                     <div className="min-w-0">
-                                        <h4 className="font-bold text-lg text-slate-900 truncate">Dr. {doc.name}</h4>
+                                        <h4 className="font-bold text-lg text-slate-900 truncate flex items-center gap-1.5">
+                                            Dr. {doc.name}
+                                            <CheckCircle2 className="w-4 h-4 text-blue-500 fill-blue-50" />
+                                        </h4>
                                         <p className="text-sm text-slate-500 truncate font-medium">
                                             {/* Use helper here too for consistent display */}
                                             {getSpecialization(doc)}

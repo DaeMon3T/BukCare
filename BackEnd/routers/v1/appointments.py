@@ -70,6 +70,18 @@ def get_appointments(
     if status:
         query = query.filter(Appointment.status == status)
     
+    # --- AUTO-EXPIRATION LOGIC (Lazy Cleanup) ---
+    # Mark PENDING appointments as EXPIRED if their scheduled time has passed
+    overdue_pending = db.query(Appointment).filter(
+        Appointment.status == AppointmentStatus.PENDING,
+        Appointment.appointment_date < datetime.utcnow()
+    ).all()
+    
+    if overdue_pending:
+        for appt in overdue_pending:
+            appt.status = AppointmentStatus.EXPIRED
+        db.commit()
+
     appointments = query.order_by(Appointment.appointment_date.desc()).all()
     
     results = []
@@ -665,6 +677,17 @@ def get_doctor_appointments(
     if current_user.role == UserRole.DOCTOR:
         query = query.filter(Appointment.doctor_id == current_user.id)
     # Staff can see all appointments (no filter)
+
+    # --- AUTO-EXPIRATION LOGIC (Lazy Cleanup) ---
+    overdue_pending = db.query(Appointment).filter(
+        Appointment.status == AppointmentStatus.PENDING,
+        Appointment.appointment_date < datetime.utcnow()
+    ).all()
+    
+    if overdue_pending:
+        for appt in overdue_pending:
+            appt.status = AppointmentStatus.EXPIRED
+        db.commit()
 
     appointments = query.order_by(Appointment.appointment_date.asc()).all()
 

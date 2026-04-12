@@ -43,6 +43,7 @@ import DoctorSetAvailability from './pages/doctor/SetAvailability';
 import Messages from './pages/doctor/Messages';
 import ScanPatient from './pages/doctor/ScanPatient';
 import PatientDetails from './pages/doctor/PatientDetails';
+import WalkIn from './pages/staff/WalkIn';
 
 // Patient Pages
 import PatientDashboard from './pages/patient/Dashboard';
@@ -126,6 +127,7 @@ const App: FC = () => {
                   <Route path="/staff/messages" element={<Messages />} />
                   <Route path="/staff/scan" element={<ScanPatient />} />
                   <Route path="/staff/patient/:id" element={<PatientDetails />} />
+                  <Route path="/staff/walk-in" element={<WalkIn />} />
                 </Route>
 
                 {/* -------------------- Patient Routes -------------------- */}

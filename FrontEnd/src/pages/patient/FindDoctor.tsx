@@ -82,7 +82,7 @@ const FindDoctor: React.FC = () => {
         setHasMore(true);
 
         // Fetch first page (skip=0)
-        const response = await api.get(`/doctors/?skip=0&limit=${LIMIT}`);
+        const response = await api.get(`/doctors/?skip=0&limit=${LIMIT}&approved=true`);
         const formatted = parseDoctorData(response.data);
 
         setAllDoctors(formatted);
@@ -110,7 +110,7 @@ const FindDoctor: React.FC = () => {
           setLoadingMore(true);
           
           // Fetch next page based on current offset
-          const response = await api.get(`/doctors/?skip=${offset}&limit=${LIMIT}`);
+          const response = await api.get(`/doctors/?skip=${offset}&limit=${LIMIT}&approved=true`);
           const newDoctors = parseDoctorData(response.data);
 
           if (newDoctors.length === 0) {

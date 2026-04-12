@@ -10,11 +10,11 @@ import {
     ArrowLeft, 
     MapPin, 
     Stethoscope,
-    ChevronRight,
     CalendarDays,
     Sun,
     Moon,
-    Clock
+    Clock,
+    AlertCircle
 } from "lucide-react";
 
 type BookingMode = "availability" | "custom";
@@ -206,6 +206,7 @@ const BookAppointment: React.FC = () => {
   };
 
   const isFormValid = () => {
+    if (!reason.trim()) return false;
     if (bookingMode === "availability") return selectedAvailabilitySlot !== null;
     return selectedDate !== "" && selectedCustomSlot !== null;
   };
@@ -401,13 +402,38 @@ const BookAppointment: React.FC = () => {
                 <hr className="border-slate-100 my-8" />
 
                 <div className="mb-8">
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Reason for Visit <span className="text-slate-300 font-normal normal-case ml-1">(Optional)</span></label>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Reason for Visit <span className="text-red-500">*</span></label>
                     <textarea value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Describe symptoms..." className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-700 h-24 resize-none focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all" />
                 </div>
 
-                <button disabled={!isFormValid() || submitting} onClick={handleConfirmBooking} className={`w-full py-3.5 rounded-xl font-bold text-lg flex items-center justify-center gap-2 transition-all duration-200 ${!isFormValid() || submitting ? "bg-slate-100 text-slate-400 cursor-not-allowed" : "bg-blue-600 text-white hover:bg-blue-700 shadow-lg"}`}>
-                    {submitting ? "Processing..." : <>Confirm Appointment <ChevronRight className="w-5 h-5" /></>}
-                </button>
+                {/* CONFIRM BUTTON */}
+                <div className="mt-8">
+                    {doctor?.status === "on_leave" ? (
+                        <div className="p-4 bg-rose-50 border border-rose-100 rounded-2xl text-rose-600 flex flex-col items-center gap-2 text-center">
+                            <AlertCircle className="w-6 h-6" />
+                            <p className="font-bold">Booking Unavailable</p>
+                            <p className="text-sm opacity-80">This doctor is currently on leave and not accepting new appointments.</p>
+                        </div>
+                    ) : (
+                        <button
+                            onClick={handleConfirmBooking}
+                            disabled={submitting || !isFormValid()}
+                            className="w-full py-4 bg-gradient-to-r from-blue-700 to-[#2dc7f8] text-white font-black text-lg rounded-2xl shadow-xl shadow-blue-200 hover:shadow-2xl hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed"
+                        >
+                            {submitting ? (
+                                <>
+                                    <div className="w-6 h-6 border-4 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                    <span>Confirming...</span>
+                                </>
+                            ) : (
+                                <>
+                                    <Check className="w-6 h-6" />
+                                    <span>Confirm Appointment</span>
+                                </>
+                            )}
+                        </button>
+                    )}
+                </div>
             </div>
         </div>
       </main>
