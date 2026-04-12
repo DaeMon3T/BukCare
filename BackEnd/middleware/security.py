@@ -121,8 +121,8 @@ security_middleware = SecurityMiddleware()
 async def security_middleware_handler(request: Request, call_next):
     """Security middleware to detect and prevent attacks"""
 
-    # Skip docs and OpenAPI paths
-    if request.url.path.startswith("/docs") or request.url.path.startswith("/redoc") or request.url.path.startswith("/openapi.json"):
+    # Skip docs, OpenAPI, and OPTIONS requests
+    if request.method == "OPTIONS" or request.url.path.startswith("/docs") or request.url.path.startswith("/redoc") or request.url.path.startswith("/openapi.json"):
         return await call_next(request)
 
     client_ip = request.client.host
