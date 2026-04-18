@@ -1,9 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import func, case
 from typing import List, Optional
 import logging
 from datetime import datetime, timedelta, time
+import csv
+import io
 
 from core.database import get_db
 from models.users import User, UserRole
@@ -11,6 +14,8 @@ from models.doctor import Doctor
 from models.staff import Staff
 from routers.v1.dependencies import get_current_admin
 from core.services.email import send_doctor_approval_email, send_doctor_rejection_email
+from core.services.audit import log_audit_action
+from models.audit_log import AuditLog, AuditActionType
 
 from core.socket_manager import manager
 
@@ -121,6 +126,7 @@ async def approve_doctor(user_id: int, current_user: User = Depends(get_current_
         return {"message": "Doctor is already approved"}
 
     user.is_doctor_approved = True
+    user.role = UserRole.DOCTOR
     user.approval_date = func.now()
     user.approved_by = current_user.id
     db.commit()
@@ -139,6 +145,15 @@ async def approve_doctor(user_id: int, current_user: User = Depends(get_current_
     )
     except Exception as e:
         logger.error(f"Failed to send doctor approval email to {user.email}: {e}")
+
+    log_audit_action(
+        db=db,
+        action=AuditActionType.UPDATE,
+        entity_name="Doctor",
+        entity_id=user.id,
+        user_id=current_user.id,
+        details=f"Admin approved doctor application for user {user.id}"
+    )
 
     return {"message": "Doctor approved successfully, email notification sent"}
 
@@ -167,6 +182,15 @@ def reject_doctor(
 
     db.delete(user)
     db.commit()
+
+    log_audit_action(
+        db=db,
+        action=AuditActionType.DELETE,
+        entity_name="Doctor",
+        entity_id=user_id,
+        user_id=current_user.id,
+        details=f"Admin rejected doctor application for user {user_id}. Reason: {reason or 'None given'}"
+    )
 
     return {"message": "Doctor application rejected and all data deleted successfully"}
 
@@ -227,6 +251,15 @@ async def approve_staff(user_id: int, current_user: User = Depends(get_current_a
     except Exception as e:
         logger.error(f"Failed to send staff approval notification to {user.email}: {e}")
 
+    log_audit_action(
+        db=db,
+        action=AuditActionType.UPDATE,
+        entity_name="Staff",
+        entity_id=user.id,
+        user_id=current_user.id,
+        details=f"Admin approved staff application for user {user.id}"
+    )
+
     return {"message": "Staff approved successfully"}
 
 # -----------------------------
@@ -246,7 +279,16 @@ def reject_staff(
     db.delete(user)
     db.commit()
 
-    return {"message": "Staff application rejected and account deleted"}
+    log_audit_action(
+        db=db,
+        action=AuditActionType.DELETE,
+        entity_name="Staff",
+        entity_id=user_id,
+        user_id=current_user.id,
+        details=f"Admin rejected staff application for user {user_id}. Reason: {reason or 'None given'}"
+    )
+
+    return {"message": "Staff application rejected and all data deleted successfully"}
 
 
 # -----------------------------
@@ -260,7 +302,18 @@ def update_user_status(user_id: int, is_active: bool, current_user: User = Depen
 
     user.is_active = is_active
     db.commit()
-    return {"message": f"User {'activated' if is_active else 'deactivated'} successfully"}
+    
+    # Log this action
+    action = "activate" if is_active else "deactivate"
+    log_audit_action(
+        db=db,
+        action=AuditActionType.UPDATE,
+        entity_name="User",
+        entity_id=user.id,
+        user_id=current_user.id,
+        details=f"Admin {action}d user {user.id}"
+    )
+    return {"message": f"User {action}d successfully"}
 
 
 # -----------------------------
@@ -276,10 +329,20 @@ def get_dashboard_stats(
         total_patients = db.query(func.count(User.id)).filter(User.role == UserRole.PATIENT).scalar() or 0
         total_doctors = db.query(func.count(User.id)).filter(User.role == UserRole.DOCTOR).scalar() or 0
         total_admins = db.query(func.count(User.id)).filter(User.role == UserRole.ADMIN).scalar() or 0
+        total_staff = db.query(func.count(User.id)).filter(User.role == UserRole.STAFF).scalar() or 0
+
+        pending_appointments = 0
+        confirmed_appointments = 0
+        completed_appointments = 0
+        cancelled_appointments = 0
 
         try:
-            from models.appointment import Appointment
+            from models.appointment import Appointment, AppointmentStatus
             total_appointments = db.query(func.count(Appointment.id)).scalar() or 0
+            pending_appointments = db.query(func.count(Appointment.id)).filter(Appointment.status == AppointmentStatus.PENDING).scalar() or 0
+            confirmed_appointments = db.query(func.count(Appointment.id)).filter(Appointment.status == AppointmentStatus.CONFIRMED).scalar() or 0
+            completed_appointments = db.query(func.count(Appointment.id)).filter(Appointment.status == AppointmentStatus.COMPLETED).scalar() or 0
+            cancelled_appointments = db.query(func.count(Appointment.id)).filter(Appointment.status == AppointmentStatus.CANCELLED).scalar() or 0
         except Exception:
             total_appointments = 0
 
@@ -310,7 +373,8 @@ def get_dashboard_stats(
             daily_stats = db.query(
                 func.sum(case((User.role == UserRole.PATIENT, 1), else_=0)).label('patients'),
                 func.sum(case((User.role == UserRole.DOCTOR, 1), else_=0)).label('doctors'),
-                func.sum(case((User.role == UserRole.ADMIN, 1), else_=0)).label('admins')
+                func.sum(case((User.role == UserRole.ADMIN, 1), else_=0)).label('admins'),
+                func.sum(case((User.role == UserRole.STAFF, 1), else_=0)).label('staffs')
             ).filter(
                 User.created_at >= start_of_day,
                 User.created_at <= end_of_day
@@ -321,7 +385,8 @@ def get_dashboard_stats(
                 "name": day_name,
                 "patients": int(daily_stats.patients or 0),
                 "doctors": int(daily_stats.doctors or 0),
-                "admins": int(daily_stats.admins or 0)
+                "admins": int(daily_stats.admins or 0),
+                "staffs": int(daily_stats.staffs or 0)
             })
 
         return {
@@ -329,19 +394,111 @@ def get_dashboard_stats(
             "totalPatients": total_patients,
             "totalDoctors": total_doctors,
             "totalAdmins": total_admins,
+            "totalStaff": total_staff,
             "totalAppointments": total_appointments,
+            "appointmentsBreakdown": {
+                "pending": pending_appointments,
+                "confirmed": confirmed_appointments,
+                "completed": completed_appointments,
+                "cancelled": cancelled_appointments
+            },
             "pendingDoctorApprovals": pending_doctors,
             "activeUsers": active_users,
             "newUsersThisWeek": new_users_this_week,
             "weeklyGrowth": weekly_growth
         }
     
-
     # -----------------------------
-    # Error Handling
+    # Error Handling for Dashboard Stats
     # -----------------------------
     except Exception as e:
         import traceback
         traceback.print_exc() 
         logger.error(f"Dashboard Stats Error: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal Server Error: Failed to generate statistics")
+
+# -----------------------------
+# Export Report Functionality
+# -----------------------------
+@router.get("/export-report")
+def export_report(
+    report_type: str = "users", # "users" or "appointments"
+    current_user: User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    try:
+        output = io.StringIO()
+        writer = csv.writer(output)
+        
+        if report_type == "users":
+            users = db.query(User).all()
+            writer.writerow(["ID", "Name", "Email", "Role", "Status", "Registered Date"])
+            for u in users:
+                writer.writerow([
+                    u.id, 
+                    f"{u.fname} {u.lname}", 
+                    u.email, 
+                    u.role.value if hasattr(u.role, 'value') else u.role, 
+                    "Active" if u.is_active else "Inactive", 
+                    u.created_at.strftime("%Y-%m-%d") if u.created_at else "N/A"
+                ])
+            filename = f"users_report_{datetime.now().strftime('%Y%m%d')}.csv"
+        
+        elif report_type == "appointments":
+            from models.appointment import Appointment
+            appointments = db.query(Appointment).all()
+            writer.writerow(["ID", "Patient ID", "Doctor ID", "Date", "Status", "Reason"])
+            for a in appointments:
+                writer.writerow([
+                    a.id, 
+                    a.patient_id, 
+                    a.doctor_id, 
+                    a.appointment_date.strftime("%Y-%m-%d %H:%M") if a.appointment_date else "N/A", 
+                    a.status.value if hasattr(a.status, 'value') else a.status, 
+                    a.reason or "N/A"
+                ])
+            filename = f"appointments_report_{datetime.now().strftime('%Y%m%d')}.csv"
+        else:
+            raise HTTPException(status_code=400, detail="Invalid report type")
+
+        output.seek(0)
+        return StreamingResponse(
+            iter([output.getvalue()]),
+            media_type="text/csv",
+            headers={
+                "Content-Disposition": f"attachment; filename={filename}"
+            }
+        )
+    except Exception as e:
+        logger.error(f"Export Error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to export report")
+
+# -----------------------------
+# GET Audit Logs
+# -----------------------------
+@router.get("/audit-logs")
+def get_audit_logs(
+    skip: int = 0,
+    limit: int = 50,
+    current_user: User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    logs = db.query(AuditLog).order_by(AuditLog.created_at.desc()).offset(skip).limit(limit).all()
+    count = db.query(AuditLog).count()
+    return {
+        "logs": [
+            {
+                "id": log.id,
+                "user_id": log.user_id,
+                "user_name": f"{log.user.fname} {log.user.lname}" if log.user else "System",
+                "action": log.action.value if hasattr(log.action, 'value') else log.action,
+                "entity_name": log.entity_name,
+                "entity_id": log.entity_id,
+                "details": log.details,
+                "ip_address": log.ip_address,
+                "created_at": log.created_at.isoformat() if log.created_at else None
+            }
+            for log in logs
+        ],
+        "total": count
+    }

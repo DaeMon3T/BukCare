@@ -15,11 +15,14 @@ import {
   UserPlus,
   Check,
   AlertTriangle,
-  ArrowUpDown
+  ArrowUpDown,
+  Video
 } from "lucide-react";
 import { useWebSocket } from "@/context/WebSocketContext";
 import RescheduleModal from "@/components/RescheduleModal";
 import FollowUpModal from "@/components/FollowUpModal";
+import ConsultationNotesModal from "@/components/ConsultationNotesModal";
+import messagesAPI from "@/services/messages";
 
 interface Appointment {
   id: number;
@@ -33,6 +36,7 @@ interface Appointment {
   created_at: string;
   updated_at: string;
   patient_avatar?: string;
+  appointment_type?: "online" | "walk_in";
 }
 
 const DoctorAppointments = () => {
@@ -54,6 +58,9 @@ const DoctorAppointments = () => {
   const [cancelData, setCancelData] = useState<{id: number, patientName: string} | null>(null);
   const [cancellationReason, setCancellationReason] = useState("");
   const [cancelProcessing, setCancelProcessing] = useState(false);
+
+  // CONSULTATION NOTES MODAL STATE
+  const [completeData, setCompleteData] = useState<{id: number, patientName: string} | null>(null);
 
   // FETCH APPOINTMENTS
   const fetchAppointments = useCallback(async (isBackground = false) => {
@@ -265,6 +272,34 @@ const DoctorAppointments = () => {
             }}
         />
 
+        {/* 3. Consultation Notes Modal */}
+        <ConsultationNotesModal
+            isOpen={!!completeData}
+            onClose={() => setCompleteData(null)}
+            patientName={completeData?.patientName || ""}
+            onSubmit={async (notes: string) => {
+                if (!completeData) return;
+                try {
+                    await api.put(`/appointments/${completeData.id}/status`, {
+                        status: "completed",
+                        notes: notes || undefined,
+                    });
+                    toast.success("Appointment completed");
+                    setAppointments((prev) =>
+                        prev.map((appt) =>
+                            appt.id === completeData.id
+                                ? { ...appt, status: "completed", notes: notes || appt.notes }
+                                : appt
+                        )
+                    );
+                    setCompleteData(null);
+                } catch (err: any) {
+                    console.error("Complete failed:", err);
+                    toast.error(err?.response?.data?.detail || "Failed to complete");
+                }
+            }}
+        />
+
         {/* 3. NEW CANCEL MODAL (Replaces window.prompt) */}
         {cancelData && (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
@@ -433,10 +468,21 @@ const DoctorAppointments = () => {
 
                         {/* 4. Status */}
                         <td className="py-5 px-6">
-                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border ${statusStyle.badge}`}>
-                            <StatusIcon className="w-3.5 h-3.5" />
-                            {statusStyle.label}
-                          </span>
+                          <div className="flex flex-col gap-2">
+                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border w-fit ${statusStyle.badge}`}>
+                              <StatusIcon className="w-3.5 h-3.5" />
+                              {statusStyle.label}
+                            </span>
+                            {appt.appointment_type === 'walk_in' ? (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold border bg-purple-50 text-purple-700 border-purple-200 w-fit">
+                                Walk-in
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold border bg-blue-50 text-blue-700 border-blue-200 w-fit">
+                                Online
+                              </span>
+                            )}
+                          </div>
                         </td>
 
                         {/* 5. Actions */}
@@ -463,12 +509,34 @@ const DoctorAppointments = () => {
                               </>
                             )}
 
-                            {/* CONFIRMED: Complete / Reschedule / Cancel */}
+                            {/* CONFIRMED: Complete / Video Call / Reschedule / Cancel */}
                             {!isStaff && appt.status === "confirmed" && (
                               <>
-                                <button onClick={() => updateStatus(appt.id, "completed")} className="px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-bold hover:bg-blue-700 shadow-sm transition-colors">
+                                <button onClick={() => setCompleteData({ id: appt.id, patientName: appt.patient_name })} className="px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-bold hover:bg-blue-700 shadow-sm transition-colors">
                                     Complete
                                 </button>
+                                {appt.appointment_type !== 'walk_in' && (
+                                  <button
+                                    onClick={async () => {
+                                      const currentUserId = Number(user?.id);
+                                      const id1 = Math.min(currentUserId, appt.patient_id);
+                                      const id2 = Math.max(currentUserId, appt.patient_id);
+                                      const roomId = `BukCare_Consult_${id1}_${id2}_${Date.now()}`;
+                                      const inviteMessage = `📞 Started a Video Call. Join here: ${roomId}`;
+                                      try {
+                                        await messagesAPI.sendMessage(appt.patient_id, inviteMessage);
+                                        window.open(`https://meet.jit.si/${roomId}`, "_blank");
+                                        toast.success("Video call started — patient notified");
+                                      } catch {
+                                        toast.error("Failed to start video call");
+                                      }
+                                    }}
+                                    className="p-1.5 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition-colors"
+                                    title="Start Video Call"
+                                  >
+                                    <Video className="w-4 h-4" />
+                                  </button>
+                                )}
                                 <button onClick={() => setRescheduleData({ id: appt.id, date: displayString })} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-amber-600 transition-colors" title="Reschedule">
                                     <RefreshCw className="w-4 h-4" />
                                 </button>

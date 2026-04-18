@@ -92,6 +92,7 @@ const Navbar: React.FC = () => {
       case "admin":
         items = [
           { label: "Dashboard", path: "/admin/dashboard", icon: Home },
+          { label: "Appointments", path: "/admin/appointments", icon: Calendar, badge: badgeCounts.appointments },
           { label: "Users", path: "/admin/users", icon: Users },
         ];
         break;

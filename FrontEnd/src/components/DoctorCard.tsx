@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { MapPin, Mail, Stethoscope, CheckCircle2, Star } from "lucide-react";
+import { MapPin, Mail, Stethoscope, CheckCircle2, Star, CalendarCheck } from "lucide-react";
 
 export interface Doctor {
   doctor_id: number;
@@ -15,6 +15,7 @@ export interface Doctor {
   status?: string;
   average_rating?: number;
   total_reviews?: number;
+  availabilities?: any[];
 }
 
 interface DoctorCardProps {
@@ -77,6 +78,36 @@ const DoctorCard: React.FC<DoctorCardProps> = ({ doctor }) => {
     
     return String(specs);
   }, [doctor.specializations, doctor.specialization]);
+
+  // Compute availability string (e.g., "Available: Mon, Tue, Wed")
+  const availabilityLabel = useMemo(() => {
+    if (!doctor.availabilities || doctor.availabilities.length === 0) {
+      return "No available slots";
+    }
+
+    // Extract unique days
+    const daysArr = doctor.availabilities.map((slot: any) => {
+       if (!slot.date) return null;
+       try {
+           const d = new Date(slot.date);
+           if (isNaN(d.getTime())) return null;
+           return d.toLocaleDateString('en-US', { weekday: 'short' });
+       } catch (e) {
+           return null;
+       }
+    }).filter(day => day !== null);
+
+    const uniqueDays = Array.from(new Set(daysArr));
+    
+    if (uniqueDays.length === 0) return "No available slots";
+    
+    // e.g "Available: Mon, Wed, Fri"
+    if (uniqueDays.length <= 3) {
+        return `Available: ${uniqueDays.join(", ")}`;
+    }
+    return `Available: ${uniqueDays.slice(0, 3).join(", ")} & more`;
+
+  }, [doctor.availabilities]);
 
   return (
     <div className="group relative bg-white rounded-2xl md:rounded-[2rem] shadow-md hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 overflow-hidden border border-slate-100 flex flex-col h-full">
@@ -182,6 +213,16 @@ const DoctorCard: React.FC<DoctorCardProps> = ({ doctor }) => {
                     {doctor.email}
                 </p>
             </div>
+          </div>
+          
+          <div className="flex items-start gap-2 md:gap-3 text-slate-600 group-hover:text-slate-800 transition-colors">
+             <CalendarCheck className="w-3.5 h-3.5 md:w-5 md:h-5 text-teal-500 shrink-0 mt-0.5" />
+             <div className="min-w-0 flex-1">
+                 <p className="hidden md:block text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-0.5">Availability</p>
+                 <p className="text-xs md:text-sm font-bold text-teal-600 truncate leading-tight">
+                    {availabilityLabel}
+                 </p>
+             </div>
           </div>
         </div>
       </div>

@@ -47,13 +47,13 @@ const CHART_COLORS = {
   patients: "#3B82F6", // Blue
   doctors: "#10B981",  // Emerald
   admins: "#8B5CF6",   // Purple
+  staffs: "#EC4899",   // Pink
   appointments: "#F59E0B", // Amber
 };
 
 const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { user } = useAuth();
+  const { } = useAuth();
 
   const [notification, setNotification] = useState<NotificationData | null>(null);
   
@@ -70,7 +70,9 @@ const AdminDashboard: React.FC = () => {
     totalPatients: 0,
     totalDoctors: 0,
     totalAdmins: 0,
+    totalStaff: 0,
     totalAppointments: 0,
+    appointmentsBreakdown: { pending: 0, confirmed: 0, completed: 0, cancelled: 0 },
     pendingDoctorApprovals: 0,
     activeUsers: 0,
     newUsersThisWeek: 0,
@@ -78,6 +80,7 @@ const AdminDashboard: React.FC = () => {
   });
 
   const [loading, setLoading] = useState<boolean>(true);
+  const [exporting, setExporting] = useState<boolean>(false);
 
   const showNotification = (type: NotificationData["type"], message: string) => {
     setNotification({ type, message });
@@ -103,6 +106,19 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
+  // Export Report
+  const handleExport = async (type: "users" | "appointments") => {
+    try {
+      setExporting(true);
+      await adminAPI.exportReport(type);
+      showNotification("success", `Successfully exported ${type} report.`);
+    } catch (error) {
+      showNotification("error", `Failed to export ${type} report.`);
+    } finally {
+      setExporting(false);
+    }
+  };
+
   useEffect(() => {
     loadDashboardData();
   }, []);
@@ -111,6 +127,7 @@ const AdminDashboard: React.FC = () => {
     { name: "Patients", value: stats.totalPatients, color: CHART_COLORS.patients },
     { name: "Doctors", value: stats.totalDoctors, color: CHART_COLORS.doctors },
     { name: "Admins", value: stats.totalAdmins, color: CHART_COLORS.admins },
+    { name: "Staff", value: stats.totalStaff, color: CHART_COLORS.staffs },
   ].filter(item => item.value > 0);
 
   if (loading) {
@@ -158,10 +175,24 @@ const AdminDashboard: React.FC = () => {
               </div>
               
               <div className="flex items-center gap-3">
-                <button className="px-5 py-2.5 bg-white/60 border border-white/40 rounded-xl text-slate-600 font-bold hover:bg-white transition-all shadow-sm flex items-center gap-2 text-sm backdrop-blur-sm">
-                  <Download className="w-4 h-4" />
-                  <span>Export Report</span>
-                </button>
+                <div className="relative group/export">
+                  <button 
+                    disabled={exporting}
+                    className="px-5 py-2.5 bg-white/60 border border-white/40 rounded-xl text-slate-600 font-bold hover:bg-white transition-all shadow-sm flex items-center gap-2 text-sm backdrop-blur-sm disabled:opacity-50"
+                  >
+                    {exporting ? <span className="w-4 h-4 border-2 border-slate-400 border-t-slate-600 rounded-full animate-spin"></span> : <Download className="w-4 h-4" /> }
+                    <span>Export Report</span>
+                  </button>
+                  {/* Dropdown for Export Options */}
+                  <div className="absolute top-full right-0 mt-2 w-48 bg-white rounded-xl shadow-xl border border-slate-100 opacity-0 invisible group-hover/export:opacity-100 group-hover/export:visible transition-all duration-200 z-50 overflow-hidden">
+                    <button onClick={() => handleExport("appointments")} className="w-full text-left px-4 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50 transition-colors border-b border-slate-100">
+                      Export Appointments
+                    </button>
+                    <button onClick={() => handleExport("users")} className="w-full text-left px-4 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50 transition-colors">
+                      Export Users
+                    </button>
+                  </div>
+                </div>
                 <button 
                   onClick={() => navigate('/admin/users')}
                   className="px-5 py-2.5 bg-slate-800 text-white rounded-xl hover:bg-slate-900 transition-all flex items-center gap-2 shadow-lg shadow-slate-900/10 font-bold text-sm"
@@ -201,9 +232,24 @@ const AdminDashboard: React.FC = () => {
               />
 
               <StatsCard 
+                title="Staff"
+                value={stats.totalStaff}
+                subtitle={`${stats.totalUsers > 0 ? ((stats.totalStaff / stats.totalUsers) * 100).toFixed(1) : 0}% of users`}
+                icon={totalPatientIcon}
+                color="bg-pink-500"
+              />
+
+              <StatsCard 
                 title="Appointments"
                 value={stats.totalAppointments}
-                subtitle="System-wide total"
+                subtitle={
+                  <div className="flex gap-2 text-[10px] mt-1 opacity-80">
+                    <span title="Pending" className="text-amber-600">⌛ {stats.appointmentsBreakdown?.pending || 0}</span>
+                    <span title="Confirmed" className="text-blue-600">📅 {stats.appointmentsBreakdown?.confirmed || 0}</span>
+                    <span title="Completed" className="text-emerald-600">✓ {stats.appointmentsBreakdown?.completed || 0}</span>
+                    <span title="Cancelled" className="text-rose-600">✕ {stats.appointmentsBreakdown?.cancelled || 0}</span>
+                  </div>
+                }
                 icon={appointmentIcon}
                 color="bg-amber-500"
               />
@@ -253,6 +299,7 @@ const AdminDashboard: React.FC = () => {
                             <LegendItem color="bg-blue-500" label="Patients" />
                             <LegendItem color="bg-emerald-500" label="Doctors" />
                             <LegendItem color="bg-purple-500" label="Admins" />
+                            <LegendItem color="bg-pink-500" label="Staff" />
                         </div>
                     </div>
 
@@ -285,7 +332,8 @@ const AdminDashboard: React.FC = () => {
                                     />
                                     <Bar dataKey="patients" stackId="a" fill="#3B82F6" radius={[0, 0, 4, 4]} />
                                     <Bar dataKey="doctors" stackId="a" fill="#10B981" radius={[0, 0, 0, 0]} />
-                                    <Bar dataKey="admins" stackId="a" fill="#8B5CF6" radius={[4, 4, 0, 0]} />
+                                    <Bar dataKey="admins" stackId="a" fill="#8B5CF6" radius={[0, 0, 0, 0]} />
+                                    <Bar dataKey="staffs" stackId="a" fill="#EC4899" radius={[4, 4, 0, 0]} />
                                 </BarChart>
                             </ResponsiveContainer>
                         ) : (

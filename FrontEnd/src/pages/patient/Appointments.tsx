@@ -33,6 +33,7 @@ interface Appointment {
   has_reviewed?: boolean; 
   doctor_avatar?: string;
   doctor_specialization?: string;
+  appointment_type?: "online" | "walk_in";
 }
 
 // --- HELPER COMPONENT: AVATAR ---
@@ -419,10 +420,21 @@ const PatientAppointments = () => {
 
                                             {/* STATUS */}
                                             <td className="py-5 px-6 align-top">
-                                                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border ${statusMeta.style}`}>
-                                                    <StatusIcon className="w-3.5 h-3.5" />
-                                                    {statusMeta.label}
-                                                </span>
+                                                <div className="flex flex-col gap-2">
+                                                  <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border w-fit ${statusMeta.style}`}>
+                                                      <StatusIcon className="w-3.5 h-3.5" />
+                                                      {statusMeta.label}
+                                                  </span>
+                                                  {appt.appointment_type === 'walk_in' ? (
+                                                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold border bg-purple-50 text-purple-700 border-purple-200 w-fit">
+                                                      Walk-in
+                                                    </span>
+                                                  ) : (
+                                                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold border bg-blue-50 text-blue-700 border-blue-200 w-fit">
+                                                      Online
+                                                    </span>
+                                                  )}
+                                                </div>
                                             </td>
 
                                             {/* DETAILS */}
