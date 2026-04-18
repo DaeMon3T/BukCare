@@ -33,6 +33,7 @@ import AdminDashboard from './pages/admin/Dashboard';
 import AdminProfile from './pages/admin/Profile';
 import AdminUsers from './pages/admin/Users';
 import Usersdetail from './pages/admin/Usersdetail';
+import AdminAppointments from './pages/admin/Appointments';
 
 // Doctor Pages
 import DoctorLayout from './layouts/DoctorLayout';
@@ -43,7 +44,12 @@ import DoctorSetAvailability from './pages/doctor/SetAvailability';
 import Messages from './pages/doctor/Messages';
 import ScanPatient from './pages/doctor/ScanPatient';
 import PatientDetails from './pages/doctor/PatientDetails';
+
+// Staff Pages
 import WalkIn from './pages/staff/WalkIn';
+import StaffDashboard from './pages/staff/Dashboard';
+import StaffAppointments from './pages/staff/Appointments';
+import StaffProfile from './pages/staff/Profile';
 
 // Patient Pages
 import PatientDashboard from './pages/patient/Dashboard';
@@ -96,6 +102,10 @@ const App: FC = () => {
                   element={<AdminRoute><AdminDashboard /></AdminRoute>}
                 />
                 <Route
+                  path="/admin/appointments"
+                  element={<AdminRoute><AdminAppointments /></AdminRoute>}
+                />
+                <Route
                   path="/admin/users"
                   element={<AdminRoute><AdminUsers /></AdminRoute>}
                 />
@@ -121,9 +131,9 @@ const App: FC = () => {
 
                 {/* -------------------- Staff Routes -------------------- */}
                 <Route element={<StaffRoute><DoctorLayout /></StaffRoute>}>
-                  <Route path="/staff/dashboard" element={<DoctorDashboard />} />
-                  <Route path="/staff/appointments" element={<DoctorAppointments />} />
-                  <Route path="/staff/profile" element={<DoctorProfile />} />
+                  <Route path="/staff/dashboard" element={<StaffDashboard />} />
+                  <Route path="/staff/appointments" element={<StaffAppointments />} />
+                  <Route path="/staff/profile" element={<StaffProfile />} />
                   <Route path="/staff/messages" element={<Messages />} />
                   <Route path="/staff/scan" element={<ScanPatient />} />
                   <Route path="/staff/patient/:id" element={<PatientDetails />} />

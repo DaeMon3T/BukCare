@@ -8,8 +8,21 @@ from models.appointment import Appointment, AppointmentStatus, AppointmentType
 from schemas.appointment import AppointmentCreate, AppointmentResponse
 from routers.v1.dependencies import get_current_user
 from datetime import datetime
+from models.notification import Notification
+from core.socket_manager import manager
+from pydantic import BaseModel
+from core.security import get_password_hash
+from models.medical_profile import MedicalProfile
 
 router = APIRouter()
+
+class WalkInPatientCreate(BaseModel):
+    fname: str
+    lname: str
+    email: str
+    contact_number: Optional[str] = None
+    dob: Optional[str] = None
+    sex: Optional[bool] = None
 
 @router.get("/patients/search", response_model=List[dict])
 def search_patients(
@@ -69,8 +82,102 @@ async def quick_book_walkin(
     db.commit()
     db.refresh(appointment)
 
+    # Walk-in notification to doctor
+    try:
+        notif_title = "New Walk-in Appointment"
+        notif_msg = f"A walk-in appointment has been booked for you."
+        
+        notification = Notification(
+            source_user_id=current_user.id,
+            target_user_id=appointment_data.doctor_id,
+            title=notif_title,
+            message=notif_msg,
+            type="NEW_APPOINTMENT",
+            appointment_id=appointment.id
+        )
+        db.add(notification)
+        db.commit()
+        db.refresh(notification)
+
+        await manager.send_personal_message(
+            {
+                "type": "NEW_APPOINTMENT",
+                "notification": {
+                    "id": notification.id,
+                    "title": notification.title,
+                    "message": notification.message,
+                    "type": notification.type,
+                    "is_read": False,
+                    "created_at": notification.created_at.isoformat(),
+                    "appointment_id": appointment.id
+                }
+            },
+            user_id=str(appointment_data.doctor_id)
+        )
+    except Exception as e:
+        print(f"Error sending walk-in notification: {e}")
+
     return {
         "status": "success",
         "message": "Walk-in appointment created",
         "appointment_id": appointment.id
+    }
+
+@router.post("/register", response_model=dict)
+def register_walkin_patient(
+    patient_data: WalkInPatientCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Register a new patient from the Walk-in counter (Staff Only)"""
+    if current_user.role not in [UserRole.STAFF, UserRole.ADMIN]:
+        raise HTTPException(status_code=403, detail="Only staff can register walk-in patients")
+
+    # Check if email is already taken
+    existing_user = db.query(User).filter(User.email == patient_data.email).first()
+    if existing_user:
+        raise HTTPException(status_code=400, detail="Email already registered")
+
+    # Create the user
+    # Walk-in patients get a default password, but should reset it later
+    default_password = "WalkinUser123!"
+    
+    dob_parsed = None
+    if patient_data.dob:
+        try:
+            dob_parsed = datetime.strptime(str(patient_data.dob), "%Y-%m-%d")
+        except ValueError:
+            pass
+
+    new_user = User(
+        email=patient_data.email,
+        fname=patient_data.fname,
+        lname=patient_data.lname,
+        contact_number=patient_data.contact_number,
+        sex=patient_data.sex,
+        dob=dob_parsed,
+        role=UserRole.PATIENT,
+        password=get_password_hash(default_password),
+        is_profile_complete=True,
+        is_verified=True,  # Walk-in means physical verification
+    )
+
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+
+    # Create Medical Profile
+    medical_profile = MedicalProfile(user_id=new_user.id)
+    db.add(medical_profile)
+    db.commit()
+
+    return {
+        "status": "success",
+        "message": "Patient registered successfully",
+        "patient": {
+            "id": new_user.id,
+            "name": f"{new_user.fname} {new_user.lname}",
+            "email": new_user.email,
+            "dob": new_user.dob,
+        }
     }

@@ -141,7 +141,8 @@ def get_appointments(
             "notes": appointment.notes,
             "created_at": appointment.created_at,
             "updated_at": appointment.updated_at,
-            "has_reviewed": has_reviewed 
+            "has_reviewed": has_reviewed,
+            "appointment_type": appointment.appointment_type.value if hasattr(appointment.appointment_type, 'value') else appointment.appointment_type
         })
     
     return results
@@ -701,7 +702,9 @@ def get_doctor_appointments(
             "status": appt.status.value,
             "patient_id": appt.patient_id,
             "notes": appt.notes,
-            "patient_avatar": appt.patient.picture if appt.patient and hasattr(appt.patient, "picture") else None
+            "patient_avatar": appt.patient.picture if appt.patient and hasattr(appt.patient, "picture") else None,
+            "doctor_name": f"{appt.doctor.fname} {appt.doctor.lname}" if appt.doctor else "Unknown",
+            "appointment_type": appt.appointment_type.value if hasattr(appt.appointment_type, 'value') else appt.appointment_type
         }
         for appt in appointments
     ]
@@ -718,6 +721,7 @@ async def update_appointment_status(
     # Validate Status
     new_status_str = status_update.get("status")
     cancellation_reason = status_update.get("reason")
+    consultation_notes = status_update.get("notes")
 
     if not new_status_str:
          raise HTTPException(status_code=400, detail="Status field is required")
@@ -746,7 +750,7 @@ async def update_appointment_status(
             is_authorized = True
         else:
              raise HTTPException(status_code=403, detail="Patients can only cancel appointments")
-    elif user_role == "admin":
+    elif user_role in ("admin", "staff"):
         is_authorized = True
         
     if not is_authorized:
@@ -760,6 +764,12 @@ async def update_appointment_status(
         old_notes = appointment.notes or ""
         timestamp = datetime.now().strftime("%Y-%m-%d")
         appointment.notes = f"{old_notes}\n[Cancelled on {timestamp}]: {cancellation_reason}".strip()
+
+    # If completed with consultation notes, save them
+    if new_status_str == "completed" and consultation_notes:
+        old_notes = appointment.notes or ""
+        timestamp = datetime.now().strftime("%Y-%m-%d")
+        appointment.notes = f"{old_notes}\n[Consultation Notes - {timestamp}]: {consultation_notes}".strip()
 
     db.commit()
     db.refresh(appointment)
@@ -879,9 +889,11 @@ async def reschedule_appointment(
         raise HTTPException(status_code=404, detail="Appointment not found")
 
     # 2. Authorization Check
-    # Only the Patient owning the appt OR the Doctor assigned to it can reschedule
-    if appointment.patient_id != current_user.id and appointment.doctor_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Not authorized to reschedule this appointment")
+    # Patient, Doctor, Staff, or Admin can reschedule
+    user_role = current_user.role.value if hasattr(current_user.role, 'value') else current_user.role
+    if user_role not in ("admin", "staff"):
+        if appointment.patient_id != current_user.id and appointment.doctor_id != current_user.id:
+            raise HTTPException(status_code=403, detail="Not authorized to reschedule this appointment")
 
     # 3. Availability Check
     new_datetime = datetime.combine(request.new_date, request.new_time)

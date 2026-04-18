@@ -42,6 +42,13 @@ const WalkIn: React.FC = () => {
   const [notes, setNotes] = useState("");
   const [booking, setBooking] = useState(false);
 
+  // --- REGISTRATION STATES ---
+  const [showRegisterModal, setShowRegisterModal] = useState(false);
+  const [registering, setRegistering] = useState(false);
+  const [registerForm, setRegisterForm] = useState({
+    fname: "", lname: "", email: "", contact_number: "", dob: "", sex: ""
+  });
+
   // --- FETCH DOCTORS ON MOUNT ---
   useEffect(() => {
     const fetchDoctors = async () => {
@@ -97,6 +104,42 @@ const WalkIn: React.FC = () => {
         toast.error(err?.response?.data?.message || "Booking failed");
     } finally {
         setBooking(false);
+    }
+  };
+
+  // --- REGISTER PATIENT ---
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!registerForm.fname || !registerForm.lname || !registerForm.email) {
+        toast.error("Please fill in all required fields (Name and Email)");
+        return;
+    }
+
+    setRegistering(true);
+    try {
+        const payload: any = { ...registerForm };
+        if (payload.sex === "true") payload.sex = true;
+        if (payload.sex === "false") payload.sex = false;
+        if (payload.sex === "") payload.sex = null;
+
+        const res = await api.post("/walk-ins/register", payload);
+        toast.success("Patient registered successfully!");
+        setShowRegisterModal(false);
+        setRegisterForm({ fname: "", lname: "", email: "", contact_number: "", dob: "", sex: "" });
+        
+        // Auto-select the newly created patient to proceed with booking
+        setSelectedPatient({
+            id: res.data.patient.id,
+            name: res.data.patient.name,
+            email: res.data.patient.email,
+            dob: res.data.patient.dob,
+            picture: null
+        });
+        setSearchQuery(res.data.patient.email);
+    } catch (err: any) {
+        toast.error(err?.response?.data?.detail || "Registration failed");
+    } finally {
+        setRegistering(false);
     }
   };
 
@@ -183,7 +226,7 @@ const WalkIn: React.FC = () => {
                                 <Database className="w-12 h-12 text-slate-300 mx-auto mb-4" />
                                 <h3 className="text-lg font-bold text-slate-700">No Patient Records Found</h3>
                                 <p className="text-slate-500 text-sm mb-6">Make sure the name or ID is correct.</p>
-                                <button className="px-6 py-3 bg-white border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-50 transition-all flex items-center gap-2 mx-auto">
+                                <button onClick={() => setShowRegisterModal(true)} className="px-6 py-3 bg-white border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-50 transition-all flex items-center gap-2 mx-auto">
                                     <UserPlus className="w-4 h-4 text-emerald-500" /> Create New Profile
                                 </button>
                             </motion.div>
@@ -298,6 +341,80 @@ const WalkIn: React.FC = () => {
                                     className="flex-1 py-4 bg-blue-600 text-white font-bold rounded-2xl shadow-xl shadow-blue-200 hover:bg-blue-700 hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:translate-y-0"
                                 >
                                     {booking ? <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin mx-auto"></span> : "Process Booking"}
+                                </button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* REGISTRATION MODAL */}
+            <AnimatePresence>
+                {showRegisterModal && (
+                    <motion.div 
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm"
+                    >
+                        <motion.div 
+                            initial={{ scale: 0.9, y: 20 }}
+                            animate={{ scale: 1, y: 0 }}
+                            exit={{ scale: 0.9, y: 20 }}
+                            className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]"
+                        >
+                            <div className="p-6 sm:p-8 bg-gradient-to-br from-emerald-600 to-teal-700 text-white relative flex-none">
+                                <h3 className="text-2xl font-bold">Register Walk-in Patient</h3>
+                                <p className="text-emerald-100 mt-1 opacity-90 text-sm">Create a profile to book their appointment.</p>
+                                <button onClick={() => setShowRegisterModal(false)} className="absolute top-6 right-6 w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-all">
+                                    ✕
+                                </button>
+                            </div>
+                            
+                            <div className="flex-1 overflow-y-auto p-6 sm:p-8 custom-scrollbar">
+                                <form id="register-form" onSubmit={handleRegister} className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                                    <div className="space-y-1.5">
+                                        <label className="text-xs font-bold text-slate-500 uppercase">First Name *</label>
+                                        <input type="text" required value={registerForm.fname} onChange={e => setRegisterForm({...registerForm, fname: e.target.value})} className="w-full p-3.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none" />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <label className="text-xs font-bold text-slate-500 uppercase">Last Name *</label>
+                                        <input type="text" required value={registerForm.lname} onChange={e => setRegisterForm({...registerForm, lname: e.target.value})} className="w-full p-3.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none" />
+                                    </div>
+                                    <div className="space-y-1.5 sm:col-span-2">
+                                        <label className="text-xs font-bold text-slate-500 uppercase">Email Address *</label>
+                                        <input type="email" required value={registerForm.email} onChange={e => setRegisterForm({...registerForm, email: e.target.value})} className="w-full p-3.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none" />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <label className="text-xs font-bold text-slate-500 uppercase">Phone Number</label>
+                                        <input type="tel" value={registerForm.contact_number} onChange={e => setRegisterForm({...registerForm, contact_number: e.target.value})} className="w-full p-3.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none" />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <label className="text-xs font-bold text-slate-500 uppercase">Date of Birth</label>
+                                        <input type="date" value={registerForm.dob} onChange={e => setRegisterForm({...registerForm, dob: e.target.value})} className="w-full p-3.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none" />
+                                    </div>
+                                    <div className="space-y-1.5 sm:col-span-2">
+                                        <label className="text-xs font-bold text-slate-500 uppercase">Sex</label>
+                                        <select value={registerForm.sex} onChange={e => setRegisterForm({...registerForm, sex: e.target.value})} className="w-full p-3.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none">
+                                            <option value="">Select...</option>
+                                            <option value="true">Male</option>
+                                            <option value="false">Female</option>
+                                        </select>
+                                    </div>
+                                </form>
+                            </div>
+                            
+                            <div className="p-6 sm:p-8 bg-slate-50 border-t border-slate-100 flex-none gap-3 flex flex-col sm:flex-row justify-end">
+                                <button type="button" onClick={() => setShowRegisterModal(false)} className="px-6 py-3.5 text-slate-500 font-bold rounded-xl hover:bg-slate-200 transition-colors w-full sm:w-auto">
+                                    Cancel
+                                </button>
+                                <button 
+                                    form="register-form"
+                                    type="submit" 
+                                    disabled={registering}
+                                    className="px-8 py-3.5 bg-emerald-600 text-white font-bold rounded-xl shadow-lg shadow-emerald-200 hover:bg-emerald-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2 w-full sm:w-auto"
+                                >
+                                    {registering ? <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span> : <><UserPlus className="w-5 h-5" /> Register Patient</>}
                                 </button>
                             </div>
                         </motion.div>
