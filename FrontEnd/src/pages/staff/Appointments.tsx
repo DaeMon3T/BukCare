@@ -9,14 +9,11 @@ import {
   CheckCircle,
   XCircle,
   AlertCircle,
-  RefreshCw,
-  Check,
-  AlertTriangle,
   ArrowUpDown,
   Search,
+  Eye,
 } from "lucide-react";
 import { useWebSocket } from "@/context/WebSocketContext";
-import RescheduleModal from "@/components/RescheduleModal";
 
 interface Appointment {
   id: number;
@@ -42,12 +39,6 @@ const StaffAppointments = () => {
   const [filter, setFilter] = useState<"all" | "pending" | "confirmed" | "completed" | "cancelled">("all");
   const [sortBy, setSortBy] = useState<"date_desc" | "date_asc" | "status">("date_desc");
   const [searchTerm, setSearchTerm] = useState("");
-
-  // Modal States
-  const [rescheduleData, setRescheduleData] = useState<{ id: number; date: string } | null>(null);
-  const [cancelData, setCancelData] = useState<{ id: number; patientName: string } | null>(null);
-  const [cancellationReason, setCancellationReason] = useState("");
-  const [cancelProcessing, setCancelProcessing] = useState(false);
 
   // FETCH APPOINTMENTS
   const fetchAppointments = useCallback(async (isBackground = false) => {
@@ -87,51 +78,6 @@ const StaffAppointments = () => {
     fetchAppointments();
   }, [fetchAppointments]);
 
-  // UPDATE STATUS
-  const updateStatus = async (id: number, newStatus: "confirmed" | "completed") => {
-    try {
-      await api.put(`/appointments/${id}/status`, { status: newStatus });
-      toast.success(`Appointment ${newStatus}`);
-      setAppointments((prev) =>
-        prev.map((appt) => (appt.id === id ? { ...appt, status: newStatus } : appt))
-      );
-    } catch (err: any) {
-      console.error("Action failed:", err);
-      toast.error(err?.response?.data?.detail || "Action failed");
-    }
-  };
-
-  // CANCEL MODAL
-  const openCancelModal = (id: number, patientName: string) => {
-    setCancelData({ id, patientName });
-    setCancellationReason("");
-  };
-
-  const confirmCancellation = async () => {
-    if (!cancelData) return;
-    if (!cancellationReason.trim()) {
-      toast.error("Please provide a reason for cancellation");
-      return;
-    }
-    try {
-      setCancelProcessing(true);
-      await api.put(`/appointments/${cancelData.id}/status`, {
-        status: "cancelled",
-        reason: cancellationReason,
-      });
-      toast.success("Appointment cancelled");
-      setAppointments((prev) =>
-        prev.map((appt) => (appt.id === cancelData.id ? { ...appt, status: "cancelled" } : appt))
-      );
-      setCancelData(null);
-    } catch (err: any) {
-      console.error("Cancel failed:", err);
-      toast.error(err?.response?.data?.detail || "Failed to cancel");
-    } finally {
-      setCancelProcessing(false);
-    }
-  };
-
   // FILTER & SORT
   const filteredAppointments = appointments
     .filter((appt) => {
@@ -158,7 +104,6 @@ const StaffAppointments = () => {
     return {
       date: date.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" }),
       time: date.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }),
-      displayString: `${date.toLocaleDateString()} at ${date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`,
       isPast: date < new Date(),
     };
   };
@@ -185,65 +130,18 @@ const StaffAppointments = () => {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 relative z-10">
 
-        {/* Modals */}
-        <RescheduleModal
-          isOpen={!!rescheduleData}
-          onClose={() => setRescheduleData(null)}
-          appointmentId={rescheduleData?.id || 0}
-          currentDate={rescheduleData?.date || ""}
-          onSuccess={() => {
-            fetchAppointments();
-            setRescheduleData(null);
-          }}
-        />
-
-        {/* Cancel Modal */}
-        {cancelData && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden">
-              <div className="bg-rose-50 p-6 flex flex-col items-center text-center border-b border-rose-100">
-                <div className="w-12 h-12 bg-rose-100 rounded-full flex items-center justify-center mb-3 text-rose-600">
-                  <AlertTriangle className="w-6 h-6" />
-                </div>
-                <h3 className="text-lg font-bold text-slate-900">Cancel Appointment</h3>
-                <p className="text-sm text-slate-500 mt-2">
-                  Cancelling appointment for <span className="font-bold text-slate-700">{cancelData.patientName}</span>.
-                </p>
-              </div>
-              <div className="p-4 space-y-3">
-                <label className="text-xs font-bold text-slate-500 uppercase">Reason for Cancellation</label>
-                <textarea
-                  className="w-full p-3 text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-rose-200 focus:border-rose-400 outline-none resize-none"
-                  rows={3}
-                  placeholder="e.g. Patient request, schedule conflict..."
-                  value={cancellationReason}
-                  onChange={(e) => setCancellationReason(e.target.value)}
-                  autoFocus
-                />
-              </div>
-              <div className="p-4 flex gap-3 pt-0">
-                <button onClick={() => setCancelData(null)} disabled={cancelProcessing} className="flex-1 py-2.5 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-50 border border-slate-200 transition-all">
-                  Go Back
-                </button>
-                <button
-                  onClick={confirmCancellation}
-                  disabled={cancelProcessing || !cancellationReason.trim()}
-                  className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white bg-rose-600 hover:bg-rose-700 shadow-lg shadow-rose-200 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-                >
-                  {cancelProcessing ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span> : "Confirm Cancel"}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* Header */}
         <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h2 className="text-3xl font-bold text-slate-900 tracking-tight">All Appointments</h2>
-            <p className="text-slate-500 mt-1">Manage and update appointment statuses across all doctors</p>
+            <p className="text-slate-500 mt-1">Monitor appointment statuses across all doctors</p>
           </div>
           <div className="flex items-center gap-3">
+            {/* Read-Only Indicator */}
+            <div className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 rounded-xl border border-slate-200">
+              <Eye className="w-3.5 h-3.5 text-slate-400" />
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">View Only</span>
+            </div>
             {/* Search */}
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -318,21 +216,20 @@ const StaffAppointments = () => {
                     <th className="py-4 px-6">Schedule</th>
                     <th className="py-4 px-6">Reason</th>
                     <th className="py-4 px-6">Status</th>
-                    <th className="py-4 px-6 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-300">
                   {filteredAppointments.map((appt) => {
-                    const { date, time, displayString, isPast } = formatDateTime(appt.appointment_date);
+                    const { date, time, isPast } = formatDateTime(appt.appointment_date);
                     const statusStyle = getStatusStyles(appt.status);
                     const StatusIcon = statusStyle.icon;
 
                     return (
-                      <tr key={appt.id} className="group hover:bg-teal-50/50 transition-colors">
+                      <tr key={appt.id} className="group hover:bg-teal-50/30 transition-colors">
                         {/* Patient */}
                         <td className="py-5 px-6">
                           <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-teal-50 to-blue-50 border border-teal-100 flex items-center justify-center text-teal-600 font-bold shadow-sm">
+                            <div className="w-10 h-10 rounded-full bg-teal-100 flex items-center justify-center text-teal-600 font-bold shadow-sm">
                               {appt.patient_avatar ? (
                                 <img src={appt.patient_avatar} alt={appt.patient_name} className="w-full h-full object-cover rounded-full" />
                               ) : (
@@ -363,6 +260,7 @@ const StaffAppointments = () => {
                         <td className="py-5 px-6 max-w-[200px]">
                           <p className="text-sm text-slate-600 truncate">{appt.reason || <span className="italic text-slate-400">No reason</span>}</p>
                         </td>
+                        {/* Status + Type */}
                         <td className="py-5 px-6">
                             <div className="flex flex-col gap-2">
                               <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border w-fit ${statusStyle.badge}`}>
@@ -380,43 +278,6 @@ const StaffAppointments = () => {
                               )}
                             </div>
                         </td>
-                        {/* Actions */}
-                        <td className="py-5 px-6 text-right">
-                          <div className="flex items-center justify-end gap-2 opacity-90 group-hover:opacity-100 transition-opacity">
-                            {/* PENDING */}
-                            {appt.status === "pending" && (
-                              <>
-                                <button onClick={() => updateStatus(appt.id, "confirmed")} className="p-2 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition-colors" title="Confirm">
-                                  <Check className="w-4 h-4" />
-                                </button>
-                                <button onClick={() => setRescheduleData({ id: appt.id, date: displayString })} className="p-2 rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-100 transition-colors" title="Reschedule">
-                                  <RefreshCw className="w-4 h-4" />
-                                </button>
-                                <button onClick={() => openCancelModal(appt.id, appt.patient_name)} className="p-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors" title="Cancel">
-                                  <XCircle className="w-4 h-4" />
-                                </button>
-                              </>
-                            )}
-                            {/* CONFIRMED */}
-                            {appt.status === "confirmed" && (
-                              <>
-                                <button onClick={() => updateStatus(appt.id, "completed")} className="px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-bold hover:bg-blue-700 shadow-sm transition-colors">
-                                  Complete
-                                </button>
-                                <button onClick={() => setRescheduleData({ id: appt.id, date: displayString })} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-amber-600 transition-colors" title="Reschedule">
-                                  <RefreshCw className="w-4 h-4" />
-                                </button>
-                                <button onClick={() => openCancelModal(appt.id, appt.patient_name)} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-red-600 transition-colors" title="Cancel">
-                                  <XCircle className="w-4 h-4" />
-                                </button>
-                              </>
-                            )}
-                            {/* COMPLETED / CANCELLED */}
-                            {(appt.status === "completed" || appt.status === "cancelled") && (
-                              <span className="text-[10px] text-slate-400 italic">{appt.status === "completed" ? "Done" : "Cancelled"}</span>
-                            )}
-                          </div>
-                        </td>
                       </tr>
                     );
                   })}
@@ -427,7 +288,7 @@ const StaffAppointments = () => {
             {/* Mobile Cards */}
             <div className="md:hidden space-y-4">
               {filteredAppointments.map((appt) => {
-                const { date, time, displayString } = formatDateTime(appt.appointment_date);
+                const { date, time } = formatDateTime(appt.appointment_date);
                 const statusStyle = getStatusStyles(appt.status);
                 const StatusIcon = statusStyle.icon;
 
@@ -447,7 +308,7 @@ const StaffAppointments = () => {
                         <StatusIcon className="w-3 h-3" /> {statusStyle.label}
                       </span>
                     </div>
-                    <div className="space-y-2 mb-4 bg-slate-50 p-3 rounded-xl border border-slate-100">
+                    <div className="space-y-2 bg-slate-50 p-3 rounded-xl border border-slate-100">
                       <div className="flex justify-between text-sm">
                         <span className="text-slate-500">Date:</span>
                         <span className="font-semibold text-slate-900">{date}</span>
@@ -460,19 +321,12 @@ const StaffAppointments = () => {
                         <p className="text-xs text-slate-500 italic">"{appt.reason || "No reason provided"}"</p>
                       </div>
                     </div>
-                    <div className="flex gap-2 flex-wrap">
-                      {appt.status === "pending" && (
-                        <>
-                          <button onClick={() => updateStatus(appt.id, "confirmed")} className="flex-1 py-2.5 bg-emerald-600 text-white rounded-lg text-sm font-bold shadow-sm">Confirm</button>
-                          <button onClick={() => setRescheduleData({ id: appt.id, date: displayString })} className="p-2.5 bg-amber-100 text-amber-700 rounded-lg"><RefreshCw className="w-5 h-5" /></button>
-                          <button onClick={() => openCancelModal(appt.id, appt.patient_name)} className="p-2.5 bg-red-100 text-red-700 rounded-lg"><XCircle className="w-5 h-5" /></button>
-                        </>
-                      )}
-                      {appt.status === "confirmed" && (
-                        <>
-                          <button onClick={() => updateStatus(appt.id, "completed")} className="flex-1 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-bold shadow-sm">Complete</button>
-                          <button onClick={() => openCancelModal(appt.id, appt.patient_name)} className="p-2.5 bg-slate-100 text-slate-600 rounded-lg border border-slate-200">Cancel</button>
-                        </>
+                    {/* Type badge */}
+                    <div className="mt-3 flex items-center gap-2">
+                      {appt.appointment_type === 'walk_in' ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold border bg-purple-50 text-purple-700 border-purple-200">Walk-in</span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold border bg-blue-50 text-blue-700 border-blue-200">Online</span>
                       )}
                     </div>
                   </div>

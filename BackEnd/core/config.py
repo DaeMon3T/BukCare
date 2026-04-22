@@ -69,6 +69,9 @@ class Settings(BaseSettings):
     # LLM API
     GROQ_API_KEY: Optional[str] = None
 
+    # Google API (Places, Maps)
+    GOOGLE_API_KEY: Optional[str] = None
+
     # CORS Configuration
     CORS_ALLOWED_ORIGINS: str
 

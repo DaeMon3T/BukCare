@@ -171,8 +171,8 @@ const FindDoctor: React.FC = () => {
                 <Stethoscope className="absolute -right-10 -top-10 w-48 h-48 sm:w-64 sm:h-64 text-blue-600/5 rotate-12 pointer-events-none" />
                 
                 <div className="relative z-10">
-                    <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 mb-2">Find your Specialist</h1>
-                    <p className="text-slate-500 mb-6 sm:mb-8 max-w-lg font-medium text-sm sm:text-base">Search through our network of trusted medical professionals to find the right care for you.</p>
+                    <h1 className="hidden md:block text-2xl sm:text-3xl font-extrabold text-slate-900 mb-2">Find your Specialist</h1>
+                    <p className="hidden md:block text-slate-500 mb-6 sm:mb-8 max-w-lg font-medium text-sm sm:text-base">Search through our network of trusted medical professionals to find the right care for you.</p>
                     
                     {/* Search Bar */}
                     <div className="flex flex-col md:flex-row gap-4">

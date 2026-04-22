@@ -139,7 +139,7 @@ const PatientMessages: React.FC = () => {
   };
 
   return (
-    <div className="h-screen flex flex-col bg-[#F0F4F8] relative overflow-hidden font-sans text-slate-800">
+    <div className="h-[calc(100vh-80px)] md:h-screen flex flex-col bg-[#F0F4F8] relative overflow-hidden font-sans text-slate-800">
       
       {/* Background Blobs */}
       <div className="fixed inset-0 pointer-events-none z-0">
@@ -151,7 +151,7 @@ const PatientMessages: React.FC = () => {
       <div className="relative z-10 flex flex-col h-full">
         <Navbar />
 
-        <div className="flex-1 flex max-w-[1920px] w-full mx-auto p-0 md:p-6 md:gap-6 h-[calc(100vh-64px)] md:h-[calc(100vh-80px)] relative">
+        <div className="flex-1 flex max-w-[1920px] w-full mx-auto p-0 md:p-6 md:gap-6 relative min-h-0">
             
             {/* SIDEBAR (CHAT LIST) */}
             <div 

@@ -21,7 +21,7 @@ from middleware.request_logging import request_logging_middleware
 
 # Routers
 from routers.v1 import router as v1_router
-from routers.v1 import doctors, notifications, tips, reviews
+from routers.v1 import doctors, notifications, tips, reviews, hospitals
 from routers.v1 import appointments, messages, medical_profile, walk_ins
 from routers.v1.auth import password_reset
 
@@ -77,6 +77,7 @@ def create_app() -> FastAPI:
     app.include_router(medical_profile.router, prefix="/v1")
     app.include_router(password_reset.router, prefix="/v1/auth/password-reset", tags=["Password Reset"])
     app.include_router(walk_ins.router, prefix="/v1/walk-ins", tags=["Walk-Ins"])
+    app.include_router(hospitals.router, prefix="/v1")
 
     # ============================================================
     # DATABASE SEEDER

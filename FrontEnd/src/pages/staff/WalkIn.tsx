@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import Navbar from "@/components/Navbar";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -10,7 +10,10 @@ import {
   User as UserIcon,
   ChevronRight,
   Database,
-  FileText
+  FileText,
+  CalendarDays,
+  Filter,
+  CheckCircle2,
 } from "lucide-react";
 import api from "@/services/api";
 import toast from "react-hot-toast";
@@ -23,12 +26,26 @@ interface Patient {
     picture: string | null;
 }
 
-interface Doctor {
+interface Availability {
+    id: number;
+    date: string | null;
+    day_of_week: string | null;
+    start_time: string | null;
+    end_time: string | null;
+    is_available: boolean;
+}
+
+interface DoctorWithAvailability {
     user_id: number;
     name: string;
-    specialization: string;
+    specializations: string[];
+    avatar: string | null;
     status: string;
+    consultation_fee: number | null;
+    availabilities: Availability[];
 }
+
+const DAYS_OF_WEEK = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
 const WalkIn: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -36,11 +53,15 @@ const WalkIn: React.FC = () => {
   const [searching, setSearching] = useState(false);
   
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
-  const [doctors, setDoctors] = useState<Doctor[]>([]);
+  const [doctors, setDoctors] = useState<DoctorWithAvailability[]>([]);
   const [selectedDoctorId, setSelectedDoctorId] = useState<number | null>(null);
   const [reason, setReason] = useState("");
   const [notes, setNotes] = useState("");
   const [booking, setBooking] = useState(false);
+
+  // --- FILTER STATES ---
+  const [specFilter, setSpecFilter] = useState<string>("all");
+  const [dateFilter, setDateFilter] = useState<string>(new Date().toISOString().split("T")[0]); // today
 
   // --- REGISTRATION STATES ---
   const [showRegisterModal, setShowRegisterModal] = useState(false);
@@ -53,7 +74,7 @@ const WalkIn: React.FC = () => {
   useEffect(() => {
     const fetchDoctors = async () => {
         try {
-            const res = await api.get("/doctor/list"); // Assumption: there's an endpoint to list doctors
+            const res = await api.get("/walk-ins/available-doctors");
             setDoctors(res.data);
         } catch (err) {
             console.error("Failed to load doctors", err);
@@ -61,6 +82,49 @@ const WalkIn: React.FC = () => {
     };
     fetchDoctors();
   }, []);
+
+  // --- DERIVED: All unique specializations ---
+  const allSpecializations = useMemo(() => {
+    const specs = new Set<string>();
+    doctors.forEach(d => d.specializations.forEach(s => specs.add(s)));
+    return Array.from(specs).sort();
+  }, [doctors]);
+
+  // --- DERIVED: Filtered doctors by specialization + date availability ---
+  const filteredDoctors = useMemo(() => {
+    const selectedDate = new Date(dateFilter);
+    const dayName = DAYS_OF_WEEK[selectedDate.getDay()];
+    const dateStr = dateFilter; // YYYY-MM-DD
+
+    return doctors.filter(doc => {
+      // Specialization filter
+      if (specFilter !== "all" && !doc.specializations.includes(specFilter)) return false;
+
+      // Date availability filter — check if doctor has a slot matching the selected date
+      const hasSlotOnDate = doc.availabilities.some(a => {
+        // Match by specific date
+        if (a.date && a.date.startsWith(dateStr)) return true;
+        // Match by recurring day_of_week
+        if (a.day_of_week && a.day_of_week.toLowerCase() === dayName.toLowerCase()) return true;
+        return false;
+      });
+
+      return hasSlotOnDate;
+    });
+  }, [doctors, specFilter, dateFilter]);
+
+  // --- Get time slots for a specific doctor on selected date ---
+  const getSlotsForDoctor = (doc: DoctorWithAvailability): Availability[] => {
+    const selectedDate = new Date(dateFilter);
+    const dayName = DAYS_OF_WEEK[selectedDate.getDay()];
+    const dateStr = dateFilter;
+
+    return doc.availabilities.filter(a => {
+      if (a.date && a.date.startsWith(dateStr)) return true;
+      if (a.day_of_week && a.day_of_week.toLowerCase() === dayName.toLowerCase()) return true;
+      return false;
+    });
+  };
 
   // --- SEARCH PATIENTS ---
   const handleSearch = async (e?: React.FormEvent) => {
@@ -100,6 +164,7 @@ const WalkIn: React.FC = () => {
         setNotes("");
         setPatients([]);
         setSearchQuery("");
+        setSelectedDoctorId(null);
     } catch (err: any) {
         toast.error(err?.response?.data?.message || "Booking failed");
     } finally {
@@ -240,7 +305,7 @@ const WalkIn: React.FC = () => {
                 </div>
             </div>
 
-            {/* BOOKING DRAWER / MODAL */}
+            {/* BOOKING MODAL */}
             <AnimatePresence>
                 {selectedPatient && (
                     <motion.div 
@@ -253,10 +318,10 @@ const WalkIn: React.FC = () => {
                             initial={{ scale: 0.9, y: 20 }}
                             animate={{ scale: 1, y: 0 }}
                             exit={{ scale: 0.9, y: 20 }}
-                            className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-xl overflow-hidden flex flex-col max-h-[90vh]"
+                            className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]"
                         >
                             {/* Modal Header */}
-                            <div className="p-8 bg-gradient-to-br from-blue-600 to-indigo-700 text-white relative">
+                            <div className="p-8 bg-gradient-to-br from-blue-600 to-indigo-700 text-white relative flex-none">
                                 <div className="flex items-center gap-4">
                                     <div className="w-16 h-16 rounded-2xl overflow-hidden border-2 border-white/20 shadow-lg bg-white/10 backdrop-blur-md flex-shrink-0">
                                         <img src={selectedPatient.picture || `https://ui-avatars.com/api/?name=${selectedPatient.name}&background=random`} alt="" className="w-full h-full object-cover" />
@@ -267,39 +332,117 @@ const WalkIn: React.FC = () => {
                                         <p className="text-sm text-blue-100 opacity-80">Patient ID: 2026-{selectedPatient.id}</p>
                                     </div>
                                 </div>
-                                <button onClick={() => setSelectedPatient(null)} className="absolute top-6 right-6 w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-all">
+                                <button onClick={() => { setSelectedPatient(null); setSelectedDoctorId(null); }} className="absolute top-6 right-6 w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-all">
                                     ✕
                                 </button>
                             </div>
 
                             {/* Modal Body */}
-                            <div className="p-8 space-y-6 overflow-y-auto custom-scrollbar">
-                                <div className="space-y-2">
-                                    <label className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                                        <Stethoscope className="w-4 h-4 text-blue-500" /> Assign Physician
-                                    </label>
-                                    <div className="grid grid-cols-1 gap-2">
-                                        {doctors.length > 0 ? (
-                                            <select 
-                                                value={selectedDoctorId || ""} 
-                                                onChange={(e) => setSelectedDoctorId(Number(e.target.value))}
-                                                className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-bold text-slate-700 appearance-none"
-                                            >
-                                                <option value="">Select Doctor...</option>
-                                                {doctors.map(d => (
-                                                    <option key={d.user_id} value={d.user_id}>
-                                                        Dr. {d.name} ({d.specialization})
-                                                    </option>
-                                                ))}
-                                            </select>
-                                        ) : (
-                                            <div className="p-4 bg-amber-50 rounded-2xl text-amber-700 text-sm font-medium flex items-center gap-2 border border-amber-100">
-                                                <AlertCircle className="w-4 h-4" /> No physicians available.
-                                            </div>
-                                        )}
+                            <div className="p-8 space-y-6 overflow-y-auto custom-scrollbar flex-1">
+                                
+                                {/* FILTERS ROW */}
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                                            <Filter className="w-4 h-4 text-blue-500" /> Specialization
+                                        </label>
+                                        <select
+                                            value={specFilter}
+                                            onChange={(e) => { setSpecFilter(e.target.value); setSelectedDoctorId(null); }}
+                                            className="w-full p-3.5 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-bold text-slate-700 appearance-none"
+                                        >
+                                            <option value="all">All Specializations</option>
+                                            {allSpecializations.map(s => (
+                                                <option key={s} value={s}>{s}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                                            <CalendarDays className="w-4 h-4 text-blue-500" /> Appointment Date
+                                        </label>
+                                        <input
+                                            type="date"
+                                            value={dateFilter}
+                                            onChange={(e) => { setDateFilter(e.target.value); setSelectedDoctorId(null); }}
+                                            min={new Date().toISOString().split("T")[0]}
+                                            className="w-full p-3.5 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-bold text-slate-700"
+                                        />
                                     </div>
                                 </div>
 
+                                {/* DOCTOR CARDS */}
+                                <div className="space-y-2">
+                                    <label className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                                        <Stethoscope className="w-4 h-4 text-blue-500" /> Select Physician ({filteredDoctors.length} available)
+                                    </label>
+                                    
+                                    {filteredDoctors.length > 0 ? (
+                                        <div className="grid grid-cols-1 gap-3 max-h-[220px] overflow-y-auto pr-1 custom-scrollbar">
+                                            {filteredDoctors.map(doc => {
+                                                const slots = getSlotsForDoctor(doc);
+                                                const isSelected = selectedDoctorId === doc.user_id;
+
+                                                return (
+                                                    <div
+                                                        key={doc.user_id}
+                                                        onClick={() => setSelectedDoctorId(doc.user_id)}
+                                                        className={`relative p-4 rounded-2xl border-2 cursor-pointer transition-all hover:shadow-md ${
+                                                            isSelected
+                                                                ? "border-blue-500 bg-blue-50/50 ring-4 ring-blue-500/10"
+                                                                : "border-slate-100 bg-white hover:border-blue-200"
+                                                        }`}
+                                                    >
+                                                        {isSelected && (
+                                                            <div className="absolute top-3 right-3">
+                                                                <CheckCircle2 className="w-5 h-5 text-blue-600" />
+                                                            </div>
+                                                        )}
+                                                        <div className="flex items-center gap-3 mb-2">
+                                                            <div className="w-11 h-11 rounded-xl overflow-hidden bg-slate-100 flex-shrink-0 shadow-inner">
+                                                                <img
+                                                                    src={doc.avatar || `https://ui-avatars.com/api/?name=${doc.name}&background=E0E7FF&color=4338CA`}
+                                                                    alt={doc.name}
+                                                                    className="w-full h-full object-cover"
+                                                                />
+                                                            </div>
+                                                            <div className="overflow-hidden flex-1">
+                                                                <p className="font-bold text-slate-900 text-sm truncate">Dr. {doc.name}</p>
+                                                                <p className="text-xs text-blue-600 font-semibold truncate">
+                                                                    {doc.specializations.join(", ")}
+                                                                </p>
+                                                            </div>
+                                                            {doc.consultation_fee && (
+                                                                <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-lg border border-emerald-100 flex-shrink-0">
+                                                                    ₱{doc.consultation_fee}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        {/* Time Slots */}
+                                                        <div className="flex flex-wrap gap-1.5 mt-1">
+                                                            {slots.map((slot, i) => (
+                                                                <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-slate-100 text-[10px] font-bold text-slate-600 border border-slate-200">
+                                                                    <Clock className="w-3 h-3 text-slate-400" />
+                                                                    {slot.start_time} – {slot.end_time}
+                                                                </span>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    ) : (
+                                        <div className="p-6 bg-amber-50 rounded-2xl text-amber-700 text-sm font-medium flex items-center gap-3 border border-amber-100">
+                                            <AlertCircle className="w-5 h-5 flex-shrink-0" />
+                                            <div>
+                                                <p className="font-bold">No doctors available</p>
+                                                <p className="text-xs opacity-80 mt-0.5">Try a different specialization or date.</p>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* REASON */}
                                 <div className="space-y-2">
                                     <label className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
                                         <FileText className="w-4 h-4 text-blue-500" /> Consultation Reason
@@ -313,6 +456,7 @@ const WalkIn: React.FC = () => {
                                     />
                                 </div>
 
+                                {/* NOTES */}
                                 <div className="space-y-2">
                                     <label className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
                                         <Clock className="w-4 h-4 text-blue-500" /> Additional Notes
@@ -328,9 +472,9 @@ const WalkIn: React.FC = () => {
                             </div>
 
                             {/* Modal Footer */}
-                            <div className="p-8 pt-0 flex gap-4">
+                            <div className="p-8 pt-0 flex gap-4 flex-none">
                                 <button 
-                                    onClick={() => setSelectedPatient(null)} 
+                                    onClick={() => { setSelectedPatient(null); setSelectedDoctorId(null); }} 
                                     className="flex-1 py-4 text-slate-500 font-bold hover:bg-slate-50 rounded-2xl transition-all"
                                 >
                                     Cancel

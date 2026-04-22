@@ -13,8 +13,63 @@ from core.socket_manager import manager
 from pydantic import BaseModel
 from core.security import get_password_hash
 from models.medical_profile import MedicalProfile
+from models.doctor import Doctor, DoctorAvailability
+from sqlalchemy.orm import joinedload
+import json
 
 router = APIRouter()
+
+
+# ============================================
+# GET AVAILABLE DOCTORS (For Walk-in Picker)
+# ============================================
+@router.get("/available-doctors", response_model=list)
+def get_available_doctors_for_walkin(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Returns all approved doctors with their specializations and availability slots."""
+    if current_user.role not in [UserRole.STAFF, UserRole.ADMIN]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    doctors = (
+        db.query(Doctor)
+        .options(
+            joinedload(Doctor.user),
+            joinedload(Doctor.specializations),
+            joinedload(Doctor.availabilities),
+        )
+        .join(User)
+        .filter(User.is_doctor_approved == True)
+        .all()
+    )
+
+    results = []
+    for doc in doctors:
+        specs_list = [s.name for s in doc.specializations]
+        availabilities = [
+            {
+                "id": a.id,
+                "date": a.date.isoformat() if a.date else None,
+                "day_of_week": a.day_of_week,
+                "start_time": a.start_time.strftime("%H:%M") if a.start_time else None,
+                "end_time": a.end_time.strftime("%H:%M") if a.end_time else None,
+                "is_available": a.is_available,
+            }
+            for a in doc.availabilities if a.is_available
+        ]
+
+        results.append({
+            "user_id": doc.user_id,
+            "name": f"{doc.user.fname} {doc.user.lname}",
+            "specializations": specs_list if specs_list else ["General Practice"],
+            "avatar": doc.user.picture,
+            "status": doc.status,
+            "consultation_fee": doc.consultation_fee,
+            "availabilities": availabilities,
+        })
+
+    return results
 
 class WalkInPatientCreate(BaseModel):
     fname: str

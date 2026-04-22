@@ -19,7 +19,27 @@ def create_admin_if_not_exists():
         admin_email = settings.ADMIN_EMAIL
         existing_admin = db.query(User).filter(User.email == admin_email).first()
         if existing_admin:
-            return  # Admin already exists
+            # If admin was created via OAuth, they may be missing fields — fix them
+            updated = False
+            if not existing_admin.password:
+                existing_admin.password = hash_password(settings.ADMIN_PASSWORD)
+                updated = True
+            if existing_admin.role != UserRole.ADMIN:
+                existing_admin.role = UserRole.ADMIN
+                updated = True
+            if not existing_admin.is_profile_complete:
+                existing_admin.is_profile_complete = True
+                updated = True
+            if not existing_admin.is_active:
+                existing_admin.is_active = True
+                updated = True
+            if not existing_admin.is_verified:
+                existing_admin.is_verified = True
+                updated = True
+            if updated:
+                db.commit()
+                print(f"Admin account patched: {admin_email}")
+            return
 
         # Create the admin user
         admin_user = User(
