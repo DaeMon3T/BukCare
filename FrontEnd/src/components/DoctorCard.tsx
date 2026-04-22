@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { MapPin, Mail, Stethoscope, CheckCircle2, Star, CalendarCheck } from "lucide-react";
+import { MapPin, Mail, Stethoscope, Star, CalendarCheck } from "lucide-react";
 
 export interface Doctor {
   doctor_id: number;
@@ -110,7 +110,7 @@ const DoctorCard: React.FC<DoctorCardProps> = ({ doctor }) => {
   }, [doctor.availabilities]);
 
   return (
-    <div className="group relative bg-white rounded-2xl md:rounded-[2rem] shadow-md hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 overflow-hidden border border-slate-100 flex flex-col h-full">
+    <div className="group relative bg-white rounded-2xl md:rounded-[2rem] shadow-md hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 overflow-hidden border border-slate-100 flex flex-col">
       
       {/* 1. HEADER */}
       <div className="relative h-24 md:h-32 bg-gradient-to-r from-blue-700 to-[#2dc7f8] flex justify-center items-start pt-4 md:pt-6">
@@ -144,12 +144,9 @@ const DoctorCard: React.FC<DoctorCardProps> = ({ doctor }) => {
       </div>
 
       {/* 3. DETAILS */}
-      <div className="flex-1 px-3 md:px-6 pt-3 md:pt-4 pb-4 md:pb-6 text-center flex flex-col">
-        <h3 className="text-base md:text-xl font-bold text-slate-800 mb-1 leading-tight flex items-center justify-center gap-1.5">
+      <div className="px-3 md:px-6 pt-3 md:pt-4 pb-4 md:pb-6 text-center flex flex-col">
+        <h3 className="text-base md:text-xl font-bold text-slate-800 mb-1 leading-tight">
             {doctor.name}
-            {doctor.is_doctor_approved && (
-                <CheckCircle2 className="w-4 h-4 md:w-5 md:h-5 text-blue-500 fill-blue-50" />
-            )}
         </h3>
         
         {/* Status Badge */}
@@ -194,7 +191,7 @@ const DoctorCard: React.FC<DoctorCardProps> = ({ doctor }) => {
             )}
         </div>
 
-        <div className="space-y-2 md:space-y-4 text-left mt-auto">
+        <div className="hidden md:block space-y-4 text-left mt-auto">
           <div className="flex items-start gap-2 md:gap-3 text-slate-600 group-hover:text-slate-800 transition-colors">
             <MapPin className="w-3.5 h-3.5 md:w-5 md:h-5 text-blue-600 shrink-0 mt-0.5" />
             <div className="min-w-0">

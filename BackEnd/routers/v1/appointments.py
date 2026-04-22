@@ -750,7 +750,7 @@ async def update_appointment_status(
             is_authorized = True
         else:
              raise HTTPException(status_code=403, detail="Patients can only cancel appointments")
-    elif user_role in ("admin", "staff"):
+    elif user_role == "admin":
         is_authorized = True
         
     if not is_authorized:

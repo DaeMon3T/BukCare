@@ -300,25 +300,7 @@ const Navbar: React.FC = () => {
         </div>
       </header>
 
-      {isPatientUser && (
-        <nav className="fixed bottom-4 left-1/2 z-40 w-[calc(100%-1rem)] max-w-md -translate-x-1/2 rounded-[1.75rem] border border-white/15 bg-slate-950/92 p-2 shadow-[0_24px_60px_-24px_rgba(15,23,42,0.8)] backdrop-blur-xl lg:hidden">
-          <div className="grid grid-cols-4 gap-1">
-            {navigationItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = isPathActive(item.path);
-              return (
-                <Link key={`mobile-${item.path}`} to={item.path} className={`relative flex flex-col items-center gap-1 rounded-[1.2rem] px-2 py-3 text-[11px] font-semibold transition-all ${isActive ? "bg-white text-slate-950 shadow-sm" : "text-slate-300 hover:bg-white/10 hover:text-white"}`}>
-                  <div className="relative">
-                    <Icon className="h-4.5 w-4.5" />
-                    {(item.badge || 0) > 0 && <span className={`absolute -right-2 -top-2 rounded-full px-1.5 py-0.5 text-[9px] font-bold leading-none ${isActive ? "bg-rose-500 text-white" : "bg-sky-400 text-slate-950"}`}>{item.badge && item.badge > 9 ? "9+" : item.badge}</span>}
-                  </div>
-                  <span>{item.label.replace("Find ", "")}</span>
-                </Link>
-              );
-            })}
-          </div>
-        </nav>
-      )}
+
 
       <AnimatePresence>
         {sidebarOpen && (
