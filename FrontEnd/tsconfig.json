@@ -1,7 +1,6 @@
 {
   "compilerOptions": {
     // File Layout
-    "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]
     },
@@ -16,7 +15,7 @@
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
     "resolveJsonModule": true,
-    "noEmit": true, 
+    "noEmit": true,
 
     // Other Outputs
     "sourceMap": true,
@@ -43,7 +42,9 @@
     "moduleDetection": "force",
     "skipLibCheck": true,
     "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true
+    "allowSyntheticDefaultImports": true,
+
+    "ignoreDeprecations": "6.0"
   },
   "include": ["src", "vite.config.ts"],
   "exclude": ["node_modules", "dist"]
