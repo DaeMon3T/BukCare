@@ -12,8 +12,15 @@ import {
   ArrowUpDown,
   Search,
   Eye,
+  Check,
+  RefreshCw,
+  AlertTriangle,
+  Trash2,
 } from "lucide-react";
 import { useWebSocket } from "@/context/WebSocketContext";
+import StaffAccessAPI from "@/services/staff/StaffAccessAPI";
+import RescheduleModal from "@/components/RescheduleModal";
+import ConsultationNotesModal from "@/components/ConsultationNotesModal";
 
 interface Appointment {
   id: number;
@@ -39,6 +46,41 @@ const StaffAppointments = () => {
   const [filter, setFilter] = useState<"all" | "pending" | "confirmed" | "completed" | "cancelled">("all");
   const [sortBy, setSortBy] = useState<"date_desc" | "date_asc" | "status">("date_desc");
   const [searchTerm, setSearchTerm] = useState("");
+
+  // Permission map: doctor_id -> can_manage_appointments
+  const [manageMap, setManageMap] = useState<Record<number, boolean>>({});
+  const hasAnyManageAccess = Object.values(manageMap).some(Boolean);
+
+  // Cancel modal state
+  const [cancelData, setCancelData] = useState<{ id: number; patientName: string } | null>(null);
+  const [cancellationReason, setCancellationReason] = useState("");
+  const [cancelProcessing, setCancelProcessing] = useState(false);
+
+  // Reschedule modal state
+  const [rescheduleData, setRescheduleData] = useState<{ id: number; date: string } | null>(null);
+
+  // Consultation notes modal state (for completing)
+  const [completeData, setCompleteData] = useState<{ id: number; patientName: string } | null>(null);
+
+  // Delete confirmation
+  const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
+
+  // FETCH PERMISSIONS
+  useEffect(() => {
+    const fetchPermissions = async () => {
+      try {
+        const doctors = await StaffAccessAPI.getMyDoctors();
+        const map: Record<number, boolean> = {};
+        for (const doc of doctors) {
+          map[doc.doctor_id] = doc.can_manage_appointments;
+        }
+        setManageMap(map);
+      } catch (err) {
+        console.error("Failed to load staff permissions:", err);
+      }
+    };
+    fetchPermissions();
+  }, []);
 
   // FETCH APPOINTMENTS
   const fetchAppointments = useCallback(async (isBackground = false) => {
@@ -78,6 +120,64 @@ const StaffAppointments = () => {
     fetchAppointments();
   }, [fetchAppointments]);
 
+  // UPDATE STATUS
+  const updateStatus = async (id: number, newStatus: "confirmed" | "completed") => {
+    try {
+      await api.put(`/appointments/${id}/status`, { status: newStatus });
+      toast.success(newStatus === "confirmed" ? "Appointment confirmed" : "Appointment marked completed");
+      setAppointments((prev) =>
+        prev.map((appt) => (appt.id === id ? { ...appt, status: newStatus } : appt))
+      );
+    } catch (err: any) {
+      console.error("Action failed:", err);
+      toast.error(err?.response?.data?.detail || "Action failed");
+    }
+  };
+
+  // CANCEL
+  const openCancelModal = (id: number, patientName: string) => {
+    setCancelData({ id, patientName });
+    setCancellationReason("");
+  };
+
+  const confirmCancellation = async () => {
+    if (!cancelData) return;
+    if (!cancellationReason.trim()) {
+      toast.error("Please provide a reason for cancellation");
+      return;
+    }
+    try {
+      setCancelProcessing(true);
+      await api.put(`/appointments/${cancelData.id}/status`, {
+        status: "cancelled",
+        reason: cancellationReason,
+      });
+      toast.success("Appointment cancelled");
+      setAppointments((prev) =>
+        prev.map((appt) => (appt.id === cancelData.id ? { ...appt, status: "cancelled" } : appt))
+      );
+      setCancelData(null);
+    } catch (err: any) {
+      console.error("Cancel failed:", err);
+      toast.error(err?.response?.data?.detail || "Failed to cancel");
+    } finally {
+      setCancelProcessing(false);
+    }
+  };
+
+  // DELETE
+  const deleteAppointment = async (id: number) => {
+    try {
+      await api.delete(`/appointments/${id}/permanent`);
+      toast.success("Appointment permanently deleted");
+      setDeleteConfirm(null);
+      setAppointments((prev) => prev.filter((a) => a.id !== id));
+    } catch (err: any) {
+      console.error("Delete failed:", err);
+      toast.error(err?.response?.data?.detail || "Failed to delete appointment");
+    }
+  };
+
   // FILTER & SORT
   const filteredAppointments = appointments
     .filter((appt) => {
@@ -104,6 +204,7 @@ const StaffAppointments = () => {
     return {
       date: date.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" }),
       time: date.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }),
+      displayString: `${date.toLocaleDateString()} at ${date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`,
       isPast: date < new Date(),
     };
   };
@@ -119,6 +220,9 @@ const StaffAppointments = () => {
     }
   };
 
+  // Check if staff can manage a specific appointment
+  const canManage = (doctorId: number) => !!manageMap[doctorId];
+
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
       <div className="fixed inset-0 pointer-events-none z-0">
@@ -130,6 +234,92 @@ const StaffAppointments = () => {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 relative z-10">
 
+        {/* === MODALS === */}
+
+        {/* Reschedule Modal */}
+        <RescheduleModal
+          isOpen={!!rescheduleData}
+          onClose={() => setRescheduleData(null)}
+          appointmentId={rescheduleData?.id || 0}
+          currentDate={rescheduleData?.date || ""}
+          onSuccess={() => {
+            fetchAppointments();
+            setRescheduleData(null);
+          }}
+        />
+
+        {/* Consultation Notes Modal */}
+        <ConsultationNotesModal
+          isOpen={!!completeData}
+          onClose={() => setCompleteData(null)}
+          patientName={completeData?.patientName || ""}
+          onSubmit={async (notes: string) => {
+            if (!completeData) return;
+            try {
+              await api.put(`/appointments/${completeData.id}/status`, {
+                status: "completed",
+                notes: notes || undefined,
+              });
+              toast.success("Appointment completed");
+              setAppointments((prev) =>
+                prev.map((appt) =>
+                  appt.id === completeData.id ? { ...appt, status: "completed", notes: notes || appt.notes } : appt
+                )
+              );
+              setCompleteData(null);
+            } catch (err: any) {
+              console.error("Complete failed:", err);
+              toast.error(err?.response?.data?.detail || "Failed to complete");
+            }
+          }}
+        />
+
+        {/* Cancel Modal */}
+        {cancelData && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden transform transition-all scale-100">
+              <div className="bg-rose-50 p-6 flex flex-col items-center text-center border-b border-rose-100">
+                <div className="w-12 h-12 bg-rose-100 rounded-full flex items-center justify-center mb-3 text-rose-600">
+                  <AlertTriangle className="w-6 h-6" />
+                </div>
+                <h3 className="text-lg font-bold text-slate-900">Decline Appointment</h3>
+                <p className="text-sm text-slate-500 mt-2">
+                  You are about to cancel the appointment with <span className="font-bold text-slate-700">{cancelData.patientName}</span>.
+                </p>
+              </div>
+              <div className="p-4 space-y-3">
+                <label className="text-xs font-bold text-slate-500 uppercase">Reason for Cancellation</label>
+                <textarea
+                  className="w-full p-3 text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-rose-200 focus:border-rose-400 outline-none resize-none"
+                  rows={3}
+                  placeholder="e.g. Unforeseen emergency, Out of office..."
+                  value={cancellationReason}
+                  onChange={(e) => setCancellationReason(e.target.value)}
+                  autoFocus
+                />
+              </div>
+              <div className="p-4 flex gap-3 bg-white pt-0">
+                <button
+                  onClick={() => setCancelData(null)}
+                  disabled={cancelProcessing}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-50 border border-slate-200 transition-all"
+                >
+                  Go Back
+                </button>
+                <button
+                  onClick={confirmCancellation}
+                  disabled={cancelProcessing || !cancellationReason.trim()}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white bg-rose-600 hover:bg-rose-700 shadow-lg shadow-rose-200 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {cancelProcessing ? (
+                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                  ) : "Confirm Cancel"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Header */}
         <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
@@ -137,11 +327,13 @@ const StaffAppointments = () => {
             <p className="text-slate-500 mt-1">Monitor appointment statuses across all doctors</p>
           </div>
           <div className="flex items-center gap-3">
-            {/* Read-Only Indicator */}
-            <div className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 rounded-xl border border-slate-200">
-              <Eye className="w-3.5 h-3.5 text-slate-400" />
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">View Only</span>
-            </div>
+            {/* Read-Only Indicator — only shown when staff has NO manage permissions */}
+            {!hasAnyManageAccess && (
+              <div className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 rounded-xl border border-slate-200">
+                <Eye className="w-3.5 h-3.5 text-slate-400" />
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">View Only</span>
+              </div>
+            )}
             {/* Search */}
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -216,13 +408,15 @@ const StaffAppointments = () => {
                     <th className="py-4 px-6">Schedule</th>
                     <th className="py-4 px-6">Reason</th>
                     <th className="py-4 px-6">Status</th>
+                    {hasAnyManageAccess && <th className="py-4 px-6 text-right">Actions</th>}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-300">
                   {filteredAppointments.map((appt) => {
-                    const { date, time, isPast } = formatDateTime(appt.appointment_date);
+                    const { date, time, displayString, isPast } = formatDateTime(appt.appointment_date);
                     const statusStyle = getStatusStyles(appt.status);
                     const StatusIcon = statusStyle.icon;
+                    const hasManage = canManage(appt.doctor_id);
 
                     return (
                       <tr key={appt.id} className="group hover:bg-teal-50/30 transition-colors">
@@ -262,22 +456,80 @@ const StaffAppointments = () => {
                         </td>
                         {/* Status + Type */}
                         <td className="py-5 px-6">
-                            <div className="flex flex-col gap-2">
-                              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border w-fit ${statusStyle.badge}`}>
-                                <StatusIcon className="w-3.5 h-3.5" />
-                                {statusStyle.label}
+                          <div className="flex flex-col gap-2">
+                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border w-fit ${statusStyle.badge}`}>
+                              <StatusIcon className="w-3.5 h-3.5" />
+                              {statusStyle.label}
+                            </span>
+                            {appt.appointment_type === 'walk_in' ? (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold border bg-purple-50 text-purple-700 border-purple-200 w-fit">
+                                Walk-in
                               </span>
-                              {appt.appointment_type === 'walk_in' ? (
-                                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold border bg-purple-50 text-purple-700 border-purple-200 w-fit">
-                                     Walk-in
-                                  </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold border bg-blue-50 text-blue-700 border-blue-200 w-fit">
+                                Online
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        {/* Actions — only shown when staff has manage access */}
+                        {hasAnyManageAccess && (
+                          <td className="py-5 px-6 text-right">
+                            <div className="flex items-center justify-end gap-2 opacity-90 group-hover:opacity-100 transition-opacity">
+                              {!hasManage ? (
+                                <span className="text-[10px] text-slate-400 italic">View only</span>
                               ) : (
-                                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold border bg-blue-50 text-blue-700 border-blue-200 w-fit">
-                                     Online
-                                  </span>
+                                <>
+                                  {/* PENDING: Confirm / Reschedule / Cancel */}
+                                  {appt.status === "pending" && (
+                                    <>
+                                      <button onClick={() => updateStatus(appt.id, "confirmed")} className="p-2 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition-colors" title="Confirm">
+                                        <Check className="w-4 h-4" />
+                                      </button>
+                                      <button onClick={() => setRescheduleData({ id: appt.id, date: displayString })} className="p-2 rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-100 transition-colors" title="Reschedule">
+                                        <RefreshCw className="w-4 h-4" />
+                                      </button>
+                                      <button onClick={() => openCancelModal(appt.id, appt.patient_name)} className="p-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors" title="Decline">
+                                        <XCircle className="w-4 h-4" />
+                                      </button>
+                                    </>
+                                  )}
+
+                                  {/* CONFIRMED: Complete / Reschedule / Cancel */}
+                                  {appt.status === "confirmed" && (
+                                    <>
+                                      <button onClick={() => setCompleteData({ id: appt.id, patientName: appt.patient_name })} className="px-3 py-1.5 rounded-lg bg-teal-600 text-white text-xs font-bold hover:bg-teal-700 shadow-sm transition-colors">
+                                        Complete
+                                      </button>
+                                      <button onClick={() => setRescheduleData({ id: appt.id, date: displayString })} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-amber-600 transition-colors" title="Reschedule">
+                                        <RefreshCw className="w-4 h-4" />
+                                      </button>
+                                      <button onClick={() => openCancelModal(appt.id, appt.patient_name)} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-red-600 transition-colors" title="Cancel">
+                                        <XCircle className="w-4 h-4" />
+                                      </button>
+                                    </>
+                                  )}
+
+                                  {/* COMPLETED/CANCELLED: Delete */}
+                                  {(appt.status === "completed" || appt.status === "cancelled") && (
+                                    <>
+                                      {deleteConfirm === appt.id ? (
+                                        <div className="flex items-center gap-1 bg-red-50 p-1 rounded-lg border border-red-100">
+                                          <button onClick={() => deleteAppointment(appt.id)} className="text-[10px] font-bold bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600">Yes</button>
+                                          <button onClick={() => setDeleteConfirm(null)} className="text-[10px] font-bold bg-white text-slate-600 px-2 py-1 rounded hover:bg-slate-50 border border-slate-200">No</button>
+                                        </div>
+                                      ) : (
+                                        <button onClick={() => setDeleteConfirm(appt.id)} className="p-2 rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-500 transition-colors" title="Delete Record">
+                                          <Trash2 className="w-4 h-4" />
+                                        </button>
+                                      )}
+                                    </>
+                                  )}
+                                </>
                               )}
                             </div>
-                        </td>
+                          </td>
+                        )}
                       </tr>
                     );
                   })}
@@ -288,9 +540,10 @@ const StaffAppointments = () => {
             {/* Mobile Cards */}
             <div className="md:hidden space-y-4">
               {filteredAppointments.map((appt) => {
-                const { date, time } = formatDateTime(appt.appointment_date);
+                const { date, time, displayString } = formatDateTime(appt.appointment_date);
                 const statusStyle = getStatusStyles(appt.status);
                 const StatusIcon = statusStyle.icon;
+                const hasManage = canManage(appt.doctor_id);
 
                 return (
                   <div key={appt.id} className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
@@ -329,6 +582,42 @@ const StaffAppointments = () => {
                         <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold border bg-blue-50 text-blue-700 border-blue-200">Online</span>
                       )}
                     </div>
+
+                    {/* Mobile Actions */}
+                    {hasManage && (
+                      <div className="flex gap-2 flex-wrap mt-4">
+                        {/* PENDING MOBILE */}
+                        {appt.status === "pending" && (
+                          <>
+                            <button onClick={() => updateStatus(appt.id, "confirmed")} className="flex-1 py-2.5 bg-emerald-600 text-white rounded-lg text-sm font-bold shadow-sm">Confirm</button>
+                            <button onClick={() => setRescheduleData({ id: appt.id, date: displayString })} className="p-2.5 bg-amber-100 text-amber-700 rounded-lg"><RefreshCw className="w-5 h-5" /></button>
+                            <button onClick={() => openCancelModal(appt.id, appt.patient_name)} className="p-2.5 bg-red-100 text-red-700 rounded-lg"><XCircle className="w-5 h-5" /></button>
+                          </>
+                        )}
+
+                        {/* CONFIRMED MOBILE */}
+                        {appt.status === "confirmed" && (
+                          <>
+                            <button onClick={() => setCompleteData({ id: appt.id, patientName: appt.patient_name })} className="flex-1 py-2.5 bg-teal-600 text-white rounded-lg text-sm font-bold shadow-sm">Complete</button>
+                            <button onClick={() => openCancelModal(appt.id, appt.patient_name)} className="p-2.5 bg-slate-100 text-slate-600 rounded-lg border border-slate-200">Cancel</button>
+                          </>
+                        )}
+
+                        {/* DELETE MOBILE */}
+                        {(appt.status === "completed" || appt.status === "cancelled") && (
+                          deleteConfirm === appt.id ? (
+                            <div className="flex gap-2 w-full">
+                              <button onClick={() => deleteAppointment(appt.id)} className="flex-1 py-2 bg-red-600 text-white rounded-lg text-sm font-bold">Yes, Delete</button>
+                              <button onClick={() => setDeleteConfirm(null)} className="flex-1 py-2 bg-slate-200 text-slate-700 rounded-lg text-sm font-bold">Cancel</button>
+                            </div>
+                          ) : (
+                            <button onClick={() => setDeleteConfirm(appt.id)} className="w-full py-2.5 border border-slate-200 text-slate-500 rounded-lg text-sm font-bold hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors flex items-center justify-center gap-2">
+                              <Trash2 className="w-4 h-4" /> Delete Record
+                            </button>
+                          )
+                        )}
+                      </div>
+                    )}
                   </div>
                 );
               })}

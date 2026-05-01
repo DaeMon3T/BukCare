@@ -7,12 +7,13 @@ from pydantic import BaseModel
 import models
 from models.message import Message 
 from core.database import get_db
-from models.appointment import Appointment, AppointmentStatus
+from models.appointment import Appointment, AppointmentStatus, AppointmentType
 from models.users import User, UserRole
 from models.doctor import Doctor, DoctorAvailability
 from models.notification import Notification
+from models.doctor_staff_access import DoctorStaffAccess
 from routers.v1.dependencies import get_current_user
-from schemas.appointment import AppointmentCreate, AppointmentUpdate, RescheduleRequest
+from schemas.appointment import AppointmentCreate, AppointmentUpdate
 from utils.appointment_helpers import check_appointment_conflict, get_available_slots
 from core.socket_manager import manager
 from utils.email import EmailService
@@ -54,11 +55,23 @@ def get_appointments(
         query = query.filter(Appointment.patient_id == current_user.id)
     elif current_user.role.value == "doctor":
         query = query.filter(Appointment.doctor_id == current_user.id)
-    elif current_user.role.value in ("admin", "staff"):
-        pass  # admin and staff can see all appointments
+    elif current_user.role.value == "admin":
+        pass  # admin can see all appointments
+    elif current_user.role.value == "staff":
+        # Staff can only see appointments from doctors who granted them access
+        granted_doctor_ids = [
+            a.doctor_id for a in
+            db.query(DoctorStaffAccess).filter(
+                DoctorStaffAccess.staff_user_id == current_user.id,
+                DoctorStaffAccess.can_view_appointments == True
+            ).all()
+        ]
+        if not granted_doctor_ids:
+            return []  # No access granted
+        query = query.filter(Appointment.doctor_id.in_(granted_doctor_ids))
     else:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
+            status_code=403,
             detail="Insufficient permissions"
         )
     
@@ -216,6 +229,7 @@ async def create_appointment(
         appointment_date=appointment_data.appointment_date,
         reason=appointment_data.reason,
         status=initial_status,
+        appointment_type=appointment_data.appointment_type or AppointmentType.ONLINE,
         notes=appointment_data.notes or ("Follow-up booked by doctor" if current_user.role.value == "doctor" else None)
     )
     
@@ -460,6 +474,14 @@ async def delete_appointment_permanently(
     elif current_user.role.value == "doctor":
         if appointment.doctor_id != current_user.id:
             raise HTTPException(status_code=403, detail="You can only delete appointments with your patients")
+    elif current_user.role.value == "staff":
+        access = db.query(DoctorStaffAccess).filter(
+            DoctorStaffAccess.staff_user_id == current_user.id,
+            DoctorStaffAccess.doctor_id == appointment.doctor_id,
+            DoctorStaffAccess.can_manage_appointments == True
+        ).first()
+        if not access:
+            raise HTTPException(status_code=403, detail="Insufficient permissions")
     elif current_user.role.value != "admin":
         raise HTTPException(status_code=403, detail="Insufficient permissions")
     
@@ -544,7 +566,7 @@ def get_upcoming_appointments(
 def get_appointment_history(
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(10, ge=1, le=100, description="Items per page"),
-    status: Optional[str] = Query(None, description="Filter by status (completed, cancelled)"),
+    status_filter: Optional[str] = Query(None, alias="status", description="Filter by status (completed, cancelled)"),
     search: Optional[str] = Query(None, description="Search by patient/doctor name or reason"),
     start_date: Optional[date] = Query(None, description="Filter from this date"),
     end_date: Optional[date] = Query(None, description="Filter to this date"),
@@ -555,40 +577,47 @@ def get_appointment_history(
     Get appointment history with pagination and filters.
     Only shows completed and cancelled appointments.
     """
-    
+
     # Base query with eager loading
     query = db.query(Appointment).options(
         joinedload(Appointment.patient),
         joinedload(Appointment.doctor)
     )
-    
+
     # Filter based on user role
     if current_user.role.value == "patient":
         query = query.filter(Appointment.patient_id == current_user.id)
     elif current_user.role.value == "doctor":
         query = query.filter(Appointment.doctor_id == current_user.id)
     elif current_user.role.value == "admin":
-        # Admins can see all appointment history
         pass
+    elif current_user.role.value == "staff":
+        granted_doctor_ids = [
+            a.doctor_id for a in
+            db.query(DoctorStaffAccess).filter(
+                DoctorStaffAccess.staff_user_id == current_user.id,
+                DoctorStaffAccess.can_view_appointments == True
+            ).all()
+        ]
+        if not granted_doctor_ids:
+            return {"appointments": [], "pagination": {"page": page, "page_size": page_size, "total_count": 0, "total_pages": 0, "has_next": False, "has_prev": False}}
+        query = query.filter(Appointment.doctor_id.in_(granted_doctor_ids))
     else:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Insufficient permissions"
-        )
-    
+        raise HTTPException(status_code=403, detail="Insufficient permissions")
+
     # Only show completed and cancelled appointments
     query = query.filter(
         Appointment.status.in_([AppointmentStatus.COMPLETED, AppointmentStatus.CANCELLED])
     )
-    
+
     # Apply status filter
-    if status:
-        if status not in ["completed", "cancelled"]:
+    if status_filter:
+        if status_filter not in ["completed", "cancelled"]:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
+                status_code=400,
                 detail="Status must be 'completed' or 'cancelled'"
             )
-        query = query.filter(Appointment.status == AppointmentStatus(status))
+        query = query.filter(Appointment.status == AppointmentStatus(status_filter))
     
     # Apply date range filter
     if start_date:
@@ -677,7 +706,18 @@ def get_doctor_appointments(
 
     if current_user.role == UserRole.DOCTOR:
         query = query.filter(Appointment.doctor_id == current_user.id)
-    # Staff can see all appointments (no filter)
+    elif current_user.role == UserRole.STAFF:
+        # Staff can only see appointments from doctors who granted them access
+        granted_doctor_ids = [
+            a.doctor_id for a in
+            db.query(DoctorStaffAccess).filter(
+                DoctorStaffAccess.staff_user_id == current_user.id,
+                DoctorStaffAccess.can_view_appointments == True
+            ).all()
+        ]
+        if not granted_doctor_ids:
+            return []  # No access granted
+        query = query.filter(Appointment.doctor_id.in_(granted_doctor_ids))
 
     # --- AUTO-EXPIRATION LOGIC (Lazy Cleanup) ---
     overdue_pending = db.query(Appointment).filter(
@@ -752,6 +792,15 @@ async def update_appointment_status(
              raise HTTPException(status_code=403, detail="Patients can only cancel appointments")
     elif user_role == "admin":
         is_authorized = True
+    elif user_role == "staff":
+        # Staff needs can_manage_appointments privilege for this doctor
+        access = db.query(DoctorStaffAccess).filter(
+            DoctorStaffAccess.staff_user_id == current_user.id,
+            DoctorStaffAccess.doctor_id == appointment.doctor_id,
+            DoctorStaffAccess.can_manage_appointments == True
+        ).first()
+        if access:
+            is_authorized = True
         
     if not is_authorized:
          raise HTTPException(status_code=403, detail="Not authorized")
@@ -891,7 +940,16 @@ async def reschedule_appointment(
     # 2. Authorization Check
     # Patient, Doctor, Staff, or Admin can reschedule
     user_role = current_user.role.value if hasattr(current_user.role, 'value') else current_user.role
-    if user_role not in ("admin", "staff"):
+    if user_role == "staff":
+        # Staff needs can_manage_appointments privilege for this doctor
+        access = db.query(DoctorStaffAccess).filter(
+            DoctorStaffAccess.staff_user_id == current_user.id,
+            DoctorStaffAccess.doctor_id == appointment.doctor_id,
+            DoctorStaffAccess.can_manage_appointments == True
+        ).first()
+        if not access:
+            raise HTTPException(status_code=403, detail="You don't have manage access for this doctor's appointments")
+    elif user_role not in ("admin",):
         if appointment.patient_id != current_user.id and appointment.doctor_id != current_user.id:
             raise HTTPException(status_code=403, detail="Not authorized to reschedule this appointment")
 
@@ -1018,3 +1076,54 @@ async def reschedule_appointment(
         "appointment_date": appointment.appointment_date,
         "message": "Rescheduled successfully"
     }
+
+
+# ----------------------------------------------------
+# APPOINTMENT REMINDER ENDPOINT
+# ----------------------------------------------------
+@router.post("/reminders/send", response_model=dict)
+async def send_appointment_reminders(
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Send 24-hour reminder emails for upcoming confirmed appointments."""
+    from datetime import timedelta
+
+    if current_user.role.value not in ("admin", "doctor", "staff"):
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    now = datetime.utcnow()
+    window_end = now + timedelta(hours=24)
+
+    upcoming = db.query(Appointment).filter(
+        Appointment.status == AppointmentStatus.CONFIRMED,
+        Appointment.appointment_date >= now,
+        Appointment.appointment_date <= window_end
+    ).all()
+
+    count = 0
+    for appt in upcoming:
+        patient = db.query(User).filter(User.id == appt.patient_id).first()
+        doctor = db.query(User).filter(User.id == appt.doctor_id).first()
+        if patient and patient.email and doctor:
+            try:
+                html = EmailService.get_appointment_template(
+                    action="reminder",
+                    user_name=f"{patient.fname} {patient.lname}",
+                    doctor_name=f"Dr. {doctor.lname}",
+                    date=appt.appointment_date.strftime("%B %d, %Y"),
+                    time=appt.appointment_date.strftime("%I:%M %p"),
+                    reason=appt.reason or "General Consultation"
+                )
+                background_tasks.add_task(
+                    EmailService.send_email,
+                    recipients=[patient.email],
+                    subject="Appointment Reminder - BukCare",
+                    body=html
+                )
+                count += 1
+            except Exception as e:
+                print(f"Reminder email error for appt {appt.id}: {e}")
+
+    return {"message": f"Reminders queued for {count} upcoming appointments"}

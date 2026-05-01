@@ -8,7 +8,6 @@ import {
   CheckCircle2, 
   AlertCircle, 
   ArrowLeft, 
-  User as UserIcon, 
   Mail, 
   Phone, 
   MapPin, 
@@ -19,7 +18,9 @@ import {
   Eye,
   Activity,
   BadgeCheck,
-  Award // Added Icon for Specialization
+  Award,
+  Trash2,
+  Briefcase
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -33,7 +34,16 @@ interface DoctorProfile {
   bio?: string;
   consultation_fee?: number;
   is_doctor_approved?: boolean;
-  specializations?: string[] | string; // ✅ Added to Interface
+  specializations?: string[] | string;
+}
+
+interface StaffProfile {
+  staff_id?: number;
+  job_title?: string;
+  proof_front?: string;
+  proof_back?: string;
+  proof_selfie?: string;
+  is_staff_approved?: boolean;
 }
 
 interface User {
@@ -43,7 +53,7 @@ interface User {
   lname: string;
   email: string;
   contact_number?: string;
-  role: "admin" | "patient" | "doctor" | "pending";
+  role: "admin" | "patient" | "doctor" | "staff" | "pending";
   is_active: boolean;
   is_profile_complete: boolean;
   is_verified?: boolean; 
@@ -56,6 +66,7 @@ interface User {
   barangay?: string | null;
 
   doctor_profile?: DoctorProfile;
+  staff_profile?: StaffProfile;
 }
 
 export default function UsersDetail() {
@@ -67,6 +78,7 @@ export default function UsersDetail() {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [approving, setApproving] = useState(false);
   const [rejecting, setRejecting] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -102,7 +114,7 @@ export default function UsersDetail() {
 
     try {
       await usersAPI.approveDoctor(user.id);
-      toast.success(`${user.fname} has been approved!`, { id: toastId });
+      toast.success(`${user.fname} has been approved as a Doctor!`, { id: toastId });
       setUser({
         ...user,
         role: "doctor", 
@@ -137,6 +149,66 @@ export default function UsersDetail() {
     }
   };
 
+  const handleApproveStaff = async () => {
+    if (!user) return;
+    setApproving(true);
+    const toastId = toast.loading("Processing staff approval...");
+
+    try {
+      await usersAPI.approveStaff(user.id);
+      toast.success(`${user.fname} has been approved as Staff!`, { id: toastId });
+      setUser({
+        ...user,
+        role: "staff",
+        staff_profile: { ...user.staff_profile, is_staff_approved: true },
+      });
+    } catch (error: any) {
+      toast.error(error.message || "Failed to approve staff.", { id: toastId });
+    } finally {
+      setApproving(false);
+    }
+  };
+
+  const handleRejectStaff = async () => {
+    if (!user) return;
+    const reason = prompt("Please provide a reason for rejection (optional):");
+    if (reason === null) return;
+
+    setRejecting(true);
+    const toastId = toast.loading("Processing rejection...");
+
+    try {
+      await usersAPI.rejectStaff(user.id, reason);
+      toast.success("Staff application rejected.", { id: toastId });
+      setUser({
+        ...user,
+        staff_profile: { ...user.staff_profile, is_staff_approved: false },
+      });
+    } catch (error: any) {
+      toast.error(error.message || "Failed to reject staff.", { id: toastId });
+    } finally {
+      setRejecting(false);
+    }
+  };
+
+  const handleDeleteUser = async () => {
+    if (!user) return;
+    const confirmed = confirm(`Are you sure you want to permanently delete ${user.fname} ${user.lname}? This action cannot be undone.`);
+    if (!confirmed) return;
+
+    setDeleting(true);
+    const toastId = toast.loading("Deleting user...");
+    try {
+      await usersAPI.deleteUser(user.id);
+      toast.success("User deleted successfully.", { id: toastId });
+      navigate("/admin/users");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to delete user.", { id: toastId });
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   // --- HELPERS ---
   const getInitials = () => {
     if (!user) return "U";
@@ -159,7 +231,6 @@ export default function UsersDetail() {
     if (Array.isArray(specs)) return specs;
     if (typeof specs === 'string') {
         try {
-            // Try to parse if it looks like a JSON array
             if (specs.startsWith('[')) {
                 return JSON.parse(specs);
             }
@@ -175,7 +246,13 @@ export default function UsersDetail() {
 
   if (!user) return <div className="min-h-screen bg-slate-50 flex items-center justify-center"><p className="text-slate-500">User not found.</p></div>;
 
-  const isDoctorApp = user.role === "doctor" || user.role === "pending";
+  // Determine what kind of pending application this is
+  const isPendingStaff = user.role === "pending" && !!user.staff_profile;
+  const isPendingDoctor = user.role === "pending" && !user.staff_profile;
+  const isApprovedDoctor = user.role === "doctor";
+  const isApprovedStaff = user.role === "staff";
+  const isDoctorApp = isPendingDoctor || isApprovedDoctor;
+  const isStaffApp = isPendingStaff || isApprovedStaff;
   const specializations = getSpecializations();
 
   return (
@@ -233,33 +310,69 @@ export default function UsersDetail() {
                             </div>
                         </div>
 
-                        {/* ADMIN ACTIONS */}
-                        {isDoctorApp && (
+                        {/* DOCTOR/STAFF ADMIN ACTIONS */}
+                        {isPendingDoctor && (
                             <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-                                {!user.doctor_profile?.is_doctor_approved ? (
-                                    <>
-                                        <button 
-                                            onClick={handleApproveDoctor}
-                                            disabled={approving}
-                                            className="px-5 py-2.5 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 transition shadow-md shadow-emerald-200 flex items-center justify-center gap-2 text-sm disabled:opacity-50"
-                                        >
-                                            {approving ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/> : <CheckCircle2 className="w-4 h-4" />}
-                                            Approve Doctor
-                                        </button>
-                                        <button 
-                                            onClick={handleRejectDoctor}
-                                            disabled={rejecting}
-                                            className="px-5 py-2.5 bg-white border border-rose-200 text-rose-600 font-bold rounded-xl hover:bg-rose-50 transition shadow-sm flex items-center justify-center gap-2 text-sm disabled:opacity-50"
-                                        >
-                                            <XCircle className="w-4 h-4" /> Reject
-                                        </button>
-                                    </>
-                                ) : (
-                                    <div className="px-5 py-2.5 bg-emerald-50 border border-emerald-100 text-emerald-700 rounded-xl font-bold flex items-center gap-2 text-sm">
-                                        <BadgeCheck className="w-5 h-5 fill-emerald-200" /> Account Approved
-                                    </div>
-                                )}
+                                <button 
+                                    onClick={handleApproveDoctor}
+                                    disabled={approving}
+                                    className="px-5 py-2.5 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 transition shadow-md shadow-emerald-200 flex items-center justify-center gap-2 text-sm disabled:opacity-50"
+                                >
+                                    {approving ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/> : <CheckCircle2 className="w-4 h-4" />}
+                                    Approve Doctor
+                                </button>
+                                <button 
+                                    onClick={handleRejectDoctor}
+                                    disabled={rejecting}
+                                    className="px-5 py-2.5 bg-white border border-rose-200 text-rose-600 font-bold rounded-xl hover:bg-rose-50 transition shadow-sm flex items-center justify-center gap-2 text-sm disabled:opacity-50"
+                                >
+                                    <XCircle className="w-4 h-4" /> Reject
+                                </button>
                             </div>
+                        )}
+                        {isApprovedDoctor && (
+                            <div className="flex items-center gap-3">
+                                <div className="px-5 py-2.5 bg-emerald-50 border border-emerald-100 text-emerald-700 rounded-xl font-bold flex items-center gap-2 text-sm">
+                                    <BadgeCheck className="w-5 h-5 fill-emerald-200" /> Doctor Approved
+                                </div>
+                                <button onClick={handleDeleteUser} disabled={deleting} className="px-4 py-2.5 bg-white border border-rose-200 text-rose-600 font-bold rounded-xl hover:bg-rose-50 transition shadow-sm flex items-center gap-2 text-sm disabled:opacity-50">
+                                    <Trash2 className="w-4 h-4" /> Delete
+                                </button>
+                            </div>
+                        )}
+                        {isPendingStaff && (
+                            <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+                                <button 
+                                    onClick={handleApproveStaff}
+                                    disabled={approving}
+                                    className="px-5 py-2.5 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 transition shadow-md shadow-emerald-200 flex items-center justify-center gap-2 text-sm disabled:opacity-50"
+                                >
+                                    {approving ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/> : <CheckCircle2 className="w-4 h-4" />}
+                                    Approve Staff
+                                </button>
+                                <button 
+                                    onClick={handleRejectStaff}
+                                    disabled={rejecting}
+                                    className="px-5 py-2.5 bg-white border border-rose-200 text-rose-600 font-bold rounded-xl hover:bg-rose-50 transition shadow-sm flex items-center justify-center gap-2 text-sm disabled:opacity-50"
+                                >
+                                    <XCircle className="w-4 h-4" /> Reject
+                                </button>
+                            </div>
+                        )}
+                        {isApprovedStaff && (
+                            <div className="flex items-center gap-3">
+                                <div className="px-5 py-2.5 bg-emerald-50 border border-emerald-100 text-emerald-700 rounded-xl font-bold flex items-center gap-2 text-sm">
+                                    <BadgeCheck className="w-5 h-5 fill-emerald-200" /> Staff Approved
+                                </div>
+                                <button onClick={handleDeleteUser} disabled={deleting} className="px-4 py-2.5 bg-white border border-rose-200 text-rose-600 font-bold rounded-xl hover:bg-rose-50 transition shadow-sm flex items-center gap-2 text-sm disabled:opacity-50">
+                                    <Trash2 className="w-4 h-4" /> Delete
+                                </button>
+                            </div>
+                        )}
+                        {!isDoctorApp && !isStaffApp && user.role !== "admin" && (
+                            <button onClick={handleDeleteUser} disabled={deleting} className="px-5 py-2.5 bg-white border border-rose-200 text-rose-600 font-bold rounded-xl hover:bg-rose-50 transition shadow-sm flex items-center gap-2 text-sm disabled:opacity-50">
+                                <Trash2 className="w-4 h-4" /> Delete Account
+                            </button>
                         )}
                     </div>
                 </div>
@@ -391,6 +504,55 @@ export default function UsersDetail() {
                             />
                         </div>
                     </div>
+                </>
+            )}
+
+            {/* STAFF CREDENTIALS (If Staff) */}
+            {isStaffApp && user.staff_profile && (
+                <>
+                    <div className="bg-white rounded-2xl shadow-sm p-6 border border-slate-100">
+                        <h3 className="font-bold text-slate-900 mb-6 text-lg flex items-center gap-2">
+                            <Briefcase className="w-5 h-5 text-teal-500" /> Staff Credentials
+                        </h3>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                                <p className="text-xs font-bold text-slate-400 uppercase mb-1">Job Title</p>
+                                <p className="text-xl font-bold text-slate-800">{user.staff_profile.job_title || "—"}</p>
+                            </div>
+                            <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                                <p className="text-xs font-bold text-slate-400 uppercase mb-1">Approval Status</p>
+                                <p className={`text-xl font-bold ${user.staff_profile.is_staff_approved ? 'text-emerald-600' : 'text-amber-600'}`}>
+                                    {user.staff_profile.is_staff_approved ? 'Approved' : 'Pending'}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Staff Verification Documents */}
+                    {(user.staff_profile.proof_front || user.staff_profile.proof_back || user.staff_profile.proof_selfie) && (
+                        <div className="bg-white rounded-2xl shadow-sm p-6 border border-slate-100">
+                            <h3 className="font-bold text-slate-900 mb-6 text-lg flex items-center gap-2">
+                                <ShieldCheck className="w-5 h-5 text-indigo-500" /> Verification Documents
+                            </h3>
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                <DocumentCard
+                                    title="ID (Front)"
+                                    imageUrl={user.staff_profile.proof_front}
+                                    onClick={() => setSelectedImage(user.staff_profile?.proof_front || null)}
+                                />
+                                <DocumentCard
+                                    title="ID (Back)"
+                                    imageUrl={user.staff_profile.proof_back}
+                                    onClick={() => setSelectedImage(user.staff_profile?.proof_back || null)}
+                                />
+                                <DocumentCard
+                                    title="Selfie with ID"
+                                    imageUrl={user.staff_profile.proof_selfie}
+                                    onClick={() => setSelectedImage(user.staff_profile?.proof_selfie || null)}
+                                />
+                            </div>
+                        </div>
+                    )}
                 </>
             )}
 

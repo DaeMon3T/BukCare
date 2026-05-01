@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, BackgroundTasks
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, Integer
 from typing import List, Optional
@@ -14,7 +14,9 @@ from pydantic import BaseModel
 from core.security import get_password_hash
 from models.medical_profile import MedicalProfile
 from models.doctor import Doctor, DoctorAvailability
+from models.doctor_staff_access import DoctorStaffAccess
 from sqlalchemy.orm import joinedload
+from utils.email import EmailService
 import json
 
 router = APIRouter()
@@ -32,6 +34,19 @@ def get_available_doctors_for_walkin(
     if current_user.role not in [UserRole.STAFF, UserRole.ADMIN]:
         raise HTTPException(status_code=403, detail="Not authorized")
 
+    # Staff can only see doctors who granted them can_book_walkins access
+    granted_doctor_ids = None
+    if current_user.role == UserRole.STAFF:
+        granted_doctor_ids = [
+            a.doctor_id for a in
+            db.query(DoctorStaffAccess).filter(
+                DoctorStaffAccess.staff_user_id == current_user.id,
+                DoctorStaffAccess.can_book_walkins == True
+            ).all()
+        ]
+        if not granted_doctor_ids:
+            return []  # No walk-in access granted
+
     doctors = (
         db.query(Doctor)
         .options(
@@ -43,6 +58,10 @@ def get_available_doctors_for_walkin(
         .filter(User.is_doctor_approved == True)
         .all()
     )
+
+    # Filter by granted access if staff
+    if granted_doctor_ids is not None:
+        doctors = [d for d in doctors if d.user_id in granted_doctor_ids]
 
     results = []
     for doc in doctors:
@@ -89,13 +108,22 @@ def search_patients(
     if current_user.role not in [UserRole.STAFF, UserRole.DOCTOR, UserRole.ADMIN]:
         raise HTTPException(status_code=403, detail="Not authorized")
 
+    # Staff needs at least one access grant to search patients
+    if current_user.role == UserRole.STAFF:
+        has_any_access = db.query(DoctorStaffAccess).filter(
+            DoctorStaffAccess.staff_user_id == current_user.id
+        ).first()
+        if not has_any_access:
+            raise HTTPException(status_code=403, detail="No doctor has granted you access")
+
     search_term = f"%{query}%"
     patients = db.query(User).filter(
         User.role == UserRole.PATIENT,
         or_(
             User.fname.ilike(search_term),
             User.lname.ilike(search_term),
-            User.email.ilike(search_term)
+            User.email.ilike(search_term),
+            User.contact_number.ilike(search_term)
         )
     ).limit(20).all()
 
@@ -119,6 +147,16 @@ async def quick_book_walkin(
     if current_user.role not in [UserRole.STAFF, UserRole.ADMIN]:
         raise HTTPException(status_code=403, detail="Only staff can book walk-ins")
 
+    # Staff needs can_book_walkins access for the target doctor
+    if current_user.role == UserRole.STAFF:
+        access = db.query(DoctorStaffAccess).filter(
+            DoctorStaffAccess.staff_user_id == current_user.id,
+            DoctorStaffAccess.doctor_id == appointment_data.doctor_id,
+            DoctorStaffAccess.can_book_walkins == True
+        ).first()
+        if not access:
+            raise HTTPException(status_code=403, detail="You don't have walk-in booking access for this doctor")
+
     if not appointment_data.patient_id:
         raise HTTPException(status_code=400, detail="Patient ID is required")
 
@@ -126,9 +164,9 @@ async def quick_book_walkin(
     appointment = Appointment(
         patient_id=appointment_data.patient_id,
         doctor_id=appointment_data.doctor_id,
-        appointment_date=datetime.utcnow(), # Walk-ins are usually immediate
+        appointment_date=appointment_data.appointment_date or datetime.utcnow(),
         reason=appointment_data.reason,
-        status=AppointmentStatus.CONFIRMED, # Auto-confirmed by staff
+        status=AppointmentStatus.CONFIRMED,
         appointment_type=AppointmentType.WALK_IN,
         notes=appointment_data.notes or "Walk-in consultation"
     )
@@ -179,14 +217,24 @@ async def quick_book_walkin(
     }
 
 @router.post("/register", response_model=dict)
-def register_walkin_patient(
+async def register_walkin_patient(
     patient_data: WalkInPatientCreate,
+    background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Register a new patient from the Walk-in counter (Staff Only)"""
     if current_user.role not in [UserRole.STAFF, UserRole.ADMIN]:
         raise HTTPException(status_code=403, detail="Only staff can register walk-in patients")
+
+    # Staff needs can_register_patients access from at least one doctor
+    if current_user.role == UserRole.STAFF:
+        has_register_access = db.query(DoctorStaffAccess).filter(
+            DoctorStaffAccess.staff_user_id == current_user.id,
+            DoctorStaffAccess.can_register_patients == True
+        ).first()
+        if not has_register_access:
+            raise HTTPException(status_code=403, detail="No doctor has granted you patient registration access")
 
     # Check if email is already taken
     existing_user = db.query(User).filter(User.email == patient_data.email).first()
@@ -225,6 +273,25 @@ def register_walkin_patient(
     medical_profile = MedicalProfile(user_id=new_user.id)
     db.add(medical_profile)
     db.commit()
+
+    # Send welcome email with temporary password
+    try:
+        html_body = EmailService.get_appointment_template(
+            action="walkin_welcome",
+            user_name=f"{new_user.fname} {new_user.lname}",
+            doctor_name="BukCare Staff",
+            date="",
+            time="",
+            reason=default_password
+        )
+        background_tasks.add_task(
+            EmailService.send_email,
+            recipients=[new_user.email],
+            subject="Your BukCare Account Has Been Created",
+            body=html_body
+        )
+    except Exception as e:
+        print(f"Failed to queue welcome email: {e}")
 
     return {
         "status": "success",

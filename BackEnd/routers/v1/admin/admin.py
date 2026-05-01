@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Body
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import func, case
@@ -72,7 +72,17 @@ def get_all_users(
                 "license_number": user.doctor_profile.license_number if user.doctor_profile else None,
                 "years_of_experience": user.doctor_profile.years_of_experience if user.doctor_profile else None,
                 "bio": user.doctor_profile.bio if user.doctor_profile else None,
-            } if user.doctor_profile else None
+                "is_doctor_approved": user.is_doctor_approved,
+                "specializations": user.doctor_profile.specializations_json if user.doctor_profile else None,
+            } if user.doctor_profile else None,
+            "staff_profile": {
+                "staff_id": user.staff_profile.staff_id if user.staff_profile else None,
+                "job_title": user.staff_profile.job_title if user.staff_profile else None,
+                "proof_front": user.staff_profile.proof_front if user.staff_profile else None,
+                "proof_back": user.staff_profile.proof_back if user.staff_profile else None,
+                "proof_selfie": user.staff_profile.proof_selfie if user.staff_profile else None,
+                "is_staff_approved": user.is_staff_approved,
+            } if user.staff_profile else None
         }
         for user in users
     ]
@@ -292,6 +302,36 @@ def reject_staff(
 
 
 # -----------------------------
+# Delete user (Admin)
+# -----------------------------
+@router.delete("/users/{user_id}")
+def delete_user(user_id: int, current_user: User = Depends(get_current_admin), db: Session = Depends(get_db)):
+    if user_id == current_user.id:
+        raise HTTPException(status_code=400, detail="You cannot delete your own account")
+
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    user_email = user.email
+    user_role = user.role.value if hasattr(user.role, 'value') else user.role
+
+    db.delete(user)
+    db.commit()
+
+    log_audit_action(
+        db=db,
+        action=AuditActionType.DELETE,
+        entity_name="User",
+        entity_id=user_id,
+        user_id=current_user.id,
+        details=f"Admin deleted user {user_id} ({user_email}, role: {user_role})"
+    )
+
+    return {"message": f"User {user_email} deleted successfully"}
+
+
+# -----------------------------
 # Update user status
 # -----------------------------
 @router.put("/users/{user_id}/status")
@@ -472,6 +512,88 @@ def export_report(
     except Exception as e:
         logger.error(f"Export Error: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to export report")
+
+# -----------------------------
+# Pending Count (lightweight, for Navbar badge)
+# -----------------------------
+@router.get("/pending-count")
+def get_pending_count(
+    current_user: User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    pending = db.query(func.count(User.id)).filter(User.role == UserRole.PENDING).scalar() or 0
+    return {"pending": int(pending)}
+
+
+# -----------------------------
+# Bulk Approve Users
+# -----------------------------
+@router.post("/users/bulk-approve")
+async def bulk_approve_users(
+    user_ids: List[int] = Body(..., embed=True),
+    current_user: User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    approved = []
+    for user_id in user_ids:
+        user = db.query(User).filter(User.id == user_id, User.role == UserRole.PENDING).first()
+        if not user:
+            continue
+        is_staff = db.query(Staff).filter(Staff.user_id == user_id).first() is not None
+        if is_staff:
+            user.is_staff_approved = True
+            user.role = UserRole.STAFF
+        else:
+            user.is_doctor_approved = True
+            user.role = UserRole.DOCTOR
+        user.approval_date = func.now()
+        user.approved_by = current_user.id
+        approved.append(user_id)
+        try:
+            if not is_staff:
+                send_doctor_approval_email(user)
+            await manager.send_personal_message(
+                {"type": "DOCTOR_APPROVED" if not is_staff else "STAFF_APPROVED",
+                 "title": "Application Approved",
+                 "message": "Congratulations! Your application has been approved."},
+                user_id=str(user_id)
+            )
+        except Exception as e:
+            logger.error(f"Notification error for user {user_id}: {e}")
+    db.commit()
+    log_audit_action(db=db, action=AuditActionType.UPDATE, entity_name="User",
+                     entity_id=0, user_id=current_user.id,
+                     details=f"Admin bulk approved users: {approved}")
+    return {"message": f"Approved {len(approved)} users", "approved_ids": approved}
+
+
+# -----------------------------
+# Bulk Reject Users
+# -----------------------------
+@router.post("/users/bulk-reject")
+def bulk_reject_users(
+    user_ids: List[int] = Body(..., embed=True),
+    reason: Optional[str] = Body(None, embed=True),
+    current_user: User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    rejected = []
+    for user_id in user_ids:
+        user = db.query(User).filter(User.id == user_id, User.role == UserRole.PENDING).first()
+        if not user:
+            continue
+        try:
+            send_doctor_rejection_email(user, reason)
+        except Exception as e:
+            logger.error(f"Rejection email error for {user.email}: {e}")
+        db.delete(user)
+        rejected.append(user_id)
+    db.commit()
+    log_audit_action(db=db, action=AuditActionType.DELETE, entity_name="User",
+                     entity_id=0, user_id=current_user.id,
+                     details=f"Admin bulk rejected users: {rejected}. Reason: {reason or 'None'}")
+    return {"message": f"Rejected {len(rejected)} users", "rejected_ids": rejected}
+
 
 # -----------------------------
 # GET Audit Logs
