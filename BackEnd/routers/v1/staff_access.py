@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from typing import List, Optional
 from pydantic import BaseModel
 
@@ -67,26 +67,30 @@ def get_my_staff(
     if current_user.role != UserRole.DOCTOR:
         raise HTTPException(status_code=403, detail="Only doctors can manage staff access")
 
-    access_list = db.query(DoctorStaffAccess).filter_by(doctor_id=current_user.id).all()
+    access_list = (
+        db.query(DoctorStaffAccess)
+        .filter(DoctorStaffAccess.doctor_id == current_user.id)
+        .options(joinedload(DoctorStaffAccess.staff))
+        .all()
+    )
 
-    results = []
-    for access in access_list:
-        staff_user = db.query(User).filter_by(id=access.staff_user_id).first()
-        if staff_user:
-            results.append(StaffAccessResponse(
-                id=access.id,
-                doctor_id=access.doctor_id,
-                staff_user_id=access.staff_user_id,
-                staff_name=f"{staff_user.fname} {staff_user.lname}",
-                staff_email=staff_user.email,
-                staff_picture=staff_user.picture,
-                can_view_appointments=access.can_view_appointments,
-                can_manage_appointments=access.can_manage_appointments,
-                can_book_walkins=access.can_book_walkins,
-                can_register_patients=access.can_register_patients,
-                granted_at=access.granted_at.isoformat() if access.granted_at else None,
-            ))
-    return results
+    return [
+        StaffAccessResponse(
+            id=access.id,
+            doctor_id=access.doctor_id,
+            staff_user_id=access.staff_user_id,
+            staff_name=f"{access.staff.fname} {access.staff.lname}",
+            staff_email=access.staff.email,
+            staff_picture=access.staff.picture,
+            can_view_appointments=access.can_view_appointments,
+            can_manage_appointments=access.can_manage_appointments,
+            can_book_walkins=access.can_book_walkins,
+            can_register_patients=access.can_register_patients,
+            granted_at=access.granted_at.isoformat() if access.granted_at else None,
+        )
+        for access in access_list
+        if access.staff
+    ]
 
 
 @router.get("/available-staff", response_model=List[dict])
@@ -205,14 +209,13 @@ def update_access(
     db.commit()
     db.refresh(access)
 
-    staff_user = db.query(User).filter_by(id=access.staff_user_id).first()
     return StaffAccessResponse(
         id=access.id,
         doctor_id=access.doctor_id,
         staff_user_id=access.staff_user_id,
-        staff_name=f"{staff_user.fname} {staff_user.lname}" if staff_user else "Unknown",
-        staff_email=staff_user.email if staff_user else "",
-        staff_picture=staff_user.picture if staff_user else None,
+        staff_name=f"{access.staff.fname} {access.staff.lname}" if access.staff else "Unknown",
+        staff_email=access.staff.email if access.staff else "",
+        staff_picture=access.staff.picture if access.staff else None,
         can_view_appointments=access.can_view_appointments,
         can_manage_appointments=access.can_manage_appointments,
         can_book_walkins=access.can_book_walkins,
@@ -256,22 +259,26 @@ def get_my_doctors(
     if current_user.role != UserRole.STAFF:
         raise HTTPException(status_code=403, detail="Only staff can view their assigned doctors")
 
-    access_list = db.query(DoctorStaffAccess).filter_by(staff_user_id=current_user.id).all()
+    access_list = (
+        db.query(DoctorStaffAccess)
+        .filter(DoctorStaffAccess.staff_user_id == current_user.id)
+        .options(joinedload(DoctorStaffAccess.doctor))
+        .all()
+    )
 
-    results = []
-    for access in access_list:
-        doctor_user = db.query(User).filter_by(id=access.doctor_id).first()
-        if doctor_user:
-            results.append(DoctorAccessResponse(
-                id=access.id,
-                doctor_id=access.doctor_id,
-                doctor_name=f"{doctor_user.fname} {doctor_user.lname}",
-                doctor_email=doctor_user.email,
-                doctor_picture=doctor_user.picture,
-                can_view_appointments=access.can_view_appointments,
-                can_manage_appointments=access.can_manage_appointments,
-                can_book_walkins=access.can_book_walkins,
-                can_register_patients=access.can_register_patients,
-                granted_at=access.granted_at.isoformat() if access.granted_at else None,
-            ))
-    return results
+    return [
+        DoctorAccessResponse(
+            id=access.id,
+            doctor_id=access.doctor_id,
+            doctor_name=f"{access.doctor.fname} {access.doctor.lname}",
+            doctor_email=access.doctor.email,
+            doctor_picture=access.doctor.picture,
+            can_view_appointments=access.can_view_appointments,
+            can_manage_appointments=access.can_manage_appointments,
+            can_book_walkins=access.can_book_walkins,
+            can_register_patients=access.can_register_patients,
+            granted_at=access.granted_at.isoformat() if access.granted_at else None,
+        )
+        for access in access_list
+        if access.doctor
+    ]

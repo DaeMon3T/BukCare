@@ -66,6 +66,7 @@ const ManageStaffAccess: FC = () => {
   const [selectedPreset, setSelectedPreset] = useState<string>("observer");
   const [updatingId, setUpdatingId] = useState<number | null>(null);
   const [revokingId, setRevokingId] = useState<number | null>(null);
+  const [revokeTarget, setRevokeTarget] = useState<{ id: number; name: string } | null>(null);
 
   useEffect(() => {
     fetchStaffList();
@@ -140,19 +141,31 @@ const ManageStaffAccess: FC = () => {
     }
   };
 
-  const handleRevoke = async (accessId: number) => {
-    if (!confirm("Are you sure you want to revoke this staff member's access?"))
-      return;
+  const handleRevoke = (accessId: number, staffName: string) => {
+    setRevokeTarget({ id: accessId, name: staffName });
+  };
+
+  const handleConfirmRevoke = async () => {
+    if (!revokeTarget) return;
     try {
-      setRevokingId(accessId);
-      await StaffAccessAPI.revokeAccess(accessId);
-      setStaffList((prev) => prev.filter((s) => s.id !== accessId));
+      setRevokingId(revokeTarget.id);
+      await StaffAccessAPI.revokeAccess(revokeTarget.id);
+      setStaffList((prev) => prev.filter((s) => s.id !== revokeTarget.id));
       toast.success("Staff access revoked");
+      setRevokeTarget(null);
     } catch (error: any) {
       toast.error("Failed to revoke access");
     } finally {
       setRevokingId(null);
     }
+  };
+
+  const formatGrantedAt = (grantedAt: string | null | undefined): string => {
+    if (!grantedAt) return "";
+    const days = Math.floor((Date.now() - new Date(grantedAt).getTime()) / 86400000);
+    if (days === 0) return "Granted today";
+    if (days === 1) return "Granted yesterday";
+    return `Granted ${days}d ago`;
   };
 
   const getActivePreset = (access: StaffAccessRecord): string => {
@@ -306,6 +319,11 @@ const ManageStaffAccess: FC = () => {
                         <p className="text-sm text-slate-500">
                           {access.staff_email}
                         </p>
+                        {access.granted_at && (
+                          <p className="text-xs text-slate-400 mt-0.5">
+                            {formatGrantedAt(access.granted_at)}
+                          </p>
+                        )}
                       </div>
                     </div>
 
@@ -327,7 +345,7 @@ const ManageStaffAccess: FC = () => {
                       </span>
 
                       <button
-                        onClick={() => handleRevoke(access.id)}
+                        onClick={() => handleRevoke(access.id, access.staff_name)}
                         disabled={revokingId === access.id}
                         className="p-2 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
                         title="Revoke access"
@@ -399,6 +417,43 @@ const ManageStaffAccess: FC = () => {
           </div>
         )}
       </main>
+
+      {/* Revoke Confirmation Modal */}
+      {revokeTarget && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[9999] p-4">
+          <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden">
+            <div className="bg-rose-50 p-6 flex flex-col items-center text-center border-b border-rose-100">
+              <div className="w-12 h-12 bg-rose-100 rounded-full flex items-center justify-center mb-3 text-rose-600">
+                <Trash2 className="w-6 h-6" />
+              </div>
+              <h3 className="text-lg font-bold text-slate-900">Revoke Access?</h3>
+              <p className="text-sm text-slate-500 mt-1.5">
+                <span className="font-semibold text-slate-700">{revokeTarget.name}</span> will lose all access to your records immediately.
+              </p>
+            </div>
+            <div className="p-5 flex gap-3">
+              <button
+                onClick={() => setRevokeTarget(null)}
+                disabled={revokingId === revokeTarget.id}
+                className="flex-1 py-2.5 rounded-xl text-sm font-bold border border-slate-200 text-slate-600 hover:bg-slate-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmRevoke}
+                disabled={revokingId === revokeTarget.id}
+                className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white bg-rose-600 hover:bg-rose-700 shadow-lg shadow-rose-200 flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                {revokingId === revokeTarget.id ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  "Revoke Access"
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Add Staff Modal */}
       {showAddModal && (

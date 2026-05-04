@@ -52,7 +52,6 @@ interface Appointment {
   status: string;
   specialization?: string;
   notes?: string | null;
-  appointment_type?: "online" | "walk_in";
 }
 
 interface Hospital {
@@ -100,7 +99,7 @@ const PatientDashboard = () => {
   const { user } = useAuth();
   const { lastMessage } = useWebSocket();
   const navigate = useNavigate();
-  
+
   const { notifications } = useNotifications(user?.id ? Number(user.id) : undefined);
   const unreadCount = notifications.filter(n => !n.is_read).length;
 
@@ -255,7 +254,7 @@ const PatientDashboard = () => {
         </div>
       </div>
     );
-  
+
   // ─── RENDER ───
   return (
     <div className="min-h-screen bg-white font-sans text-slate-800">
@@ -298,7 +297,7 @@ const PatientDashboard = () => {
             >
               <QrCode className="w-4 h-4 text-slate-600" />
             </button>
-            <button 
+            <button
               onClick={() => {
                 if (unreadCount > 0) {
                   toast(`You have ${unreadCount} unread notification${unreadCount > 1 ? 's' : ''}`);
@@ -441,10 +440,10 @@ const PatientDashboard = () => {
                 <div className="relative flex-shrink-0">
                   <div className="w-14 h-14 rounded-full border-[3px] border-white/50 overflow-hidden bg-blue-400 flex items-center justify-center">
                     {allDoctors.find(d => d.doctor_id === nextAppointment.doctor_id || d.name === nextAppointment.doctor_name)?.avatar ? (
-                      <img 
-                        src={allDoctors.find(d => d.doctor_id === nextAppointment.doctor_id || d.name === nextAppointment.doctor_name)?.avatar} 
-                        alt={nextAppointment.doctor_name} 
-                        className="w-full h-full object-cover" 
+                      <img
+                        src={allDoctors.find(d => d.doctor_id === nextAppointment.doctor_id || d.name === nextAppointment.doctor_name)?.avatar}
+                        alt={nextAppointment.doctor_name}
+                        className="w-full h-full object-cover"
                       />
                     ) : (
                       <User className="w-7 h-7 text-white/80" />
@@ -538,9 +537,9 @@ const PatientDashboard = () => {
         <div>
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-base font-bold text-slate-900">Nearby Hospitals</h3>
-            <button 
-                onClick={() => navigate("/patient/locator")}
-                className="text-xs font-semibold text-blue-500 hover:text-blue-600"
+            <button
+              onClick={() => navigate("/patient/locator")}
+              className="text-xs font-semibold text-blue-500 hover:text-blue-600"
             >
               See All
             </button>

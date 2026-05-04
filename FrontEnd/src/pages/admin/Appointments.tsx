@@ -17,6 +17,8 @@ import {
   Bell,
   ChevronUp,
   ChevronDown,
+  MoreVertical,
+  Trash2,
 } from "lucide-react";
 import { useWebSocket } from "@/context/WebSocketContext";
 import RescheduleModal from "@/components/RescheduleModal";
@@ -34,11 +36,11 @@ interface Appointment {
   created_at: string;
   updated_at: string;
   patient_avatar?: string;
-  appointment_type?: "online" | "walk_in";
 }
 
 type SortKey = "date" | "patient" | "doctor" | "status";
 type SortDir = "asc" | "desc";
+type FilterTab = "all" | "pending" | "confirmed" | "completed" | "expired" | "cancelled";
 
 const STATUS_ORDER: Record<string, number> = { pending: 0, confirmed: 1, completed: 2, cancelled: 3, expired: 4 };
 
@@ -47,11 +49,14 @@ const AdminAppointments = () => {
 
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<"all" | "pending" | "confirmed" | "completed" | "cancelled">("all");
+  const [filter, setFilter] = useState<FilterTab>("all");
   const [sortKey, setSortKey] = useState<SortKey>("date");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [searchTerm, setSearchTerm] = useState("");
   const [sendingReminders, setSendingReminders] = useState(false);
+
+  // Meatball menu
+  const [menuState, setMenuState] = useState<{ id: number; top: number; right: number } | null>(null);
 
   const [rescheduleData, setRescheduleData] = useState<{ id: number; date: string } | null>(null);
   const [cancelData, setCancelData] = useState<{ id: number; patientName: string } | null>(null);
@@ -118,6 +123,12 @@ const AdminAppointments = () => {
     }
   };
 
+  const openMenu = (e: React.MouseEvent<HTMLButtonElement>, id: number) => {
+    e.stopPropagation();
+    const r = e.currentTarget.getBoundingClientRect();
+    setMenuState({ id, top: r.bottom + 4, right: window.innerWidth - r.right });
+  };
+
   const handleSendReminders = async () => {
     setSendingReminders(true);
     try {
@@ -141,7 +152,6 @@ const AdminAppointments = () => {
           a.doctor_name,
           d.toLocaleDateString(),
           d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-          a.appointment_type === "walk_in" ? "Walk-in" : "Online",
           a.status,
           a.reason || "",
         ];
@@ -192,11 +202,14 @@ const AdminAppointments = () => {
       });
   }, [appointments, filter, searchTerm, sortKey, sortDir]);
 
+  const menuAppt = menuState ? appointments.find((a) => a.id === menuState.id) : null;
+
   const counts = useMemo(() => ({
     all: appointments.length,
     pending: appointments.filter((a) => a.status === "pending").length,
     confirmed: appointments.filter((a) => a.status === "confirmed").length,
     completed: appointments.filter((a) => a.status === "completed").length,
+    expired: appointments.filter((a) => a.status === "expired").length,
     cancelled: appointments.filter((a) => a.status === "cancelled").length,
   }), [appointments]);
 
@@ -212,12 +225,12 @@ const AdminAppointments = () => {
 
   const getStatusStyles = (s: string) => {
     switch (s) {
-      case "pending":   return { badge: "bg-amber-100 text-amber-700 border-amber-200", icon: AlertCircle, label: "Pending" };
+      case "pending": return { badge: "bg-amber-100 text-amber-700 border-amber-200", icon: AlertCircle, label: "Pending" };
       case "confirmed": return { badge: "bg-emerald-100 text-emerald-700 border-emerald-200", icon: CheckCircle, label: "Confirmed" };
       case "completed": return { badge: "bg-blue-100 text-blue-700 border-blue-200", icon: CheckCircle, label: "Completed" };
       case "cancelled": return { badge: "bg-rose-100 text-rose-700 border-rose-200", icon: XCircle, label: "Cancelled" };
-      case "expired":   return { badge: "bg-gray-50 text-gray-400 border-gray-100 italic", icon: Clock, label: "Expired" };
-      default:          return { badge: "bg-slate-100 text-slate-700 border-slate-200", icon: AlertCircle, label: s };
+      case "expired": return { badge: "bg-gray-50 text-gray-400 border-gray-100 italic", icon: Clock, label: "Expired" };
+      default: return { badge: "bg-slate-100 text-slate-700 border-slate-200", icon: AlertCircle, label: s };
     }
   };
 
@@ -331,20 +344,57 @@ const AdminAppointments = () => {
           </div>
         </div>
 
+        {/* Fixed meatball menu portal */}
+        {menuState && menuAppt && (
+          <>
+            <div className="fixed inset-0 z-40" onClick={() => setMenuState(null)} />
+            <div className="fixed z-50 w-52 bg-white rounded-xl shadow-xl border border-slate-100 py-1.5 overflow-hidden" style={{ top: menuState.top, right: menuState.right }}>
+              {menuAppt.status === "pending" && (
+                <>
+                  <button onClick={() => { updateStatus(menuAppt.id, "confirmed"); setMenuState(null); }} className="w-full text-left px-4 py-2.5 text-sm font-medium text-emerald-700 hover:bg-emerald-50 flex items-center gap-2.5 transition-colors">
+                    <Check className="w-4 h-4" /> Confirm
+                  </button>
+                  <button onClick={() => { setRescheduleData({ id: menuAppt.id, date: formatDateTime(menuAppt.appointment_date).displayString }); setMenuState(null); }} className="w-full text-left px-4 py-2.5 text-sm font-medium text-amber-700 hover:bg-amber-50 flex items-center gap-2.5 transition-colors">
+                    <RefreshCw className="w-4 h-4" /> Reschedule
+                  </button>
+                  <button onClick={() => { openCancelModal(menuAppt.id, menuAppt.patient_name); setMenuState(null); }} className="w-full text-left px-4 py-2.5 text-sm font-medium text-rose-600 hover:bg-rose-50 flex items-center gap-2.5 transition-colors">
+                    <XCircle className="w-4 h-4" /> Cancel
+                  </button>
+                </>
+              )}
+              {menuAppt.status === "confirmed" && (
+                <>
+                  <button onClick={() => { updateStatus(menuAppt.id, "completed"); setMenuState(null); }} className="w-full text-left px-4 py-2.5 text-sm font-medium text-blue-700 hover:bg-blue-50 flex items-center gap-2.5 transition-colors">
+                    <CheckCircle className="w-4 h-4" /> Complete
+                  </button>
+                  <button onClick={() => { setRescheduleData({ id: menuAppt.id, date: formatDateTime(menuAppt.appointment_date).displayString }); setMenuState(null); }} className="w-full text-left px-4 py-2.5 text-sm font-medium text-amber-700 hover:bg-amber-50 flex items-center gap-2.5 transition-colors">
+                    <RefreshCw className="w-4 h-4" /> Reschedule
+                  </button>
+                  <button onClick={() => { openCancelModal(menuAppt.id, menuAppt.patient_name); setMenuState(null); }} className="w-full text-left px-4 py-2.5 text-sm font-medium text-rose-600 hover:bg-rose-50 flex items-center gap-2.5 transition-colors">
+                    <XCircle className="w-4 h-4" /> Cancel
+                  </button>
+                </>
+              )}
+              {(menuAppt.status === "completed" || menuAppt.status === "cancelled" || menuAppt.status === "expired") && (
+                <div className="px-4 py-2.5 text-sm text-slate-400 italic">No further actions</div>
+              )}
+            </div>
+          </>
+        )}
+
         {/* Filter Tabs */}
         <div className="flex overflow-x-auto pb-2 gap-2 mb-6 scrollbar-hide">
-          {(["all", "pending", "confirmed", "completed", "cancelled"] as const).map((f) => {
-            const count = counts[f];
+          {(["all", "pending", "confirmed", "completed", "expired", "cancelled"] as const).map((f) => {
+            const count = counts[f as keyof typeof counts];
             const isActive = filter === f;
             return (
               <button
                 key={f}
                 onClick={() => setFilter(f)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap flex-shrink-0 border ${
-                  isActive
+                className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap flex-shrink-0 border ${isActive
                     ? "bg-slate-800 text-white border-slate-800 shadow-md shadow-slate-200"
                     : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50 hover:border-slate-300"
-                }`}
+                  }`}
               >
                 {f.charAt(0).toUpperCase() + f.slice(1)}
                 {count > 0 && (
@@ -438,50 +488,19 @@ const AdminAppointments = () => {
                         </td>
                         {/* Status */}
                         <td className="py-4 px-5">
-                          <div className="flex flex-col gap-1.5">
-                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold border w-fit ${s.badge}`}>
-                              <StatusIcon className="w-3.5 h-3.5" /> {s.label}
-                            </span>
-                            <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold border w-fit ${appt.appointment_type === "walk_in" ? "bg-purple-50 text-purple-700 border-purple-200" : "bg-sky-50 text-sky-700 border-sky-200"}`}>
-                              {appt.appointment_type === "walk_in" ? "Walk-in" : "Online"}
-                            </span>
-                          </div>
+                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${s.badge}`}>
+                            <StatusIcon className="w-3.5 h-3.5" /> {s.label}
+                          </span>
                         </td>
                         {/* Actions */}
                         <td className="py-4 px-6 text-right">
-                          <div className="flex items-center justify-end gap-2 opacity-50 group-hover:opacity-100 transition-opacity">
-                            {appt.status === "pending" && (
-                              <>
-                                <button onClick={() => updateStatus(appt.id, "confirmed")} className="p-1.5 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border border-emerald-100 transition-all" title="Confirm">
-                                  <Check className="w-4 h-4" />
-                                </button>
-                                <button onClick={() => setRescheduleData({ id: appt.id, date: displayString })} className="p-1.5 rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-100 border border-amber-100 transition-all" title="Reschedule">
-                                  <RefreshCw className="w-4 h-4" />
-                                </button>
-                                <button onClick={() => openCancelModal(appt.id, appt.patient_name)} className="p-1.5 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100 border border-rose-100 transition-all" title="Cancel">
-                                  <XCircle className="w-4 h-4" />
-                                </button>
-                              </>
-                            )}
-                            {appt.status === "confirmed" && (
-                              <>
-                                <button onClick={() => updateStatus(appt.id, "completed")} className="px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-bold hover:bg-blue-700 shadow-sm transition-all">
-                                  Complete
-                                </button>
-                                <button onClick={() => setRescheduleData({ id: appt.id, date: displayString })} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-amber-600 transition-colors" title="Reschedule">
-                                  <RefreshCw className="w-4 h-4" />
-                                </button>
-                                <button onClick={() => openCancelModal(appt.id, appt.patient_name)} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-rose-600 transition-colors" title="Cancel">
-                                  <XCircle className="w-4 h-4" />
-                                </button>
-                              </>
-                            )}
-                            {(appt.status === "completed" || appt.status === "cancelled" || appt.status === "expired") && (
-                              <span className="text-xs font-bold text-slate-400 italic px-2">
-                                {appt.status === "completed" ? "Completed" : appt.status === "cancelled" ? "Cancelled" : "Expired"}
-                              </span>
-                            )}
-                          </div>
+                          {(appt.status === "pending" || appt.status === "confirmed") ? (
+                            <button onClick={(e) => openMenu(e, appt.id)} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 opacity-0 group-hover:opacity-100 transition-all">
+                              <MoreVertical className="w-4 h-4" />
+                            </button>
+                          ) : (
+                            <span className="text-xs text-slate-400 italic px-2">{appt.status === "completed" ? "Done" : appt.status === "expired" ? "Expired" : "Cancelled"}</span>
+                          )}
                         </td>
                       </tr>
                     );
@@ -491,60 +510,45 @@ const AdminAppointments = () => {
             </div>
 
             {/* Mobile Cards */}
-            <div className="md:hidden space-y-4">
+            <div className="md:hidden space-y-3">
               {filteredAppointments.map((appt) => {
-                const { date, time, displayString } = formatDateTime(appt.appointment_date);
+                const { date, time } = formatDateTime(appt.appointment_date);
                 const s = getStatusStyles(appt.status);
                 const StatusIcon = s.icon;
 
                 return (
-                  <div key={appt.id} className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
-                    <div className="flex justify-between items-start mb-3">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center text-blue-600 border border-blue-100">
+                  <div key={appt.id} className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+                    <div className="flex items-start justify-between gap-3 mb-3">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center text-blue-600 border border-blue-100 flex-shrink-0">
                           {appt.patient_avatar ? <img src={appt.patient_avatar} className="w-full h-full rounded-xl object-cover" /> : <User className="w-5 h-5" />}
                         </div>
-                        <div>
-                          <p className="text-sm font-bold text-slate-900">{appt.patient_name}</p>
-                          <p className="text-xs text-slate-500">Dr. {appt.doctor_name}</p>
+                        <div className="min-w-0">
+                          <p className="text-sm font-bold text-slate-900 truncate">{appt.patient_name}</p>
+                          <p className="text-xs text-slate-500 truncate">Dr. {appt.doctor_name}</p>
                         </div>
                       </div>
-                      <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold border ${s.badge}`}>
-                        <StatusIcon className="w-3 h-3" /> {s.label}
-                      </span>
-                    </div>
-                    <div className="bg-slate-50 rounded-xl p-3 space-y-2 border border-slate-100 mb-3">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-slate-500">Date:</span>
-                        <span className="font-semibold text-slate-900">{date}</span>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold border ${s.badge}`}>
+                          <StatusIcon className="w-3 h-3" /> {s.label}
+                        </span>
+                        {(appt.status === "pending" || appt.status === "confirmed") && (
+                          <button onClick={(e) => openMenu(e, appt.id)} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400">
+                            <MoreVertical className="w-4 h-4" />
+                          </button>
+                        )}
                       </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-slate-500">Time:</span>
-                        <span className="font-semibold text-slate-900">{time}</span>
+                    </div>
+                    <div className="bg-slate-50 rounded-xl p-3 text-sm border border-slate-100">
+                      <div className="flex justify-between mb-1">
+                        <span className="text-slate-500">Date</span>
+                        <span className="font-semibold text-slate-800">{date}</span>
                       </div>
-                      {appt.reason && (
-                        <div className="pt-2 border-t border-slate-200 text-xs text-slate-500 italic">"{appt.reason}"</div>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2 mb-3">
-                      <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${appt.appointment_type === "walk_in" ? "bg-purple-50 text-purple-700 border-purple-200" : "bg-sky-50 text-sky-700 border-sky-200"}`}>
-                        {appt.appointment_type === "walk_in" ? "Walk-in" : "Online"}
-                      </span>
-                    </div>
-                    <div className="flex gap-2 flex-wrap">
-                      {appt.status === "pending" && (
-                        <>
-                          <button onClick={() => updateStatus(appt.id, "confirmed")} className="flex-1 py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-bold shadow-sm">Confirm</button>
-                          <button onClick={() => setRescheduleData({ id: appt.id, date: displayString })} className="p-2.5 bg-amber-100 text-amber-700 rounded-xl"><RefreshCw className="w-5 h-5" /></button>
-                          <button onClick={() => openCancelModal(appt.id, appt.patient_name)} className="p-2.5 bg-rose-100 text-rose-700 rounded-xl"><XCircle className="w-5 h-5" /></button>
-                        </>
-                      )}
-                      {appt.status === "confirmed" && (
-                        <>
-                          <button onClick={() => updateStatus(appt.id, "completed")} className="flex-1 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-bold shadow-sm">Complete</button>
-                          <button onClick={() => openCancelModal(appt.id, appt.patient_name)} className="p-2.5 bg-slate-100 text-slate-600 rounded-xl border border-slate-200">Cancel</button>
-                        </>
-                      )}
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">Time</span>
+                        <span className="font-semibold text-slate-800">{time}</span>
+                      </div>
+                      {appt.reason && <p className="text-xs italic text-slate-500 border-t border-slate-200 pt-2 mt-2 truncate">"{appt.reason}"</p>}
                     </div>
                   </div>
                 );
