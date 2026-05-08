@@ -103,6 +103,10 @@ def handle_google_auth(idinfo: dict, db: Session, redirect_flow: bool = False):
     if user.role == UserRole.DOCTOR and not user.is_doctor_approved:
         raise HTTPException(status_code=403, detail="Your doctor account is pending approval.")
 
+    # Block staff who are not approved yet
+    if user.role == UserRole.STAFF and not user.is_staff_approved:
+        raise HTTPException(status_code=403, detail="Your staff account is pending approval.")
+
     # -----------------------------
     # Token generation
     # -----------------------------
@@ -161,6 +165,10 @@ def login(data: LoginRequest, db: Session = Depends(get_db)):
     # Block unapproved doctors
     if user.role == UserRole.DOCTOR and not user.is_doctor_approved:
         raise HTTPException(status_code=403, detail="Your doctor account is pending approval.")
+
+    # Block unapproved staff
+    if user.role == UserRole.STAFF and not user.is_staff_approved:
+        raise HTTPException(status_code=403, detail="Your staff account is pending approval.")
 
     # Ensure role exists
     if not user.role:

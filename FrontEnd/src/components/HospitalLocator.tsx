@@ -156,11 +156,21 @@ const HospitalLocator: React.FC = () => {
 
   // ── 1. Geolocation ──
   useEffect(() => {
+    // Fallback coordinates for dev testing over non-HTTPS LAN IP
+    const fallbackCoords: [number, number] = [8.125631, 125.132187]; 
+    
+    // Automatically use fallback if geolocation isn't even available (insecure context)
     if (!navigator.geolocation) {
-      setErrorMsg("Geolocation is not supported by your browser.");
-      setLoading(false);
+      if (import.meta.env.DEV) {
+        setUserLoc(fallbackCoords);
+        fetchHospitals(fallbackCoords[0], fallbackCoords[1]);
+      } else {
+        setErrorMsg("Geolocation requires HTTPS or localhost.");
+        setLoading(false);
+      }
       return;
     }
+
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const coords: [number, number] = [pos.coords.latitude, pos.coords.longitude];
@@ -168,8 +178,14 @@ const HospitalLocator: React.FC = () => {
         fetchHospitals(coords[0], coords[1]);
       },
       () => {
-        setErrorMsg("Allow location permissions to find nearby hospitals.");
-        setLoading(false);
+        // Fallback horizontally if user denies or HTTP blocks it softly
+        if (import.meta.env.DEV) {
+          setUserLoc(fallbackCoords);
+          fetchHospitals(fallbackCoords[0], fallbackCoords[1]);
+        } else {
+          setErrorMsg("Allow location permissions to find nearby hospitals.");
+          setLoading(false);
+        }
       },
       { enableHighAccuracy: true }
     );

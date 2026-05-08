@@ -136,6 +136,31 @@ class EmailService:
             """
             button_text = "Leave a Review"
 
+        elif action == "reminder":
+            title = "Appointment Reminder"
+            headline_color = colors["warning"]
+            main_icon = icons["rescheduled"]
+            message_body = f"""
+                <p>Hi <strong>{user_name}</strong>,</p>
+                <p>This is a friendly reminder that you have an upcoming appointment with <strong>Dr. {doctor_name}</strong> in less than 24 hours.</p>
+                <p>Please make sure to be on time and bring any relevant documents.</p>
+            """
+            button_text = "View Appointment"
+            button_color = colors["warning"]
+
+        elif action == "walkin_welcome":
+            title = "Welcome to BukCare"
+            headline_color = colors["success"]
+            main_icon = icons["approved"]
+            message_body = f"""
+                <p>Hi <strong>{user_name}</strong>,</p>
+                <p>A BukCare patient account has been created for you by our reception staff.</p>
+                <p>Your temporary password is: <strong style="font-size:18px; color:#1E293B;">{reason}</strong></p>
+                <p style="color:#DC2626;">Please log in and change your password immediately for security.</p>
+            """
+            button_text = "Log In Now"
+            button_color = colors["success"]
+
         # HTML STRUCTURE
         return f"""
         <!DOCTYPE html>

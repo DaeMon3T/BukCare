@@ -92,17 +92,23 @@ async def complete_profile(
     user.city_id = city_code
     user.barangay_id = barangay_code
 
-    user.role = (
+    requested_role = (
         UserRole.DOCTOR if role.lower() == "doctor"
         else UserRole.STAFF if role.lower() == "staff"
         else UserRole.PATIENT if role.lower() == "patient"
         else UserRole.PENDING
     )
 
+    # Doctors and Staff require admin approval — keep as PENDING
+    if requested_role in (UserRole.DOCTOR, UserRole.STAFF):
+        user.role = UserRole.PENDING
+    else:
+        user.role = requested_role
+
     # ------------------------------------------------------------------
     # DOCTOR LOGIC
     # ------------------------------------------------------------------
-    if user.role == UserRole.DOCTOR:
+    if requested_role == UserRole.DOCTOR:
         doctor = db.query(Doctor).filter_by(user_id=user.id).first()
         if not doctor:
             doctor = Doctor(user_id=user.id)
@@ -171,7 +177,7 @@ async def complete_profile(
     # ------------------------------------------------------------------
     # STAFF LOGIC
     # ------------------------------------------------------------------
-    elif user.role == UserRole.STAFF:
+    elif requested_role == UserRole.STAFF:
         staff = db.query(Staff).filter_by(user_id=user.id).first()
         if not staff:
             staff = Staff(user_id=user.id)

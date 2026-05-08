@@ -34,6 +34,8 @@ import {
 
 import Navbar from "@/components/Navbar";
 import api from "@/services/api";
+import StaffAccessAPI from "@/services/staff/StaffAccessAPI";
+import type { DoctorAccessRecord } from "@/services/staff/StaffAccessAPI";
 import appointmentpic from "@/assets/images/appointment.png";
 import pendingpic from "@/assets/images/pending.png";
 import confirmedpic from "@/assets/images/confirmed.png";
@@ -104,11 +106,22 @@ const StaffDashboard: FC = () => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const [assignedDoctors, setAssignedDoctors] = useState<DoctorAccessRecord[]>([]);
 
   // ─── Data Fetching ────────────────────────────────────────────────
   useEffect(() => {
     fetchData();
+    fetchAssignedDoctors();
   }, []);
+
+  const fetchAssignedDoctors = async () => {
+    try {
+      const data = await StaffAccessAPI.getMyDoctors();
+      setAssignedDoctors(data);
+    } catch (error: any) {
+      console.error("Failed to load assigned doctors:", error);
+    }
+  };
 
   const fetchData = async () => {
     try {
@@ -539,6 +552,51 @@ const StaffDashboard: FC = () => {
             </div>
           </div>
         </div>
+
+        {/* ─── Assigned Doctors Banner ─────────────────────────────── */}
+        {assignedDoctors.length === 0 ? (
+          <div className="mb-5 bg-amber-50/80 backdrop-blur-xl rounded-2xl border border-amber-200 shadow-lg p-6 text-center">
+            <div className="w-14 h-14 bg-amber-100 rounded-2xl flex items-center justify-center mx-auto mb-3">
+              <AlertCircle className="w-7 h-7 text-amber-600" />
+            </div>
+            <h3 className="text-lg font-bold text-amber-800 mb-1">No Access Granted Yet</h3>
+            <p className="text-sm text-amber-600 max-w-lg mx-auto">
+              No doctor has granted you access to their records yet. Once a doctor adds you, their appointments will appear here.
+            </p>
+          </div>
+        ) : (
+          <div className="mb-5 bg-white/60 backdrop-blur-xl rounded-2xl border border-white/50 shadow-lg p-4 sm:p-5">
+            <h3 className="text-sm font-bold text-slate-700 mb-3 flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-teal-500" />
+              My Assigned Doctors ({assignedDoctors.length})
+            </h3>
+            <div className="flex flex-wrap gap-3">
+              {assignedDoctors.map((doc) => (
+                <div
+                  key={doc.id}
+                  className="flex items-center gap-3 p-3 bg-white rounded-xl border border-slate-100 shadow-sm min-w-[200px]"
+                >
+                  {doc.doctor_picture ? (
+                    <img src={doc.doctor_picture} alt={doc.doctor_name} className="w-10 h-10 rounded-lg object-cover" />
+                  ) : (
+                    <div className="w-10 h-10 bg-gradient-to-br from-teal-400 to-blue-500 rounded-lg flex items-center justify-center text-white font-bold text-sm">
+                      {doc.doctor_name.split(" ").map((n) => n[0]).join("")}
+                    </div>
+                  )}
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold text-slate-800 truncate">Dr. {doc.doctor_name}</p>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {doc.can_view_appointments && <span className="px-1.5 py-0.5 bg-blue-50 text-blue-600 text-[9px] font-bold rounded">View</span>}
+                      {doc.can_manage_appointments && <span className="px-1.5 py-0.5 bg-purple-50 text-purple-600 text-[9px] font-bold rounded">Manage</span>}
+                      {doc.can_book_walkins && <span className="px-1.5 py-0.5 bg-emerald-50 text-emerald-600 text-[9px] font-bold rounded">Walk-ins</span>}
+                      {doc.can_register_patients && <span className="px-1.5 py-0.5 bg-amber-50 text-amber-600 text-[9px] font-bold rounded">Register</span>}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* ─── Statistics Cards ───────────────────────────────────────── */}
         <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-2 sm:gap-3 mb-5">

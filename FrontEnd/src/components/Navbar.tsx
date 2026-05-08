@@ -1,6 +1,7 @@
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
+import api from "@/services/api";
 import {
   Bell,
   ChevronDown,
@@ -51,6 +52,14 @@ const Navbar: React.FC = () => {
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [pendingApprovalCount, setPendingApprovalCount] = useState(0);
+
+  useEffect(() => {
+    if (user?.role !== "admin") return;
+    api.get("/admin/pending-count")
+      .then((r) => setPendingApprovalCount(r.data.pending || 0))
+      .catch(() => {});
+  }, [user?.role]);
 
   const badgeCounts = useMemo(() => {
     return {
@@ -93,7 +102,7 @@ const Navbar: React.FC = () => {
         items = [
           { label: "Dashboard", path: "/admin/dashboard", icon: Home },
           { label: "Appointments", path: "/admin/appointments", icon: Calendar, badge: badgeCounts.appointments },
-          { label: "Users", path: "/admin/users", icon: Users },
+          { label: "Users", path: "/admin/users", icon: Users, badge: pendingApprovalCount },
         ];
         break;
       case "doctor":
@@ -101,6 +110,7 @@ const Navbar: React.FC = () => {
           { label: "Dashboard", path: "/doctor/dashboard", icon: Home },
           { label: "Appointments", path: "/doctor/appointments", icon: Calendar, badge: badgeCounts.appointments },
           { label: "Availability", path: "/doctor/set-availability", icon: ClipboardList },
+          { label: "Staff Access", path: "/doctor/manage-staff", icon: Users },
           { label: "Messages", path: "/doctor/messages", icon: MessageCircle, badge: badgeCounts.messages },
         ];
         break;
