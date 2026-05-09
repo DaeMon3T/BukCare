@@ -10,6 +10,9 @@ if (!baseURL.endsWith("/v1")) baseURL = `${baseURL}/v1`;
 const api = axios.create({
   baseURL,
   withCredentials: true,
+  headers: {
+    "ngrok-skip-browser-warning": "69420"
+  }
 });
 
 // Mag attach ug access token kada request

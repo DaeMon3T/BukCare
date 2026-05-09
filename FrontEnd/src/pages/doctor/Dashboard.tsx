@@ -151,30 +151,48 @@ const DoctorDashboard: FC = () => {
     }
   };
 
+  const [weekOverWeek, setWeekOverWeek] = useState({ thisWeek: 0, lastWeek: 0, growth: 0 });
+
   const calculateStats = (appointmentsData: Appointment[]) => {
-    // Get "Today" as a clean string using your new helper
-    const todayStr = toDateString(new Date()); 
+    const todayStr = toDateString(new Date());
 
     const stats: DashboardStats = {
       totalAppointments: appointmentsData.length,
-      
-      // Compare Strings directly to ignore timezone shifts
       todayAppointments: appointmentsData.filter((apt) => {
         const aptDateStr = apt.appointment_date.split('T')[0] ?? "";
         return aptDateStr === todayStr && apt.status !== 'cancelled';
       }).length,
-
       upcomingAppointments: appointmentsData.filter((apt) => {
         const aptDateStr = apt.appointment_date.split('T')[0] ?? "";
         return aptDateStr > todayStr && apt.status !== "cancelled";
       }).length,
-
       pendingAppointments: appointmentsData.filter((apt) => apt.status === "pending").length,
       confirmedAppointments: appointmentsData.filter((apt) => apt.status === "confirmed").length,
       completedAppointments: appointmentsData.filter((apt) => apt.status === "completed").length,
       cancelledAppointments: appointmentsData.filter((apt) => apt.status === "cancelled").length,
     };
 
+    // Week-over-week calculation
+    const now = new Date();
+    const thisWeekStart = new Date(now);
+    thisWeekStart.setDate(now.getDate() - now.getDay());
+    thisWeekStart.setHours(0, 0, 0, 0);
+    const lastWeekStart = new Date(thisWeekStart);
+    lastWeekStart.setDate(lastWeekStart.getDate() - 7);
+
+    const thisWeekCount = appointmentsData.filter((a) => {
+      const d = new Date(a.appointment_date);
+      return d >= thisWeekStart && d < now;
+    }).length;
+    const lastWeekCount = appointmentsData.filter((a) => {
+      const d = new Date(a.appointment_date);
+      return d >= lastWeekStart && d < thisWeekStart;
+    }).length;
+    const growth = lastWeekCount === 0
+      ? (thisWeekCount > 0 ? 100 : 0)
+      : Math.round(((thisWeekCount - lastWeekCount) / lastWeekCount) * 100);
+
+    setWeekOverWeek({ thisWeek: thisWeekCount, lastWeek: lastWeekCount, growth });
     setStats(stats);
   };
 
@@ -839,6 +857,27 @@ const [selectedDate, setSelectedDate] = useState(new Date());
             </div>
         </div>
 
+
+        {/* Week-over-Week Summary */}
+        <div className="flex flex-wrap items-center gap-3 mb-5 p-4 bg-white/60 backdrop-blur-md rounded-2xl border border-white/50 shadow-sm">
+          <TrendingUp className="w-4 h-4 text-blue-600 flex-shrink-0" />
+          <span className="text-sm font-semibold text-slate-700">Week-over-Week:</span>
+          <span className="text-sm text-slate-600">
+            This week <span className="font-bold text-slate-900">{weekOverWeek.thisWeek}</span> appts
+            {" vs "} last week <span className="font-bold text-slate-900">{weekOverWeek.lastWeek}</span>
+          </span>
+          <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold ${
+            weekOverWeek.growth > 0
+              ? "bg-emerald-100 text-emerald-700"
+              : weekOverWeek.growth < 0
+              ? "bg-rose-100 text-rose-700"
+              : "bg-slate-100 text-slate-600"
+          }`}>
+            {weekOverWeek.growth > 0 ? "▲" : weekOverWeek.growth < 0 ? "▼" : "—"}
+            {" "}{Math.abs(weekOverWeek.growth)}%{" "}
+            {weekOverWeek.growth > 0 ? "increase" : weekOverWeek.growth < 0 ? "decrease" : "no change"}
+          </span>
+        </div>
 
         {/* Charts and Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-8">

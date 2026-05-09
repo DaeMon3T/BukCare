@@ -8,6 +8,7 @@ from models import appointment
 from models import notification
 from models import staff
 from models import audit_log
+from models import doctor_staff_access
 
 # Explicitly expose all model classes so models.X works
 from models.location import Province, City, Barangay
@@ -17,6 +18,7 @@ from models.appointment import Appointment
 from models.notification import Notification
 from models.staff import Staff
 from models.audit_log import AuditLog
+from models.doctor_staff_access import DoctorStaffAccess
 
 __all__ = [
     "Base",
@@ -31,4 +33,5 @@ __all__ = [
     "Notification",
     "Staff",
     "AuditLog",
+    "DoctorStaffAccess",
 ]

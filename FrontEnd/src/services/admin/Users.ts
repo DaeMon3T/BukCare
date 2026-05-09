@@ -11,7 +11,7 @@ export interface User {
   email: string;
   fname: string;
   lname: string;
-  role: "admin" | "doctor" | "patient" | "pending";
+  role: "admin" | "doctor" | "patient" | "staff" | "pending";
   is_active: boolean;
   is_verified: boolean;
   is_profile_complete: boolean;
@@ -84,6 +84,66 @@ export async function rejectDoctor(doctorId: number, reason?: string): Promise<v
   }
 }
 
+/**
+ * Approve a staff member (Admin only)
+ */
+export async function approveStaff(userId: number): Promise<void> {
+  try {
+    await BaseAPI.put(`/admin/staff/${userId}/approve`);
+  } catch (error: any) {
+    console.error("Failed to approve staff:", error);
+    throw new Error(error.response?.data?.detail || error.message || "Failed to approve staff");
+  }
+}
+
+/**
+ * Reject a staff member (Admin only)
+ */
+export async function rejectStaff(userId: number, reason?: string): Promise<void> {
+  try {
+    await BaseAPI.put(`/admin/staff/${userId}/reject`, null, {
+      params: reason ? { reason } : undefined,
+    });
+  } catch (error: any) {
+    console.error("Failed to reject staff:", error);
+    throw new Error(error.response?.data?.detail || error.message || "Failed to reject staff");
+  }
+}
+
+/**
+ * Delete a user account (Admin only)
+ */
+export async function deleteUser(userId: number): Promise<void> {
+  try {
+    await BaseAPI.delete(`/admin/users/${userId}`);
+  } catch (error: any) {
+    console.error("Failed to delete user:", error);
+    throw new Error(error.response?.data?.detail || error.message || "Failed to delete user");
+  }
+}
+
+/**
+ * Bulk approve pending users (Admin only)
+ */
+export async function bulkApproveUsers(userIds: number[]): Promise<void> {
+  try {
+    await BaseAPI.post("/admin/users/bulk-approve", { user_ids: userIds });
+  } catch (error: any) {
+    throw new Error(error.response?.data?.detail || error.message || "Failed to bulk approve");
+  }
+}
+
+/**
+ * Bulk reject pending users (Admin only)
+ */
+export async function bulkRejectUsers(userIds: number[], reason?: string): Promise<void> {
+  try {
+    await BaseAPI.post("/admin/users/bulk-reject", { user_ids: userIds, reason });
+  } catch (error: any) {
+    throw new Error(error.response?.data?.detail || error.message || "Failed to bulk reject");
+  }
+}
+
 // -----------------------------
 // Export
 // -----------------------------
@@ -92,6 +152,11 @@ const usersAPI = {
   updateUserStatus,
   approveDoctor,
   rejectDoctor,
+  approveStaff,
+  rejectStaff,
+  deleteUser,
+  bulkApproveUsers,
+  bulkRejectUsers,
 };
 
 export default usersAPI;

@@ -354,7 +354,11 @@ const CompleteProfile: React.FC = () => {
 
       await completeProfile(payload);
 
-      toast.success("Profile completed successfully! Please sign in to continue.");
+      if (role === "doctor" || role === "staff") {
+        toast.success("Profile submitted! Your account is under review. You'll be notified once approved.");
+      } else {
+        toast.success("Profile completed successfully! Please sign in to continue.");
+      }
       navigate("/signin", { replace: true });
     } catch (err: any) {
       setError(err.message || "Something went wrong.");

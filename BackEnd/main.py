@@ -23,6 +23,7 @@ from middleware.request_logging import request_logging_middleware
 from routers.v1 import router as v1_router
 from routers.v1 import doctors, notifications, tips, reviews, hospitals
 from routers.v1 import appointments, messages, medical_profile, walk_ins
+from routers.v1 import staff_access
 from routers.v1.auth import password_reset
 
 # Models (used for seeding)
@@ -47,6 +48,8 @@ def create_app() -> FastAPI:
         allow_origins=[
             "http://localhost:5173",
             "http://127.0.0.1:5173",
+            "http://192.168.4.147:5173",
+            "https://county-elsewhere-voter.ngrok-free.dev",
             "https://bukcare.com",
             "https://www.bukcare.com",
             "https://bukcare.pages.dev",
@@ -78,6 +81,7 @@ def create_app() -> FastAPI:
     app.include_router(password_reset.router, prefix="/v1/auth/password-reset", tags=["Password Reset"])
     app.include_router(walk_ins.router, prefix="/v1/walk-ins", tags=["Walk-Ins"])
     app.include_router(hospitals.router, prefix="/v1")
+    app.include_router(staff_access.router, prefix="/v1/staff-access", tags=["Staff Access"])
 
     # ============================================================
     # DATABASE SEEDER
