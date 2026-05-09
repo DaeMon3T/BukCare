@@ -9,6 +9,7 @@ BackEnd/logs/
 BackEnd/.venv/
 BackEnd/venv/
 BackEnd/.env.development
+BackEnd/.env copy.development
 BackEnd/.env.production
 BackEnd/clean_cache.sh
 BackEnd/init_migration.sh

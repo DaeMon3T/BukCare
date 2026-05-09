@@ -40,7 +40,12 @@ class User(Base):
     mname = Column(String, nullable=True)
     lname = Column(String, nullable=False)
     sex = Column(Boolean, nullable=True)
-    role = Column(UserRoleType, nullable=False, default=UserRole.PENDING)
+    #role = Column(UserRoleType, nullable=False, default=UserRole.PENDING)
+    role = Column(
+        Enum(UserRole, name="user_role"),
+        nullable=False,
+        default=UserRole.PENDING
+    )
     dob = Column(DateTime, nullable=True)
     contact_number = Column(String, nullable=True)
 
