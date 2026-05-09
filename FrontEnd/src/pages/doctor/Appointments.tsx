@@ -206,9 +206,11 @@ const DoctorAppointments = () => {
             )}
             {!isStaff && menuAppt.status === "confirmed" && (
               <>
-                <button onClick={() => { setCompleteData({ id: menuAppt.id, patientName: menuAppt.patient_name }); setMenuState(null); }} className="w-full text-left px-4 py-2.5 text-sm font-medium text-blue-700 hover:bg-blue-50 flex items-center gap-2.5 transition-colors">
-                  <CheckCircle className="w-4 h-4" /> Complete
-                </button>
+                {new Date(menuAppt.appointment_date) <= new Date() && (
+                  <button onClick={() => { setCompleteData({ id: menuAppt.id, patientName: menuAppt.patient_name }); setMenuState(null); }} className="w-full text-left px-4 py-2.5 text-sm font-medium text-blue-700 hover:bg-blue-50 flex items-center gap-2.5 transition-colors">
+                    <CheckCircle className="w-4 h-4" /> Complete
+                  </button>
+                )}
                 {menuAppt.appointment_type !== "walk_in" && (
                   <button onClick={() => { startVideoCall(menuAppt); setMenuState(null); }} className="w-full text-left px-4 py-2.5 text-sm font-medium text-emerald-700 hover:bg-emerald-50 flex items-center gap-2.5 transition-colors">
                     <Video className="w-4 h-4" /> Video Call

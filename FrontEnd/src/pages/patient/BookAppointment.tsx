@@ -62,6 +62,16 @@ const BookAppointment: React.FC = () => {
     return slots;
   };
 
+  const isPastSlot = (dateStr: string, timeStr: string): boolean => {
+    if (!dateStr || !timeStr) return false;
+    if (dateStr !== getLocalTodayStr()) return false;
+    const now = new Date();
+    const [hStr, mStr] = timeStr.split(":");
+    const slotMinutes = parseInt(hStr || "0", 10) * 60 + parseInt(mStr || "0", 10);
+    const nowMinutes = now.getHours() * 60 + now.getMinutes();
+    return slotMinutes <= nowMinutes;
+  };
+
   const formatTimeSlot = (timeStr: string) => {
     if (!timeStr) return "";
     let timePart = timeStr;
@@ -151,6 +161,9 @@ const BookAppointment: React.FC = () => {
     if (bookingMode === "custom" && selectedDate) {
         const fullDaySlots = generateAllDaySlots();
         setCustomTimeSlots(fullDaySlots);
+        if (selectedCustomSlot && isPastSlot(selectedDate, selectedCustomSlot)) {
+            setSelectedCustomSlot(null);
+        }
     }
   }, [selectedDate, bookingMode]);
 
@@ -388,11 +401,27 @@ const BookAppointment: React.FC = () => {
                                     <Clock className="w-4 h-4"/> Select Time
                                 </label>
                                 <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3 max-h-[300px] overflow-y-auto pr-2 scrollbar-thin">
-                                    {customTimeSlots.map((slot) => (
-                                        <button key={slot} onClick={() => setSelectedCustomSlot(slot)} className={`py-2 px-2 rounded-lg text-sm font-bold border transition-all duration-200 ${selectedCustomSlot === slot ? "bg-blue-600 text-white border-blue-600 shadow-md" : "bg-white text-slate-600 border-slate-200 hover:border-blue-300 hover:text-blue-600"}`}>
-                                            {formatTimeSlot(slot)}
-                                        </button>
-                                    ))}
+                                    {customTimeSlots.map((slot) => {
+                                        const past = isPastSlot(selectedDate, slot);
+                                        const selected = selectedCustomSlot === slot;
+                                        return (
+                                            <button
+                                                key={slot}
+                                                onClick={() => setSelectedCustomSlot(slot)}
+                                                disabled={past}
+                                                title={past ? "This time has already passed" : undefined}
+                                                className={`py-2 px-2 rounded-lg text-sm font-bold border transition-all duration-200 ${
+                                                    past
+                                                        ? "bg-slate-50 text-slate-300 border-slate-100 cursor-not-allowed line-through"
+                                                        : selected
+                                                            ? "bg-blue-600 text-white border-blue-600 shadow-md"
+                                                            : "bg-white text-slate-600 border-slate-200 hover:border-blue-300 hover:text-blue-600"
+                                                }`}
+                                            >
+                                                {formatTimeSlot(slot)}
+                                            </button>
+                                        );
+                                    })}
                                 </div>
                             </div>
                         )}
