@@ -741,6 +741,7 @@ def get_doctor_appointments(
             "reason": appt.reason,
             "status": appt.status.value,
             "patient_id": appt.patient_id,
+            "doctor_id": appt.doctor_id,
             "notes": appt.notes,
             "patient_avatar": appt.patient.picture if appt.patient and hasattr(appt.patient, "picture") else None,
             "doctor_name": f"{appt.doctor.fname} {appt.doctor.lname}" if appt.doctor else "Unknown",
