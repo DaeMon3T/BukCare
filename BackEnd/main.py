@@ -21,10 +21,6 @@ from middleware.request_logging import request_logging_middleware
 
 # Routers
 from routers.v1 import router as v1_router
-from routers.v1 import doctors, notifications, tips, reviews, hospitals
-from routers.v1 import appointments, messages, medical_profile, walk_ins
-from routers.v1 import staff_access
-from routers.v1.auth import password_reset
 
 # Models (used for seeding)
 from models.doctor import Specialization
@@ -68,20 +64,9 @@ def create_app() -> FastAPI:
     app.middleware("http")(endpoint_rate_limit_middleware)
 
     # ============================================================
-    # Routers
+    # Routers — every v1 endpoint is registered inside routers/v1/__init__.py
     # ============================================================
-    app.include_router(notifications.router, prefix="/v1/notifications", tags=["Notifications"])
-    app.include_router(tips.router, prefix="/v1")
-    app.include_router(reviews.router, prefix="/v1/reviews", tags=["Reviews"])
-    app.include_router(doctors.router, prefix="/v1/doctor", tags=["Doctor"])
-    app.include_router(appointments.router, prefix="/v1/appointments", tags=["Appointments"])
-    app.include_router(messages.router, prefix="/v1")
-    app.include_router(v1_router, prefix="")
-    app.include_router(medical_profile.router, prefix="/v1")
-    app.include_router(password_reset.router, prefix="/v1/auth/password-reset", tags=["Password Reset"])
-    app.include_router(walk_ins.router, prefix="/v1/walk-ins", tags=["Walk-Ins"])
-    app.include_router(hospitals.router, prefix="/v1")
-    app.include_router(staff_access.router, prefix="/v1/staff-access", tags=["Staff Access"])
+    app.include_router(v1_router, prefix="/v1")
 
     # ============================================================
     # DATABASE SEEDER
