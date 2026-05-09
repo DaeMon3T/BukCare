@@ -4,7 +4,9 @@
       "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\kentb\\\\BukCare\" -Recurse -Directory -Name)",
       "Bash(Select-Object -First 30)",
       "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\kentb\\\\BukCare\" -Directory)",
-      "Bash(Select-Object Name)"
+      "Bash(Select-Object Name)",
+      "Bash(/c/Users/kentb/BukCare/BackEnd/venv/Scripts/python.exe -c \"from routers.v1 import router; print\\('OK', len\\(router.routes\\)\\)\")",
+      "Bash(/c/Users/kentb/BukCare/BackEnd/venv/Scripts/python.exe *)"
     ]
   }
 }
