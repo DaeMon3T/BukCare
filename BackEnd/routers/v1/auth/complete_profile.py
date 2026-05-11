@@ -5,7 +5,9 @@ from datetime import datetime
 from typing import Optional
 import json
 import asyncio
+import requests as http_requests
 
+from core.config import settings
 from core.database import get_db
 from models.users import User, UserRole
 from models.doctor import Doctor, Specialization
@@ -16,6 +18,24 @@ from core.services.cloudinary_config import cloudinary
 import cloudinary.uploader
 
 router = APIRouter(tags=["Authentication"])
+
+
+# -----------------------------------------
+# Helper - Verify Cloudflare Turnstile Token
+# -----------------------------------------
+def verify_turnstile(token: str) -> bool:
+    try:
+        response = http_requests.post(
+            "https://challenges.cloudflare.com/turnstile/v0/siteverify",
+            data={
+                "secret": settings.TURNSTILE_SECRET_KEY,
+                "response": token,
+            },
+            timeout=5,
+        )
+        return response.json().get("success", False)
+    except Exception:
+        return False
 
 
 @router.post("/complete-profile")
@@ -32,6 +52,7 @@ async def complete_profile(
     city_name: str = Form(...),
     barangay_name: str = Form(...),
     password: str = Form(...),
+    cf_turnstile_response: str = Form(...),        # Turnstile token
     license_number: Optional[str] = Form(None),
     years_of_experience: Optional[str] = Form(None),
     specializations: Optional[str] = Form(None),
@@ -40,6 +61,15 @@ async def complete_profile(
     prc_license_selfie: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db),
 ):
+    # ------------------------------------------------------------------
+    # TURNSTILE VERIFICATION
+    # ------------------------------------------------------------------
+    if not cf_turnstile_response:
+        raise HTTPException(status_code=400, detail="Missing verification token. Please complete the CAPTCHA.")
+
+    if not verify_turnstile(cf_turnstile_response):
+        raise HTTPException(status_code=400, detail="Verification failed. Please try again.")
+
     # ------------------------------------------------------------------
     # USER
     # ------------------------------------------------------------------
@@ -194,7 +224,7 @@ async def complete_profile(
             return result.get("secure_url")
 
         front_url, back_url, selfie_url = await asyncio.gather(
-            upload(prc_license_front),  # the front-end will just use these same fields
+            upload(prc_license_front),
             upload(prc_license_back),
             upload(prc_license_selfie),
         )
@@ -220,7 +250,7 @@ async def complete_profile(
     user.last_login = datetime.utcnow()
 
     # ------------------------------------------------------------------
-    # RESPONSE (AUTO-COMMIT HAPPENS IN get_db/db_session)
+    # RESPONSE
     # ------------------------------------------------------------------
     return {
         "tokens": {

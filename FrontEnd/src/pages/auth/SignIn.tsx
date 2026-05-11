@@ -16,9 +16,10 @@ import {
 import toast from "react-hot-toast";
 import gsap from "gsap";
 import Lenis from "@studio-freight/lenis";
+import { Turnstile } from "@marsidev/react-turnstile";
 import { signIn } from "@/services/auth/SignInAPI";
 import { useAuth } from "@/context/AuthContext";
-import logo from "@/assets/images/icon_logo_name.png"
+import logo from "@/assets/images/icon_logo_name.png";
 
 interface FormData {
   email: string;
@@ -32,6 +33,7 @@ const SignIn: React.FC = () => {
   const [emailLoading, setEmailLoading] = useState<boolean>(false);
   const [googleLoading, setGoogleLoading] = useState<boolean>(false);
   const [showPassword, setShowPassword] = useState<boolean>(false);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
 
   // Navigation State
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -56,7 +58,7 @@ const SignIn: React.FC = () => {
   }, []);
 
   const handleScrollTop = () => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({ top: 0, behavior: "smooth" });
     setMobileMenuOpen(false);
   };
 
@@ -76,12 +78,10 @@ const SignIn: React.FC = () => {
     requestAnimationFrame(raf);
 
     const ctx = gsap.context(() => {
-      // Form Stagger
       gsap.fromTo(".form-element",
         { y: 20, opacity: 0 },
         { y: 0, opacity: 1, duration: 0.8, stagger: 0.1, ease: "power3.out", delay: 0.2 }
       );
-      // Right Panel Reveal
       gsap.fromTo(".panel-reveal",
         { x: 20, opacity: 0 },
         { x: 0, opacity: 1, duration: 1, ease: "power3.out", delay: 0.4 }
@@ -118,15 +118,28 @@ const SignIn: React.FC = () => {
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+
+    if (!turnstileToken) {
+      setError("Please complete the verification check.");
+      return;
+    }
+
     setEmailLoading(true);
     setError("");
     try {
-      const result = await signIn(formData);
+      const payload = {
+        ...formData,
+        "cf-turnstile-response": turnstileToken,
+        cf_turnstile_response: turnstileToken,
+      };
+      const result = await signIn(payload);
       handleLoginSuccess(result);
     } catch (err: any) {
       const errMsg = err?.response?.data?.detail || "Sign-in failed. Please try again.";
       setError(errMsg);
       toast.error(errMsg);
+      // Reset turnstile on failure so user can retry
+      setTurnstileToken(null);
     } finally { setEmailLoading(false); }
   };
 
@@ -144,12 +157,7 @@ const SignIn: React.FC = () => {
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2 group" onClick={handleScrollTop}>
             <div className="flex items-center gap-1 hover:scale-105 transition-transform cursor-pointer">
-              {/* Logo */}
-              <img
-                src={logo}
-                className="h-35 w-auto object-contain"
-                alt="BukCare Logo"
-              />
+              <img src={logo} className="h-35 w-auto object-contain" alt="BukCare Logo" />
             </div>
           </Link>
 
@@ -159,8 +167,9 @@ const SignIn: React.FC = () => {
                 key={link.name}
                 to={link.path}
                 onClick={handleScrollTop}
-                className={`text-sm font-bold uppercase tracking-wider transition-colors ${location.pathname === link.path ? "text-[#00aeef]" : "text-slate-500 hover:text-[#00aeef]"
-                  }`}
+                className={`text-sm font-bold uppercase tracking-wider transition-colors ${
+                  location.pathname === link.path ? "text-[#00aeef]" : "text-slate-500 hover:text-[#00aeef]"
+                }`}
               >
                 {link.name}
               </Link>
@@ -187,9 +196,8 @@ const SignIn: React.FC = () => {
       {/* --- 2. SPLIT SCREEN LAYOUT --- */}
       <div className="flex-1 flex flex-col lg:flex-row pt-20 h-[calc(100vh-80px)] min-h-[700px]">
 
-        {/* LEFT: FORM SIDE (Clean & Modern) */}
+        {/* LEFT: FORM SIDE */}
         <div className="w-full lg:w-1/2 flex flex-col justify-center px-8 sm:px-12 lg:px-24 xl:px-32 bg-white relative z-10">
-
           <div className="max-w-md w-full mx-auto">
 
             <div className="mb-10 form-element">
@@ -247,10 +255,24 @@ const SignIn: React.FC = () => {
                 </div>
               </div>
 
-              {/* Primary Button */}
+              {/* Turnstile Widget */}
+              <div className="form-element">
+                <Turnstile
+                  siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY}
+                  onSuccess={(token) => setTurnstileToken(token)}
+                  onExpire={() => setTurnstileToken(null)}
+                  onError={() => {
+                    setTurnstileToken(null);
+                    setError("Verification failed. Please refresh and try again.");
+                  }}
+                  options={{ theme: "light" }}
+                />
+              </div>
+
+              {/* Submit Button */}
               <button
                 type="submit"
-                disabled={emailLoading || googleLoading}
+                disabled={emailLoading || googleLoading || !turnstileToken}
                 className="form-element w-full bg-slate-900 text-white font-bold py-4 rounded-xl shadow-lg hover:bg-[#00aeef] hover:shadow-[#00aeef]/30 transition-all transform hover:-translate-y-1 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {emailLoading ? (
@@ -290,10 +312,9 @@ const SignIn: React.FC = () => {
           </div>
         </div>
 
-        {/* RIGHT: VISUAL SIDE (The "Modern" Touch) */}
+        {/* RIGHT: VISUAL SIDE */}
         <div className="hidden lg:flex w-1/2 bg-[#F0F9FF] relative items-center justify-center overflow-hidden">
 
-          {/* Background Image with Overlay */}
           <div className="absolute inset-0 z-0">
             <img
               src="https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?ixlib=rb-1.2.1&auto=format&fit=crop&w=1950&q=80"
@@ -304,7 +325,6 @@ const SignIn: React.FC = () => {
             <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20"></div>
           </div>
 
-          {/* Content Content - Feature Carousel */}
           <div className="panel-reveal relative z-10 w-full max-w-lg px-12 text-white">
             <div className="mb-12">
               <div className="w-16 h-16 bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center border border-white/20 shadow-2xl mb-8">
@@ -318,7 +338,6 @@ const SignIn: React.FC = () => {
               </p>
             </div>
 
-            {/* Animated Feature Card */}
             <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-3xl p-6 shadow-2xl relative overflow-hidden">
               <div className="absolute top-0 left-0 w-1 h-full bg-[#00aeef]"></div>
               <div className="transition-all duration-500 ease-in-out transform">
@@ -338,7 +357,6 @@ const SignIn: React.FC = () => {
                 ))}
               </div>
 
-              {/* Pagination Dots */}
               <div className="flex gap-2 mt-6">
                 {features.map((_, idx) => (
                   <div
@@ -349,12 +367,8 @@ const SignIn: React.FC = () => {
               </div>
             </div>
           </div>
-
         </div>
       </div>
-
-      {/* Optional: Minimal Footer Strip if needed, or rely on main Footer */}
-      {/* <Footer /> can be placed here if you want it below the fold */}
     </div>
   );
 };

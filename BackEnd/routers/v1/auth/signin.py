@@ -24,6 +24,29 @@ router = APIRouter()
 
 
 # -----------------------------------------
+# Helper - Verify Cloudflare Turnstile Token
+# -----------------------------------------
+def verify_turnstile(token: str) -> bool:
+    """
+    Verifies the Cloudflare Turnstile token against Cloudflare's siteverify API.
+    Returns True if valid, False otherwise.
+    """
+    try:
+        response = requests.post(
+            "https://challenges.cloudflare.com/turnstile/v0/siteverify",
+            data={
+                "secret": settings.TURNSTILE_SECRET_KEY,
+                "response": token,
+            },
+            timeout=5,
+        )
+        result = response.json()
+        return result.get("success", False)
+    except Exception:
+        return False
+
+
+# -----------------------------------------
 # Helper - Standard Response
 # -----------------------------------------
 def build_response(user: User, access_token: str, refresh_token: str, action: str):
@@ -147,12 +170,30 @@ def handle_google_auth(idinfo: dict, db: Session, redirect_flow: bool = False):
     return build_response(user, access_token, refresh_token, action)
 
 
-
 # -----------------------------------------
 # Email/Password Signin
 # -----------------------------------------
 @router.post("/signin", summary="Email/Password Signin")
 def login(data: LoginRequest, db: Session = Depends(get_db)):
+
+    # -----------------------------
+    # Turnstile Verification
+    # -----------------------------
+    if not data.cf_turnstile_response:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Missing verification token. Please complete the CAPTCHA."
+        )
+
+    if not verify_turnstile(data.cf_turnstile_response):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Verification failed. Please try again."
+        )
+
+    # -----------------------------
+    # Credential Check
+    # -----------------------------
     user = db.query(User).filter(User.email == data.email).first()
 
     if not user or not user.password or not verify_password(data.password, user.password):
@@ -198,8 +239,6 @@ def login(data: LoginRequest, db: Session = Depends(get_db)):
     return build_response(user, access_token, refresh_token, "signin")
 
 
-
-
 # -----------------------------------------
 # Google OAuth Routes
 # -----------------------------------------
@@ -220,10 +259,9 @@ def google_login():
 @router.get("/google/callback", summary="Handle Google OAuth callback", response_class=RedirectResponse)
 def google_callback(code: str = Query(None), error: str = Query(None), db: Session = Depends(get_db)):
     if error:
-        # Redirect to frontend with error
         error_url = f"{settings.FRONTEND_URL}/auth/callback?error={urllib.parse.quote(error)}"
         return RedirectResponse(url=error_url)
-    
+
     if not code:
         error_url = f"{settings.FRONTEND_URL}/auth/callback?error={urllib.parse.quote('Missing authorization code')}"
         return RedirectResponse(url=error_url)
@@ -252,7 +290,7 @@ def google_callback(code: str = Query(None), error: str = Query(None), db: Sessi
         )
 
         return handle_google_auth(idinfo, db, redirect_flow=True)
-    
+
     except Exception as e:
         error_url = f"{settings.FRONTEND_URL}/auth/callback?error={urllib.parse.quote(str(e))}"
         return RedirectResponse(url=error_url)

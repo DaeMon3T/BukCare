@@ -3,16 +3,33 @@ from pydantic import BaseModel, EmailStr
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 import secrets
+import requests as http_requests
+from core.config import settings
 from core.database import get_db
 from models.users import User
 from core.services.email import send_email
 from passlib.context import CryptContext
 
-# Initialize router with prefix and tag
 router = APIRouter(prefix="/password-reset", tags=["Password Reset"])
-
-# Password hashing context
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+
+# -----------------------------
+# Turnstile Helper
+# -----------------------------
+def verify_turnstile(token: str) -> bool:
+    try:
+        response = http_requests.post(
+            "https://challenges.cloudflare.com/turnstile/v0/siteverify",
+            data={
+                "secret": settings.TURNSTILE_SECRET_KEY,
+                "response": token,
+            },
+            timeout=5,
+        )
+        return response.json().get("success", False)
+    except Exception:
+        return False
 
 
 # -----------------------------
@@ -20,6 +37,7 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 # -----------------------------
 class PasswordResetRequest(BaseModel):
     email: EmailStr
+    cf_turnstile_response: str          # required on Step 1
 
 
 class PasswordResetVerify(BaseModel):
@@ -41,14 +59,14 @@ def request_password_reset(
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db)
 ):
-    """
-    User submits their email → System generates an OTP → OTP sent via email.
-    """
+    # Turnstile check first
+    if not verify_turnstile(data.cf_turnstile_response):
+        raise HTTPException(status_code=400, detail="Verification failed. Please try again.")
+
     user = db.query(User).filter(User.email == data.email).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # Generate 6-digit OTP and set expiry (10 minutes)
     otp = str(secrets.randbelow(900000) + 100000)
     expiry = datetime.utcnow() + timedelta(minutes=10)
 
@@ -56,7 +74,6 @@ def request_password_reset(
     user.reset_token_expires = expiry
     db.commit()
 
-    # Send email asynchronously
     background_tasks.add_task(
         send_email,
         to=user.email,
@@ -71,13 +88,7 @@ def request_password_reset(
 # Step 2: Verify OTP
 # -----------------------------
 @router.post("/verify", summary="Verify the OTP sent to your email")
-def verify_otp(
-    data: PasswordResetVerify,
-    db: Session = Depends(get_db)
-):
-    """
-    User submits their email + OTP → Verify the OTP validity.
-    """
+def verify_otp(data: PasswordResetVerify, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == data.email).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -95,21 +106,12 @@ def verify_otp(
 # Step 3: Confirm New Password
 # -----------------------------
 @router.post("/confirm", summary="Confirm new password after OTP verification")
-def confirm_password_reset(
-    data: PasswordResetConfirm,
-    db: Session = Depends(get_db)
-):
-    """
-    User submits their email + new password → Update the password.
-    """
+def confirm_password_reset(data: PasswordResetConfirm, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == data.email).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # Hash new password
-    hashed_pw = pwd_context.hash(data.new_password)
-
-    user.password = hashed_pw
+    user.password = pwd_context.hash(data.new_password)
     user.reset_token = None
     user.reset_token_expires = None
     db.commit()

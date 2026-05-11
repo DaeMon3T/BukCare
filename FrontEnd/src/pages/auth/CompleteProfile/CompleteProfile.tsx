@@ -2,6 +2,7 @@ import React, { useState, useLayoutEffect, useRef, useEffect } from "react";
 import type { ChangeEvent as ReactChangeEvent, FormEvent as ReactFormEvent } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import toast from "react-hot-toast";
+import { Turnstile } from "@marsidev/react-turnstile";
 import { useAuth } from "@/context/AuthContext";
 import { completeProfile } from "@/services/auth/CompleteProfileAPI";
 import { validateDoctorProfile, validatePatientProfile, validateStaffProfile } from "@/services/validation";
@@ -43,7 +44,6 @@ const CustomSelect = ({ label, name, value, options, onChange, disabled = false,
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // FIX: Ensure comparison is done as strings to catch boolean/string mismatches
   const selectedOption = options.find((opt: any) => String(opt.value) === String(value));
 
   return (
@@ -71,7 +71,6 @@ const CustomSelect = ({ label, name, value, options, onChange, disabled = false,
                         key={opt.value}
                         type="button"
                         onClick={() => {
-                            // Mimic standard event so your original handleChange works
                             onChange({ target: { name, value: opt.value } });
                             setIsOpen(false);
                         }}
@@ -128,10 +127,13 @@ const CompleteProfile: React.FC = () => {
 
   // UI States
   const [showPassword, setShowPassword] = useState(false);
-  const [step, setStep] = useState<1 | 2>(1); // 1 = Role, 2 = Form
+  const [step, setStep] = useState<1 | 2>(1);
+
+  // Turnstile
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
 
   // --------------------------------------------
-  // Extract query parameters (FROM ORIGINAL CODE)
+  // Extract query parameters
   // --------------------------------------------
   const searchParams = new URLSearchParams(location.search);
   const userId = searchParams.get("user_id") || locationState.user_id || user?.user_id;
@@ -142,7 +144,7 @@ const CompleteProfile: React.FC = () => {
   const queryPicture = queryPictureRaw ? decodeURIComponent(queryPictureRaw) : "";
 
   // --------------------------------------------
-  // Merge data (FROM ORIGINAL CODE)
+  // Merge data
   // --------------------------------------------
   const googleData: GoogleData = {
     email: queryEmail || locationState.email || user?.email || "",
@@ -152,7 +154,7 @@ const CompleteProfile: React.FC = () => {
   };
 
   // --------------------------------------------
-  // State (FROM ORIGINAL CODE)
+  // State
   // --------------------------------------------
   const [role, setRole] = useState<"doctor" | "patient" | "staff" | null>(null);
   const [formData, setFormData] = useState<ProfileFormData>({
@@ -178,14 +180,13 @@ const CompleteProfile: React.FC = () => {
   const [loading, setLoading] = useState(false);
 
   // --------------------------------------------
-  // Hooks (FROM ORIGINAL CODE)
+  // Hooks
   // --------------------------------------------
   const { provincesData, citiesData, barangaysData, loading: _loadingProvinces } = useLocationData(
     formData.province_id,
     formData.city_id
   );
 
-  // Animation Hook (For the new UI)
   useLayoutEffect(() => {
     const ctx = gsap.context(() => {
         gsap.fromTo(".anim-entry", 
@@ -201,13 +202,15 @@ const CompleteProfile: React.FC = () => {
   }, [step]);
 
   // --------------------------------------------
-  // Handlers (PRESERVED & ADDED LOGIC)
+  // Handlers
   // --------------------------------------------
-  
-  // UI Helper: Advance step
   const handleNextStep = () => {
       if (!role) {
           toast.error("Please select a role to continue.");
+          return;
+      }
+      if (!turnstileToken) {
+          toast.error("Please complete the verification check.");
           return;
       }
       setStep(2);
@@ -216,14 +219,9 @@ const CompleteProfile: React.FC = () => {
   const handleChange = (e: ReactChangeEvent<HTMLInputElement | HTMLSelectElement> | any) => {
     const { name, value } = e.target;
 
-    // --- FIX FOR SEX/GENDER ---
     if (name === "sex") {
-        // Force the value to stay as the string "true" or "false" in the state
-        // This ensures the CustomSelect component can match it to the options
         setFormData({ ...formData, [name]: String(value) });
-    }
-    // --- LOCATION HANDLERS ---
-    else if (name === "province_id") {
+    } else if (name === "province_id") {
       setFormData({
         ...formData,
         [name]: value,
@@ -261,7 +259,6 @@ const CompleteProfile: React.FC = () => {
     }
   };
 
-  // ✅ NEW: SPECIALIZATION HANDLERS (From Original)
   const toggleSpecialization = (specId: string) => {
     const current = formData.specializations;
     const updated = current.includes(specId)
@@ -288,7 +285,6 @@ const CompleteProfile: React.FC = () => {
     }));
   };
 
-  // Helper functions used in handleSubmit
   const getProvinceNameById = (id: string) => {
     const province = provincesData?.find((p: any) => String(p.province_id) === String(id));
     return province?.name || "";
@@ -324,7 +320,6 @@ const CompleteProfile: React.FC = () => {
       
       payload.append("user_id", String(userId));
       payload.append("role", role || "");
-      // FIX: Ensure 'sex' is sent as "true" or "false" string
       payload.append("sex", String(formData.sex)); 
       payload.append("dob", formData.dob);
       payload.append("contact_number", formData.contact_number);
@@ -342,10 +337,12 @@ const CompleteProfile: React.FC = () => {
       payload.append("city_name", cityName);
       payload.append("barangay_name", barangayName);
 
+      // Pass turnstile token to backend
+      payload.append("cf_turnstile_response", turnstileToken || "");
+
       if (role === "doctor" || role === "staff") {
         if (formData.license_number) payload.append("license_number", formData.license_number);
         if (formData.years_of_experience) payload.append("years_of_experience", formData.years_of_experience);
-        // ✅ FIXED: Correctly stringify specializations
         if (role === "doctor" && formData.specializations.length) payload.append("specializations", JSON.stringify(formData.specializations));
         if (formData.prc_license_front) payload.append("prc_license_front", formData.prc_license_front);
         if (formData.prc_license_back) payload.append("prc_license_back", formData.prc_license_back);
@@ -368,7 +365,7 @@ const CompleteProfile: React.FC = () => {
   };
 
   // --------------------------------------------
-  // Render (UPDATED UI)
+  // Render
   // --------------------------------------------
   return (
     <ErrorBoundary>
@@ -384,7 +381,6 @@ const CompleteProfile: React.FC = () => {
             <nav className="fixed w-full bg-white/90 backdrop-blur-xl border-b border-slate-100 z-50 h-20 flex items-center px-6 lg:px-12">
                 <Link to="/" className="flex items-center gap-2 md:gap-3 group">
                 <div className="flex items-center gap-1 hover:scale-105 transition-transform cursor-pointer">
-                    {/* Logo */}
                     <img 
                         src={logo} 
                         className="h-25 md:h-30 lg:h-35 w-auto object-contain transition-all duration-300" 
@@ -424,9 +420,24 @@ const CompleteProfile: React.FC = () => {
                                     <RoleCard role="doctor" selected={role === "doctor"} onClick={() => setRole("doctor")} />
                                     <RoleCard role="staff" selected={role === "staff"} onClick={() => setRole("staff")} />
                                 </div>
+
+                                {/* Turnstile — Step 1 only */}
+                                <div>
+                                    <Turnstile
+                                        siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY}
+                                        onSuccess={(token) => setTurnstileToken(token)}
+                                        onExpire={() => setTurnstileToken(null)}
+                                        onError={() => {
+                                            setTurnstileToken(null);
+                                            toast.error("Verification failed. Please refresh and try again.");
+                                        }}
+                                        options={{ theme: "light" }}
+                                    />
+                                </div>
+
                                 <button
                                     onClick={handleNextStep}
-                                    disabled={!role}
+                                    disabled={!role || !turnstileToken}
                                     className="w-full bg-slate-900 text-white font-bold py-4 rounded-xl shadow-lg hover:bg-[#00aeef] hover:shadow-[#00aeef]/30 transition-all transform hover:-translate-y-1 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                                 >
                                     Continue <ArrowRight className="w-4 h-4" />
@@ -449,11 +460,10 @@ const CompleteProfile: React.FC = () => {
                                             <input type="date" name="dob" value={formData.dob} onChange={handleChange} required className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-[#00aeef] outline-none transition-all" />
                                         </div>
                                         
-                                        {/* SEX FIX: sending "true"/"false" strings to satisfy backend boolean requirement */}
                                         <CustomSelect 
                                             label="Gender"
                                             name="sex"
-                                            value={formData.sex} // Now this holds the string "true" or "false"
+                                            value={formData.sex}
                                             onChange={handleChange}
                                             options={[
                                                 { value: "true", label: "Male" }, 
@@ -523,14 +533,12 @@ const CompleteProfile: React.FC = () => {
                                         <input type={showPassword ? "text" : "password"} name="confirmPassword" value={formData.confirmPassword} onChange={handleChange} placeholder="Confirm Password" required className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-[#00aeef] outline-none transition-all" />
                                     </div>
 
-                                    {/* --- NEW LABEL ADDED HERE --- */}
                                     <div className="flex items-start gap-2 px-1">
                                         <Info className="w-3.5 h-3.5 text-slate-400 mt-0.5 flex-shrink-0" />
                                         <p className="text-xs text-slate-500 font-medium leading-tight">
                                             Password must contain at least <span className="text-slate-700 font-bold">1 uppercase letter</span> and a <span className="text-slate-700 font-bold">mix of letters & numbers</span>.
                                         </p>
                                     </div>
-                                    {/* --------------------------- */}
 
                                     {formData.confirmPassword && (
                                         <div className={`text-xs font-bold flex items-center gap-1.5 transition-all duration-300 ${formData.password === formData.confirmPassword ? "text-emerald-500" : "text-rose-500"}`}>
@@ -539,7 +547,7 @@ const CompleteProfile: React.FC = () => {
                                     )}
                                 </div>
 
-                                {/* DOCTOR / STAFF SPECIFIC FIELDS (WITH SPECIALIZATIONS FIXED) */}
+                                {/* DOCTOR / STAFF SPECIFIC FIELDS */}
                                 {(role === "doctor" || role === "staff") && (
                                     <div className="space-y-4 pt-2 p-4 bg-blue-50/50 rounded-2xl border border-blue-100">
                                         <h3 className="text-sm font-bold text-blue-700 uppercase tracking-wider flex items-center gap-2">
@@ -551,7 +559,6 @@ const CompleteProfile: React.FC = () => {
                                             <input type="number" name="years_of_experience" value={formData.years_of_experience} onChange={handleChange} placeholder="Years Experience" className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#00aeef] outline-none" />
                                         </div>
 
-                                        {/* ✅ SPECIALIZATION SELECTION RESTORED */}
                                         {role === "doctor" && (
                                             <div className="space-y-2">
                                                 <label className="block text-xs font-bold text-slate-500 mb-1 ml-1 uppercase tracking-wider">Specialization</label>
@@ -567,7 +574,6 @@ const CompleteProfile: React.FC = () => {
                                                     placeholder="Add Specialization..."
                                                 />
                                                 
-                                                {/* Other Specialization Input */}
                                                 <div className="flex gap-2">
                                                     <input 
                                                         type="text" 
@@ -582,7 +588,6 @@ const CompleteProfile: React.FC = () => {
                                                     </button>
                                                 </div>
 
-                                                {/* Selected Specializations Tags */}
                                                 {formData.specializations.length > 0 && (
                                                     <div className="flex flex-wrap gap-2 mt-2">
                                                         {formData.specializations.map((spec, idx) => (
@@ -604,30 +609,24 @@ const CompleteProfile: React.FC = () => {
                                             </label>
                                             <div className="grid grid-cols-3 gap-2">
                                                 {['prc_license_front', 'prc_license_back', 'prc_license_selfie'].map((field) => {
-                                                    // Get the current file from state
-                                                    // @ts-ignore - Suppress indexing error if strict mode is on
+                                                    // @ts-ignore
                                                     const file = formData[field];
-
                                                     return (
                                                         <label 
                                                             key={field} 
                                                             className={`h-28 relative border-2 border-dashed rounded-xl flex flex-col items-center justify-center transition-all cursor-pointer overflow-hidden group
                                                                 ${file 
-                                                                    ? "border-emerald-400 bg-emerald-50" // Style when file exists
-                                                                    : "border-slate-300 bg-white hover:border-[#00aeef] hover:bg-blue-50" // Style when empty
+                                                                    ? "border-emerald-400 bg-emerald-50"
+                                                                    : "border-slate-300 bg-white hover:border-[#00aeef] hover:bg-blue-50"
                                                                 }`}
                                                         >
                                                             {file ? (
-                                                                /* --- STATE 1: FILE SELECTED (PREVIEW) --- */
                                                                 <>
-                                                                    {/* Image Thumbnail */}
                                                                     <img 
                                                                         src={URL.createObjectURL(file)} 
                                                                         alt="Preview" 
                                                                         className="absolute inset-0 w-full h-full object-cover opacity-90 group-hover:scale-105 transition-transform duration-500" 
                                                                     />
-                                                                    
-                                                                    {/* Green Check Overlay */}
                                                                     <div className="absolute inset-0 bg-black/20 flex flex-col items-center justify-center transition-opacity">
                                                                         <div className="bg-emerald-500 text-white p-1.5 rounded-full shadow-lg mb-1">
                                                                             <CheckCircle2 className="w-5 h-5" />
@@ -647,7 +646,6 @@ const CompleteProfile: React.FC = () => {
                                                                     </span>
                                                                 </>
                                                             )}
-
                                                             <input 
                                                                 type="file" 
                                                                 name={field} 
@@ -686,7 +684,7 @@ const CompleteProfile: React.FC = () => {
                     </div>
                 </div>
 
-                {/* VISUAL SIDE (Same as Sign In) */}
+                {/* VISUAL SIDE */}
                 <div className="hidden lg:flex w-1/2 bg-[#F0F9FF] relative items-center justify-center overflow-hidden">
                     <div className="absolute inset-0 z-0">
                         <img 
@@ -710,7 +708,6 @@ const CompleteProfile: React.FC = () => {
                             </p>
                         </div>
                         
-                        {/* User Card Preview */}
                         <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-3xl p-6 shadow-2xl flex items-center gap-4">
                             <img src={googleData.picture || `https://ui-avatars.com/api/?name=${googleData.fname}+${googleData.lname}`} className="w-14 h-14 rounded-full border-2 border-white" alt="Avatar"/>
                             <div>

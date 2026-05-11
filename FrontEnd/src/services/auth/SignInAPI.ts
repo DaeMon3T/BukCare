@@ -6,6 +6,7 @@ import BaseAPI from "../BaseAPI";
 export interface Credentials {
   email: string;
   password: string;
+  cf_turnstile_response: string
 }
 
 export interface Tokens {

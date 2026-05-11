@@ -81,6 +81,8 @@ class Settings(BaseSettings):
     # Frontend URL
     FRONTEND_URL: str
 
+    TURNSTILE_SECRET_KEY: str
+
     # Domain Configuration
     DOMAIN: str = "bukcare.com"
     DEV_DOMAIN: str = "localhost:5173"

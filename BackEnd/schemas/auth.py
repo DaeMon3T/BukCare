@@ -27,6 +27,7 @@ class LoginRequest(BaseModel):
     """Traditional email/password login request"""
     email: EmailStr
     password: str
+    cf_turnstile_response: Optional[str] = None
 
     class Config:
         title = "LoginRequest (Authentication)"
@@ -36,7 +37,7 @@ class LoginRequest(BaseModel):
 class CompleteProfileRequest(BaseModel):
     """Request to complete user profile after Google OAuth"""
     user_id: int = Field(..., description="User ID to update")
-    sex: conint(ge=0, le=1) = Field(..., description="Sex (0 = Female, 1 = Male)")
+    sex: int = Field(..., ge=0, le=1, description="Sex (0 = Female, 1 = Male)")
     dob: date = Field(..., description="Date of birth")
     contact_number: str = Field(..., description="Contact number")
     address_id: Optional[int] = Field(None, description="Address ID")

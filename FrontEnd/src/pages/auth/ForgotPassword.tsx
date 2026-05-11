@@ -2,6 +2,7 @@ import { useState, type FormEvent } from "react";
 import { Mail, KeyRound, Lock, ArrowLeft, Loader2, CheckCircle2, AlertCircle, Eye, EyeOff } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
+import { Turnstile } from "@marsidev/react-turnstile";
 import { validateEmail, validatePassword, validateConfirmPassword } from "@/services/validation";
 import { forgotPassword, verifyOtp, resetPassword } from "@/services/auth/ForgotPasswordAPI";
 
@@ -25,6 +26,8 @@ export default function ForgotPassword() {
   const [success, setSuccess] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+
   // --- HANDLERS ---
   const resetMessages = () => {
     setError("");
@@ -35,15 +38,23 @@ export default function ForgotPassword() {
   const sendOtpCode = async () => {
     resetMessages();
     const emailCheck = validateEmail(email);
-    if (!emailCheck.isValid) return  false;
+    if (!emailCheck.isValid) return false;
+
+    if (!turnstileToken) {
+      setError("Please complete the verification check.");
+      return false;
+    }
 
     setIsLoading(true);
     try {
-      await forgotPassword(email);
+      await forgotPassword(email, turnstileToken);
       setSuccess("Verification code sent to your email!");
+      // Reset token after use — each token is one-time
+      setTurnstileToken(null);
       return true;
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to send verification code. Please try again.");
+      setTurnstileToken(null);
       return false;
     } finally {
       setIsLoading(false);
@@ -166,7 +177,23 @@ export default function ForgotPassword() {
                   placeholder="name@example.com"
                   icon={<Mail className="w-5 h-5" />}
                 />
-                <SubmitButton isLoading={isLoading} text="Send Code" />
+
+                {/* Turnstile — Step 1 only */}
+                <div>
+                  <Turnstile
+                    siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY}
+                    onSuccess={(token) => setTurnstileToken(token)}
+                    onExpire={() => setTurnstileToken(null)}
+                    onError={() => {
+                      setTurnstileToken(null);
+                      setError("Verification failed. Please refresh and try again.");
+                    }}
+                    options={{ theme: "light" }}
+                  />
+                </div>
+
+                <SubmitButton isLoading={isLoading} text="Send Code" disabled={!turnstileToken} />
+
                 <div className="text-center pt-2">
                   <Link to="/signin" className="text-sm font-bold text-slate-500 hover:text-blue-600 transition flex items-center justify-center gap-2">
                     <ArrowLeft className="w-4 h-4" /> Back to Sign In
@@ -190,7 +217,7 @@ export default function ForgotPassword() {
                 />
                 <SubmitButton isLoading={isLoading} text="Verify OTP" />
                 <div className="text-center text-sm text-slate-500 pt-2">
-                  Didn’t receive the code?{" "}
+                  Didn't receive the code?{" "}
                   <button
                     type="button"
                     disabled={isLoading}
@@ -202,7 +229,7 @@ export default function ForgotPassword() {
                 </div>
                 <button
                   type="button"
-                  onClick={() => setStep("email")}
+                  onClick={() => { setStep("email"); setTurnstileToken(null); }}
                   className="w-full text-center text-xs text-slate-400 hover:text-slate-600 mt-4"
                 >
                   Change Email Address
@@ -291,11 +318,19 @@ function InputField({
   );
 }
 
-function SubmitButton({ isLoading, text }: { isLoading: boolean; text: string }) {
+function SubmitButton({
+  isLoading,
+  text,
+  disabled = false,
+}: {
+  isLoading: boolean;
+  text: string;
+  disabled?: boolean;
+}) {
   return (
     <button
       type="submit"
-      disabled={isLoading}
+      disabled={isLoading || disabled}
       className="w-full bg-slate-900 hover:bg-blue-600 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-blue-900/20 hover:shadow-blue-600/30 active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
     >
       {isLoading ? (
