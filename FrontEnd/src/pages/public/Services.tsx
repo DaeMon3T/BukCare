@@ -428,7 +428,7 @@ const Services: React.FC = () => {
       {/* --- 6. CTA --- */}
       <section className="py-24 px-6 bg-[#00aeef] relative overflow-hidden">
          {/* Abstract BG */}
-         <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20"></div>
+         <div className="absolute inset-0 bg-[url('/noise.svg')] opacity-20"></div>
          <div className="absolute -left-20 -bottom-20 w-96 h-96 bg-white rounded-full blur-[100px] opacity-20"></div>
 
          <div className="max-w-4xl mx-auto text-center relative z-10">

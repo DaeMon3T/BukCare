@@ -42,7 +42,7 @@ class User(Base):
     sex = Column(Boolean, nullable=True)
     #role = Column(UserRoleType, nullable=False, default=UserRole.PENDING)
     role = Column(
-        Enum(UserRole, name="user_role"),
+        Enum(UserRole, name="userrole", values_callable=lambda x: [e.value for e in x]),
         nullable=False,
         default=UserRole.PENDING
     )

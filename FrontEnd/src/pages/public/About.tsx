@@ -339,7 +339,7 @@ const About: React.FC = () => {
       {/* --- 6. SIMPLE CTA --- */}
       <section className="py-24 px-6 bg-[#0f172a] text-white text-center relative overflow-hidden">
         {/* Abstract BG */}
-        <div className="absolute top-0 left-0 w-full h-full bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-10"></div>
+        <div className="absolute top-0 left-0 w-full h-full bg-[url('/noise.svg')] opacity-10"></div>
         <div className="absolute -top-20 -right-20 w-96 h-96 bg-[#00aeef] rounded-full blur-[128px] opacity-20"></div>
 
         <div className="max-w-3xl mx-auto relative z-10">

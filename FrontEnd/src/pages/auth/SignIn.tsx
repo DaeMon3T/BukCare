@@ -322,7 +322,7 @@ const SignIn: React.FC = () => {
               className="w-full h-full object-cover opacity-80"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-[#00aeef]/90 to-slate-900/60 mix-blend-multiply"></div>
-            <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20"></div>
+            <div className="absolute inset-0 bg-[url('/noise.svg')] opacity-20"></div>
           </div>
 
           <div className="panel-reveal relative z-10 w-full max-w-lg px-12 text-white">

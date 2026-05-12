@@ -57,7 +57,7 @@ router.include_router(medical_profile_router,                      tags=["Medica
 router.include_router(vitals_router,       prefix="/vitals",       tags=["Patient Vitals"])
 
 # ---- Communication ----
-router.include_router(messages_router,     prefix="/messages",     tags=["Messages"])
+router.include_router(messages_router,                             tags=["Messages"])          # /v1/messages/...
 router.include_router(notifications_router, prefix="/notifications", tags=["Notifications"])
 
 # ---- Discovery / extras ----
