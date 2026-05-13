@@ -1,18 +1,18 @@
 // src/services/BaseAPI.ts
 import axios from "axios";
 
-// FIXED: Use HTTPS and correct env variable name
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 
-  (import.meta.env.PROD 
-    ? "https://api.bukcare.com/v1" 
-    : "http://localhost:8000/v1");
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+
+if (!API_BASE_URL) {
+  throw new Error("VITE_API_BASE_URL is not defined");
+}
 
 const BaseAPI = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     "Content-Type": "application/json",
   },
-  timeout: 10000, // 10 seconds
+  timeout: 10000,
 });
 
 // Request interceptor
