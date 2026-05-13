@@ -1,18 +1,18 @@
 // src/services/BaseAPI.ts
 import axios from "axios";
 
-const API_BASE_URL = import.meta.env.VITE_API_URL;
-
-if (!API_BASE_URL) {
-  throw new Error("VITE_API_BASE_URL is not defined");
-}
+// FIXED: Use HTTPS and correct env variable name
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ||
+  (import.meta.env.PROD
+    ? "https://api.bukcare.com/v1"
+    : "http://localhost:8000/v1");
 
 const BaseAPI = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     "Content-Type": "application/json",
   },
-  timeout: 10000,
+  timeout: 10000, // 10 seconds
 });
 
 // Request interceptor
@@ -80,11 +80,11 @@ class APIInterceptor {
 
   constructor() {
     // FIXED: Use correct env var and HTTPS for production
-    this.baseURL = import.meta.env.VITE_API_BASE_URL || 
-      (import.meta.env.PROD 
-        ? 'https://api.bukcare.com/v1' 
+    this.baseURL = import.meta.env.VITE_API_BASE_URL ||
+      (import.meta.env.PROD
+        ? 'https://api.bukcare.com/v1'
         : 'http://localhost:8000/v1');
-    
+
     // Ensure baseURL doesn't end with slash
     this.baseURL = this.baseURL.replace(/\/$/, '');
   }
@@ -95,7 +95,7 @@ class APIInterceptor {
     retryCount = 0
   ): Promise<Response> {
     const token = localStorage.getItem('access_token');
-    
+
     const defaultHeaders = {
       'Content-Type': 'application/json',
       ...(token && { Authorization: `Bearer ${token}` }),
@@ -115,7 +115,7 @@ class APIInterceptor {
       // Handle 401 Unauthorized - try to refresh token
       if (response.status === 401 && retryCount === 0) {
         const refreshSuccess = await this.refreshToken();
-        
+
         if (refreshSuccess) {
           // Retry the request with new token
           return this.makeRequest(endpoint, options, retryCount + 1);
