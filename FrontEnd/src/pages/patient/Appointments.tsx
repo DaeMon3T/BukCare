@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import toast from "react-hot-toast";
 import api from "@/services/api";
 import Navbar from "@/components/Navbar";
@@ -37,7 +37,7 @@ interface Appointment {
 
 type FilterTab = "all" | "pending" | "confirmed" | "completed" | "expired" | "cancelled";
 
-const STATUS_META: Record<string, { badge: string; dot: string; label: string; icon: any }> = {
+const STATUS_META: Record<string, { badge: string; dot: string; label: string; icon: React.ComponentType<any> }> = {
   pending: { badge: "bg-amber-50 text-amber-700 border-amber-200", dot: "bg-amber-400", label: "Pending", icon: AlertCircle },
   confirmed: { badge: "bg-emerald-50 text-emerald-700 border-emerald-200", dot: "bg-emerald-500", label: "Confirmed", icon: CheckCircle },
   completed: { badge: "bg-blue-50 text-blue-700 border-blue-200", dot: "bg-blue-500", label: "Completed", icon: CheckCircle },
@@ -47,6 +47,10 @@ const STATUS_META: Record<string, { badge: string; dot: string; label: string; i
 
 const DoctorAvatar = ({ src, name }: { src?: string | null; name?: string | null }) => {
   const [err, setErr] = useState(false);
+  // reset error state if src changes
+  useEffect(() => {
+    setErr(false);
+  }, [src]);
   if (src && !err) {
     return <img src={src} alt={name || "Doctor"} className="w-10 h-10 rounded-full object-cover border border-slate-200" onError={() => setErr(true)} />;
   }

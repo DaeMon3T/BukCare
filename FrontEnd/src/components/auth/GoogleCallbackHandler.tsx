@@ -81,8 +81,8 @@ const GoogleCallbackHandler: React.FC = () => {
           email: decodeURIComponent(email),
           fname: fname ? decodeURIComponent(fname) : '',
           lname: lname ? decodeURIComponent(lname) : '',
-          picture: picture ? decodeURIComponent(picture) : undefined,
-          role: role && role !== '' ? decodeURIComponent(role) : null,
+          picture: picture ? decodeURIComponent(picture) : '',
+          role: role && role !== '' ? decodeURIComponent(role) : '',
           is_profile_complete: is_profile_complete === 'true',
           is_verified: is_verified === 'true',
           is_active: is_active === 'true'
@@ -91,7 +91,7 @@ const GoogleCallbackHandler: React.FC = () => {
         const tokens = {
           access_token: token,
           refresh_token: refresh,
-          token_type: 'bearer',
+          token_type: 'Bearer',
           expires_in: 3600
         };
         

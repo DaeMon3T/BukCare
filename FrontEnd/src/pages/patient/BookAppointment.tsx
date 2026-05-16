@@ -196,7 +196,7 @@ const BookAppointment: React.FC = () => {
       setSubmitting(true);
       
       // FIXED: Removed "/v1" prefix to match your axios config
-      await api.post("/appointments", { 
+      await api.post("/appointments/", { 
         doctor_id: doctorId,
         appointment_date: appointmentDateTime,
         reason: reason || null,
