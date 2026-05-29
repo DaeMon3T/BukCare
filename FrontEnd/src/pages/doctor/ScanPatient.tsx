@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import QRScanner from '@/components/QRScanner'; 
 import api from '@/services/api';
 import toast from 'react-hot-toast';
@@ -29,6 +29,8 @@ interface PatientRecord {
 
 const ScanPatient: React.FC = () => {
     const navigate = useNavigate();
+    const location = useLocation();
+    const isStaff = location.pathname.startsWith('/staff');
     
     // States
     const [scanning, setScanning] = useState(true);
@@ -89,7 +91,7 @@ const ScanPatient: React.FC = () => {
             {/* Header Navigation */}
             <div className="w-full max-w-lg mb-6 flex items-center justify-between">
                 <button 
-                    onClick={() => navigate('/doctor/dashboard')} 
+                    onClick={() => navigate(isStaff ? '/staff/dashboard' : '/doctor/dashboard')} 
                     className="p-2.5 bg-white border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 hover:border-blue-300 hover:text-blue-600 transition-all shadow-sm group"
                 >
                     <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
@@ -231,7 +233,7 @@ const ScanPatient: React.FC = () => {
                             {/* Actions */}
                             <div className="space-y-3">
                                 <button 
-                                    onClick={() => navigate(`/doctor/patient/${patientData.user_id}`)}
+                                    onClick={() => navigate(isStaff ? `/staff/patient/${patientData.user_id}` : `/doctor/patient/${patientData.user_id}`)}
                                     className="w-full py-3.5 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition-all shadow-lg shadow-slate-300/50 flex items-center justify-center gap-2 group active:scale-[0.98]"
                                 >
                                     Open Medical Record 

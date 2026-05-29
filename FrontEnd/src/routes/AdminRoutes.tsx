@@ -9,17 +9,12 @@ import AdminDashboard from '../pages/admin/Dashboard';
 import AdminProfile from '../pages/admin/Profile';
 import AdminUsers from '../pages/admin/Users';
 import Usersdetail from '../pages/admin/Usersdetail';
-import AdminAppointments from '../pages/admin/Appointments';
 
 const AdminRoutes = () => (
   <>
     <Route
       path="/admin/dashboard"
       element={<AdminRoute><AdminDashboard /></AdminRoute>}
-    />
-    <Route
-      path="/admin/appointments"
-      element={<AdminRoute><AdminAppointments /></AdminRoute>}
     />
     <Route
       path="/admin/users"

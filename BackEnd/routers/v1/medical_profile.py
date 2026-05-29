@@ -85,10 +85,10 @@ def scan_patient_qr(
     """
     
     # 1. Security Check
-    if current_user.role not in [UserRole.DOCTOR, UserRole.ADMIN]:
+    if current_user.role not in [UserRole.DOCTOR, UserRole.STAFF, UserRole.ADMIN]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Access denied. Only doctors can scan patient QR codes."
+            detail="Access denied. Only doctors and staff can scan patient QR codes."
         )
 
     result = None

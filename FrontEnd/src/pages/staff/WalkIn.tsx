@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
+import { createPortal } from "react-dom";
 import Navbar from "@/components/Navbar";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -14,6 +15,9 @@ import {
   CalendarDays,
   Filter,
   CheckCircle2,
+  ListChecks,
+  XCircle,
+  RefreshCw,
 } from "lucide-react";
 import api from "@/services/api";
 import toast from "react-hot-toast";
@@ -45,12 +49,33 @@ interface DoctorWithAvailability {
     availabilities: Availability[];
 }
 
+interface TodayWalkIn {
+    id: number;
+    patient_id: number;
+    patient_name: string;
+    patient_picture: string | null;
+    doctor_id: number;
+    doctor_name: string;
+    appointment_date: string;
+    status: string;
+    reason: string | null;
+}
+
+const STATUS_STYLES: Record<string, { label: string; bg: string; text: string; dot: string }> = {
+    confirmed: { label: "Waiting", bg: "bg-amber-50", text: "text-amber-700", dot: "bg-amber-500" },
+    in_progress: { label: "In Consultation", bg: "bg-blue-50", text: "text-blue-700", dot: "bg-blue-500" },
+    completed: { label: "Completed", bg: "bg-emerald-50", text: "text-emerald-700", dot: "bg-emerald-500" },
+    cancelled: { label: "Cancelled", bg: "bg-slate-100", text: "text-slate-500", dot: "bg-slate-400" },
+    pending: { label: "Pending", bg: "bg-slate-100", text: "text-slate-600", dot: "bg-slate-400" },
+};
+
 const DAYS_OF_WEEK = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
 const WalkIn: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [patients, setPatients] = useState<Patient[]>([]);
   const [searching, setSearching] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
   
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [doctors, setDoctors] = useState<DoctorWithAvailability[]>([]);
@@ -61,7 +86,16 @@ const WalkIn: React.FC = () => {
 
   // --- FILTER STATES ---
   const [specFilter, setSpecFilter] = useState<string>("all");
-  const [dateFilter, setDateFilter] = useState<string>(new Date().toISOString().split("T")[0]); // today
+  const [doctorSearch, setDoctorSearch] = useState<string>("");
+  const [dateFilter, setDateFilter] = useState<string>(new Date().toISOString().split("T")[0] || "");
+  const [timeFilter, setTimeFilter] = useState<string>(() => {
+    const now = new Date();
+    return `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+  });
+
+  // --- TODAY'S QUEUE ---
+  const [todayWalkins, setTodayWalkins] = useState<TodayWalkIn[]>([]);
+  const [loadingQueue, setLoadingQueue] = useState(false);
 
   // --- REGISTRATION STATES ---
   const [showRegisterModal, setShowRegisterModal] = useState(false);
@@ -83,6 +117,35 @@ const WalkIn: React.FC = () => {
     fetchDoctors();
   }, []);
 
+  // --- FETCH TODAY'S WALK-IN QUEUE ---
+  const fetchTodayQueue = async () => {
+    setLoadingQueue(true);
+    try {
+        const res = await api.get("/walk-ins/today");
+        setTodayWalkins(res.data);
+    } catch (err: any) {
+        if (err?.response?.status !== 403) {
+            console.error("Failed to load today's queue", err);
+        }
+    } finally {
+        setLoadingQueue(false);
+    }
+  };
+  useEffect(() => { fetchTodayQueue(); }, []);
+
+  // --- CANCEL A WALK-IN ---
+  const handleCancelWalkin = async (id: number) => {
+    const reason = window.prompt("Reason for cancelling this walk-in?");
+    if (!reason || !reason.trim()) return;
+    try {
+        await api.patch(`/appointments/${id}/status`, { status: "cancelled", reason: reason.trim() });
+        toast.success("Walk-in cancelled");
+        fetchTodayQueue();
+    } catch (err: any) {
+        toast.error(err?.response?.data?.detail || "Cancel failed");
+    }
+  };
+
   // --- DERIVED: All unique specializations ---
   const allSpecializations = useMemo(() => {
     const specs = new Set<string>();
@@ -90,33 +153,24 @@ const WalkIn: React.FC = () => {
     return Array.from(specs).sort();
   }, [doctors]);
 
-  // --- DERIVED: Filtered doctors by specialization + date availability ---
+  // --- DERIVED: Filtered doctors by specialization + name (no availability gate) ---
+  // Staff can assign any approved doctor; availability is shown as a suggestion, not a filter.
   const filteredDoctors = useMemo(() => {
-    const selectedDate = new Date(dateFilter);
-    const dayName = DAYS_OF_WEEK[selectedDate.getDay()];
-    const dateStr = dateFilter; // YYYY-MM-DD
-
+    const query = doctorSearch.trim().toLowerCase();
     return doctors.filter(doc => {
-      // Specialization filter
       if (specFilter !== "all" && !doc.specializations.includes(specFilter)) return false;
-
-      // Date availability filter — check if doctor has a slot matching the selected date
-      const hasSlotOnDate = doc.availabilities.some(a => {
-        // Match by specific date
-        if (a.date && a.date.startsWith(dateStr)) return true;
-        // Match by recurring day_of_week
-        if (a.day_of_week && a.day_of_week.toLowerCase() === dayName.toLowerCase()) return true;
-        return false;
-      });
-
-      return hasSlotOnDate;
+      if (query) {
+        const haystack = `${doc.name} ${doc.specializations.join(" ")}`.toLowerCase();
+        if (!haystack.includes(query)) return false;
+      }
+      return true;
     });
-  }, [doctors, specFilter, dateFilter]);
+  }, [doctors, specFilter, doctorSearch]);
 
-  // --- Get time slots for a specific doctor on selected date ---
+  // --- Get suggested time slots for a doctor on the selected date ---
   const getSlotsForDoctor = (doc: DoctorWithAvailability): Availability[] => {
     const selectedDate = new Date(dateFilter);
-    const dayName = DAYS_OF_WEEK[selectedDate.getDay()];
+    const dayName = DAYS_OF_WEEK[selectedDate.getDay()] || "";
     const dateStr = dateFilter;
 
     return doc.availabilities.filter(a => {
@@ -126,6 +180,16 @@ const WalkIn: React.FC = () => {
     });
   };
 
+  // --- Apply a suggested slot: select the doctor and fill the time field ---
+  const handlePickSlot = (doc: DoctorWithAvailability, slot: Availability) => {
+    setSelectedDoctorId(doc.user_id);
+    if (slot.date) {
+      const d = slot.date.split("T")[0];
+      if (d) setDateFilter(d);
+    }
+    if (slot.start_time) setTimeFilter(slot.start_time.slice(0, 5));
+  };
+
   // --- SEARCH PATIENTS ---
   const handleSearch = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -133,10 +197,17 @@ const WalkIn: React.FC = () => {
 
     setSearching(true);
     try {
-        const res = await api.get(`/walk-ins/patients/search?query=${searchQuery}`);
+        const res = await api.get(`/walk-ins/patients/search?query=${encodeURIComponent(searchQuery)}`);
         setPatients(res.data);
-    } catch (err) {
-        toast.error("Search failed");
+    } catch (err: any) {
+        setPatients([]);
+        const status = err?.response?.status;
+        const detail = err?.response?.data?.detail;
+        if (status === 403) {
+            toast.error(detail || "No doctor has granted you access yet.");
+        } else {
+            toast.error(detail || "Search failed");
+        }
     } finally {
         setSearching(false);
     }
@@ -149,11 +220,24 @@ const WalkIn: React.FC = () => {
         return;
     }
 
+    // Combine date + time into a local-time ISO string (so backend parses the user's intended time)
+    const [hStr, mStr] = timeFilter.split(":");
+    const [yStr, monStr, dStr] = dateFilter.split("-");
+    if (!hStr || !mStr || !yStr || !monStr || !dStr) {
+        toast.error("Please pick a valid date and time");
+        return;
+    }
+    const appointmentDate = new Date(
+        Number(yStr), Number(monStr) - 1, Number(dStr),
+        Number(hStr), Number(mStr), 0, 0
+    );
+
     setBooking(true);
     try {
         await api.post("/walk-ins/book", {
             patient_id: selectedPatient.id,
             doctor_id: selectedDoctorId,
+            appointment_date: appointmentDate.toISOString(),
             reason: reason,
             notes: notes,
             appointment_type: "walk_in"
@@ -165,8 +249,13 @@ const WalkIn: React.FC = () => {
         setPatients([]);
         setSearchQuery("");
         setSelectedDoctorId(null);
+        fetchTodayQueue();
     } catch (err: any) {
-        toast.error(err?.response?.data?.message || "Booking failed");
+        if (err?.response?.status === 409) {
+            toast.error(err?.response?.data?.detail || "That time slot is already booked for this doctor.", { duration: 5000 });
+        } else {
+            toast.error(err?.response?.data?.detail || "Booking failed");
+        }
     } finally {
         setBooking(false);
     }
@@ -226,122 +315,237 @@ const WalkIn: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-            
-            {/* SEARCH SECTION */}
+
+            {/* TODAY'S QUEUE */}
             <div className="lg:col-span-12">
-                <div className="bg-white rounded-[2rem] shadow-xl shadow-slate-200/50 border border-slate-100 p-8">
-                    <div className="flex flex-col md:flex-row gap-4 items-center mb-8">
-                        <div className="relative flex-1 group w-full">
-                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
-                            <input 
-                                type="text" 
-                                placeholder="Search by Patient Name, Email, or ID..."
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                                className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all font-medium"
-                            />
+                <div className="bg-white rounded-[2rem] shadow-xl shadow-slate-200/50 border border-slate-100 p-6 sm:p-8">
+                    <div className="flex items-center justify-between mb-5">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-2xl bg-blue-50 flex items-center justify-center">
+                                <ListChecks className="w-5 h-5 text-blue-600" />
+                            </div>
+                            <div>
+                                <h2 className="text-lg font-black text-slate-900">Today's Walk-in Queue</h2>
+                                <p className="text-xs text-slate-500 font-medium">{todayWalkins.length} appointment{todayWalkins.length === 1 ? "" : "s"} so far today</p>
+                            </div>
                         </div>
-                        <button 
-                            onClick={() => handleSearch()}
-                            disabled={searching}
-                            className="w-full md:w-auto px-8 py-4 bg-slate-900 text-white font-bold rounded-2xl shadow-lg shadow-slate-900/10 hover:bg-blue-600 transition-all flex items-center justify-center gap-2"
+                        <button
+                            onClick={fetchTodayQueue}
+                            disabled={loadingQueue}
+                            className="p-2.5 rounded-xl hover:bg-slate-50 text-slate-500 hover:text-blue-600 transition-all disabled:opacity-50"
+                            title="Refresh"
                         >
-                            {searching ? <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span> : "Search Records"}
+                            <RefreshCw className={`w-4 h-4 ${loadingQueue ? "animate-spin" : ""}`} />
                         </button>
                     </div>
 
-                    {/* RESULTS */}
-                    <AnimatePresence mode="wait">
-                        {patients.length > 0 ? (
-                            <motion.div 
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: -10 }}
-                                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-                            >
-                                {patients.map((p) => (
-                                    <div 
-                                        key={p.id}
-                                        onClick={() => setSelectedPatient(p)}
-                                        className={`group relative bg-white p-5 rounded-3xl border-2 transition-all cursor-pointer hover:shadow-lg ${selectedPatient?.id === p.id ? 'border-blue-500 ring-4 ring-blue-500/10' : 'border-slate-50 hover:border-blue-100'}`}
-                                    >
-                                        <div className="flex items-center gap-4">
-                                            <div className="w-14 h-14 rounded-2xl overflow-hidden bg-slate-100 flex-shrink-0 shadow-inner">
-                                                <img src={p.picture || `https://ui-avatars.com/api/?name=${p.name}&background=random`} alt={p.name} className="w-full h-full object-cover" />
-                                            </div>
-                                            <div className="overflow-hidden">
-                                                <h4 className="font-bold text-slate-900 truncate">{p.name}</h4>
-                                                <p className="text-xs text-slate-500 truncate">{p.email}</p>
-                                                <p className="text-[10px] font-black text-blue-600 uppercase mt-1 tracking-wider">ID: 2026-{p.id}</p>
-                                            </div>
+                    {todayWalkins.length === 0 ? (
+                        <div className="py-10 text-center bg-slate-50/50 rounded-2xl border border-dashed border-slate-200">
+                            <Clock className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+                            <p className="text-sm font-bold text-slate-600">No walk-ins yet today</p>
+                            <p className="text-xs text-slate-400">Booked walk-ins will appear here as they arrive.</p>
+                        </div>
+                    ) : (
+                        <div className="space-y-2.5 max-h-[340px] overflow-y-auto custom-scrollbar pr-1">
+                            {todayWalkins.map(w => {
+                                const styles = STATUS_STYLES[w.status] || STATUS_STYLES.pending!;
+                                const isFinal = w.status === "completed" || w.status === "cancelled";
+                                const apptTime = new Date(w.appointment_date);
+                                const timeStr = `${String(apptTime.getHours()).padStart(2, "0")}:${String(apptTime.getMinutes()).padStart(2, "0")}`;
+                                return (
+                                    <div key={w.id} className="flex items-center gap-3 p-3 rounded-2xl border border-slate-100 hover:border-slate-200 hover:bg-slate-50/40 transition-all">
+                                        <div className="w-11 h-11 rounded-xl overflow-hidden bg-slate-100 flex-shrink-0">
+                                            <img src={w.patient_picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(w.patient_name)}&background=random`} alt="" className="w-full h-full object-cover" />
                                         </div>
-                                        <div className="absolute right-4 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-all transform group-hover:translate-x-1">
-                                            <ChevronRight className="w-5 h-5 text-blue-500" />
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-2 flex-wrap">
+                                                <p className="font-bold text-slate-900 truncate">{w.patient_name}</p>
+                                                <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider ${styles.bg} ${styles.text}`}>
+                                                    <span className={`w-1.5 h-1.5 rounded-full ${styles.dot}`} />
+                                                    {styles.label}
+                                                </span>
+                                            </div>
+                                            <p className="text-xs text-slate-500 truncate">
+                                                <span className="font-semibold text-slate-600">{timeStr}</span> &middot; {w.doctor_name}{w.reason ? ` — ${w.reason}` : ""}
+                                            </p>
                                         </div>
+                                        {!isFinal && (
+                                            <button
+                                                onClick={() => handleCancelWalkin(w.id)}
+                                                className="flex-shrink-0 p-2 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all"
+                                                title="Cancel walk-in"
+                                            >
+                                                <XCircle className="w-5 h-5" />
+                                            </button>
+                                        )}
                                     </div>
-                                ))}
-                            </motion.div>
-                        ) : searchQuery.length >= 2 && !searching ? (
-                            <motion.div 
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                className="py-20 text-center bg-slate-50/50 rounded-3xl border border-dashed border-slate-200"
-                            >
-                                <Database className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-                                <h3 className="text-lg font-bold text-slate-700">No Patient Records Found</h3>
-                                <p className="text-slate-500 text-sm mb-6">Make sure the name or ID is correct.</p>
-                                <button onClick={() => setShowRegisterModal(true)} className="px-6 py-3 bg-white border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-50 transition-all flex items-center gap-2 mx-auto">
-                                    <UserPlus className="w-4 h-4 text-emerald-500" /> Create New Profile
-                                </button>
-                            </motion.div>
-                        ) : (
-                            <div className="py-20 text-center text-slate-400">
-                                <UserIcon className="w-16 h-16 mx-auto mb-4 opacity-10" />
-                                <p className="font-medium">Enter patient details above to retrieve medical records.</p>
-                            </div>
-                        )}
-                    </AnimatePresence>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {/* NEW WALK-IN SECTION */}
+            <div className="lg:col-span-12">
+                <div className="bg-white rounded-[2rem] shadow-xl shadow-slate-200/50 border border-slate-100 p-8">
+
+                    {/* PRIMARY: Register a new walk-in */}
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5 p-6 rounded-3xl bg-gradient-to-br from-blue-600 to-indigo-700 text-white">
+                        <div className="w-14 h-14 rounded-2xl bg-white/15 flex items-center justify-center flex-shrink-0">
+                            <UserPlus className="w-7 h-7" />
+                        </div>
+                        <div className="flex-1">
+                            <h2 className="text-xl font-black">New Walk-in</h2>
+                            <p className="text-sm text-blue-100/90 font-medium">Register the patient in front of you, then assign an available doctor.</p>
+                        </div>
+                        <button
+                            onClick={() => setShowRegisterModal(true)}
+                            className="w-full sm:w-auto px-7 py-3.5 bg-white text-blue-700 font-bold rounded-2xl shadow-lg hover:bg-blue-50 transition-all flex items-center justify-center gap-2"
+                        >
+                            <UserPlus className="w-5 h-5" /> Register Walk-in
+                        </button>
+                    </div>
+
+                    {/* SECONDARY: returning patient lookup (collapsible) */}
+                    <div className="mt-6">
+                        <button
+                            onClick={() => setShowSearch(s => !s)}
+                            className="flex items-center gap-2 text-sm font-bold text-slate-600 hover:text-blue-600 transition-colors"
+                        >
+                            <Search className="w-4 h-4" />
+                            Returning patient? Look them up
+                            <ChevronRight className={`w-4 h-4 transition-transform ${showSearch ? "rotate-90" : ""}`} />
+                        </button>
+
+                        <AnimatePresence initial={false}>
+                            {showSearch && (
+                                <motion.div
+                                    initial={{ opacity: 0, height: 0 }}
+                                    animate={{ opacity: 1, height: "auto" }}
+                                    exit={{ opacity: 0, height: 0 }}
+                                    className="overflow-hidden"
+                                >
+                                    <div className="pt-5">
+                                        <div className="flex flex-col md:flex-row gap-4 items-center mb-6">
+                                            <div className="relative flex-1 group w-full">
+                                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
+                                                <input
+                                                    type="text"
+                                                    placeholder="Search by Patient Name, Email, or Phone..."
+                                                    value={searchQuery}
+                                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                                    onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                                                    className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all font-medium"
+                                                />
+                                            </div>
+                                            <button
+                                                onClick={() => handleSearch()}
+                                                disabled={searching}
+                                                className="w-full md:w-auto px-8 py-4 bg-slate-900 text-white font-bold rounded-2xl shadow-lg shadow-slate-900/10 hover:bg-blue-600 transition-all flex items-center justify-center gap-2"
+                                            >
+                                                {searching ? <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span> : "Search Records"}
+                                            </button>
+                                        </div>
+
+                                        {/* RESULTS */}
+                                        {patients.length > 0 ? (
+                                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                                {patients.map((p) => (
+                                                    <div
+                                                        key={p.id}
+                                                        onClick={() => setSelectedPatient(p)}
+                                                        className={`group relative bg-white p-5 rounded-3xl border-2 transition-all cursor-pointer hover:shadow-lg ${selectedPatient?.id === p.id ? 'border-blue-500 ring-4 ring-blue-500/10' : 'border-slate-100 hover:border-blue-100'}`}
+                                                    >
+                                                        <div className="flex items-center gap-4">
+                                                            <div className="w-14 h-14 rounded-2xl overflow-hidden bg-slate-100 flex-shrink-0 shadow-inner">
+                                                                <img src={p.picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(p.name)}&background=random`} alt={p.name} className="w-full h-full object-cover" />
+                                                            </div>
+                                                            <div className="overflow-hidden">
+                                                                <h4 className="font-bold text-slate-900 truncate">{p.name}</h4>
+                                                                <p className="text-xs text-slate-500 truncate">{p.email}</p>
+                                                                <p className="text-[10px] font-black text-blue-600 uppercase mt-1 tracking-wider">ID: 2026-{p.id}</p>
+                                                            </div>
+                                                        </div>
+                                                        <div className="absolute right-4 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-all transform group-hover:translate-x-1">
+                                                            <ChevronRight className="w-5 h-5 text-blue-500" />
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        ) : searchQuery.length >= 2 && !searching ? (
+                                            <div className="py-12 text-center bg-slate-50/50 rounded-3xl border border-dashed border-slate-200">
+                                                <Database className="w-10 h-10 text-slate-300 mx-auto mb-3" />
+                                                <h3 className="text-base font-bold text-slate-700">No existing record</h3>
+                                                <p className="text-slate-500 text-sm mb-5">This looks like a new patient — register them instead.</p>
+                                                <button onClick={() => setShowRegisterModal(true)} className="px-6 py-3 bg-white border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-50 transition-all flex items-center gap-2 mx-auto">
+                                                    <UserPlus className="w-4 h-4 text-emerald-500" /> Register Walk-in
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <div className="py-10 text-center text-slate-400">
+                                                <UserIcon className="w-12 h-12 mx-auto mb-3 opacity-10" />
+                                                <p className="font-medium text-sm">Type a name, email, or phone to find an existing patient.</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </div>
                 </div>
             </div>
 
             {/* BOOKING MODAL */}
+            {createPortal(
             <AnimatePresence>
                 {selectedPatient && (
-                    <motion.div 
+                    <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm"
+                        className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm"
                     >
-                        <motion.div 
+                        <motion.div
                             initial={{ scale: 0.9, y: 20 }}
                             animate={{ scale: 1, y: 0 }}
                             exit={{ scale: 0.9, y: 20 }}
-                            className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]"
+                            className="bg-white rounded-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[88vh]"
                         >
                             {/* Modal Header */}
-                            <div className="p-8 bg-gradient-to-br from-blue-600 to-indigo-700 text-white relative flex-none">
-                                <div className="flex items-center gap-4">
-                                    <div className="w-16 h-16 rounded-2xl overflow-hidden border-2 border-white/20 shadow-lg bg-white/10 backdrop-blur-md flex-shrink-0">
-                                        <img src={selectedPatient.picture || `https://ui-avatars.com/api/?name=${selectedPatient.name}&background=random`} alt="" className="w-full h-full object-cover" />
+                            <div className="p-5 sm:p-8 bg-gradient-to-br from-blue-600 to-indigo-700 text-white relative flex-none">
+                                <div className="flex items-center gap-3 sm:gap-4 pr-12">
+                                    <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl overflow-hidden border-2 border-white/20 shadow-lg bg-white/10 backdrop-blur-md flex-shrink-0">
+                                        <img src={selectedPatient.picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(selectedPatient.name)}&background=random`} alt="" className="w-full h-full object-cover" />
                                     </div>
-                                    <div>
+                                    <div className="min-w-0">
                                         <div className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-100 mb-1 opacity-80">Immediate Walk-in</div>
-                                        <h3 className="text-2xl font-bold">{selectedPatient.name}</h3>
-                                        <p className="text-sm text-blue-100 opacity-80">Patient ID: 2026-{selectedPatient.id}</p>
+                                        <h3 className="text-xl sm:text-2xl font-bold truncate">{selectedPatient.name}</h3>
+                                        <p className="text-xs sm:text-sm text-blue-100 opacity-80">Patient ID: 2026-{selectedPatient.id}</p>
                                     </div>
                                 </div>
-                                <button onClick={() => { setSelectedPatient(null); setSelectedDoctorId(null); }} className="absolute top-6 right-6 w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-all">
+                                <button onClick={() => { setSelectedPatient(null); setSelectedDoctorId(null); }} className="absolute top-4 right-4 sm:top-6 sm:right-6 w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-all">
                                     ✕
                                 </button>
                             </div>
 
                             {/* Modal Body */}
-                            <div className="p-8 space-y-6 overflow-y-auto custom-scrollbar flex-1">
+                            <div className="p-5 sm:p-8 space-y-6 overflow-y-auto custom-scrollbar flex-1">
                                 
+                                {/* DOCTOR SEARCH */}
+                                <div className="relative">
+                                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                    <input
+                                        type="text"
+                                        placeholder="Search doctor by name or specialization..."
+                                        value={doctorSearch}
+                                        onChange={(e) => setDoctorSearch(e.target.value)}
+                                        className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-medium text-slate-700"
+                                    />
+                                </div>
+
                                 {/* FILTERS ROW */}
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                     <div className="space-y-2">
                                         <label className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
                                             <Filter className="w-4 h-4 text-blue-500" /> Specialization
@@ -359,13 +563,24 @@ const WalkIn: React.FC = () => {
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                                            <CalendarDays className="w-4 h-4 text-blue-500" /> Appointment Date
+                                            <CalendarDays className="w-4 h-4 text-blue-500" /> Date
                                         </label>
                                         <input
                                             type="date"
                                             value={dateFilter}
-                                            onChange={(e) => { setDateFilter(e.target.value); setSelectedDoctorId(null); }}
+                                            onChange={(e) => setDateFilter(e.target.value)}
                                             min={new Date().toISOString().split("T")[0]}
+                                            className="w-full p-3.5 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-bold text-slate-700"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                                            <Clock className="w-4 h-4 text-blue-500" /> Time
+                                        </label>
+                                        <input
+                                            type="time"
+                                            value={timeFilter}
+                                            onChange={(e) => setTimeFilter(e.target.value)}
                                             className="w-full p-3.5 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-bold text-slate-700"
                                         />
                                     </div>
@@ -374,9 +589,9 @@ const WalkIn: React.FC = () => {
                                 {/* DOCTOR CARDS */}
                                 <div className="space-y-2">
                                     <label className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                                        <Stethoscope className="w-4 h-4 text-blue-500" /> Select Physician ({filteredDoctors.length} available)
+                                        <Stethoscope className="w-4 h-4 text-blue-500" /> Select Physician ({filteredDoctors.length})
                                     </label>
-                                    
+
                                     {filteredDoctors.length > 0 ? (
                                         <div className="grid grid-cols-1 gap-3 max-h-[220px] overflow-y-auto pr-1 custom-scrollbar">
                                             {filteredDoctors.map(doc => {
@@ -401,7 +616,7 @@ const WalkIn: React.FC = () => {
                                                         <div className="flex items-center gap-3 mb-2">
                                                             <div className="w-11 h-11 rounded-xl overflow-hidden bg-slate-100 flex-shrink-0 shadow-inner">
                                                                 <img
-                                                                    src={doc.avatar || `https://ui-avatars.com/api/?name=${doc.name}&background=E0E7FF&color=4338CA`}
+                                                                    src={doc.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(doc.name)}&background=E0E7FF&color=4338CA`}
                                                                     alt={doc.name}
                                                                     className="w-full h-full object-cover"
                                                                 />
@@ -418,15 +633,27 @@ const WalkIn: React.FC = () => {
                                                                 </span>
                                                             )}
                                                         </div>
-                                                        {/* Time Slots */}
-                                                        <div className="flex flex-wrap gap-1.5 mt-1">
-                                                            {slots.map((slot, i) => (
-                                                                <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-slate-100 text-[10px] font-bold text-slate-600 border border-slate-200">
-                                                                    <Clock className="w-3 h-3 text-slate-400" />
-                                                                    {slot.start_time} – {slot.end_time}
-                                                                </span>
-                                                            ))}
-                                                        </div>
+                                                        {/* Suggested availability slots (click to apply) */}
+                                                        {slots.length > 0 ? (
+                                                            <div className="mt-1">
+                                                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-wider mb-1">Suggested times — tap to apply</p>
+                                                                <div className="flex flex-wrap gap-1.5">
+                                                                    {slots.map((slot, i) => (
+                                                                        <button
+                                                                            key={i}
+                                                                            type="button"
+                                                                            onClick={(e) => { e.stopPropagation(); handlePickSlot(doc, slot); }}
+                                                                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-slate-100 hover:bg-blue-100 hover:text-blue-700 text-[10px] font-bold text-slate-600 border border-slate-200 hover:border-blue-300 transition-colors"
+                                                                        >
+                                                                            <Clock className="w-3 h-3" />
+                                                                            {slot.start_time} – {slot.end_time}
+                                                                        </button>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        ) : (
+                                                            <p className="text-[10px] font-medium text-slate-400 mt-1 italic">No set hours on this date — booking as a custom time.</p>
+                                                        )}
                                                     </div>
                                                 );
                                             })}
@@ -435,8 +662,8 @@ const WalkIn: React.FC = () => {
                                         <div className="p-6 bg-amber-50 rounded-2xl text-amber-700 text-sm font-medium flex items-center gap-3 border border-amber-100">
                                             <AlertCircle className="w-5 h-5 flex-shrink-0" />
                                             <div>
-                                                <p className="font-bold">No doctors available</p>
-                                                <p className="text-xs opacity-80 mt-0.5">Try a different specialization or date.</p>
+                                                <p className="font-bold">No doctors match your search</p>
+                                                <p className="text-xs opacity-80 mt-0.5">Try a different name or specialization.</p>
                                             </div>
                                         </div>
                                     )}
@@ -472,17 +699,17 @@ const WalkIn: React.FC = () => {
                             </div>
 
                             {/* Modal Footer */}
-                            <div className="p-8 pt-0 flex gap-4 flex-none">
-                                <button 
-                                    onClick={() => { setSelectedPatient(null); setSelectedDoctorId(null); }} 
-                                    className="flex-1 py-4 text-slate-500 font-bold hover:bg-slate-50 rounded-2xl transition-all"
+                            <div className="p-5 sm:p-8 pt-0 sm:pt-0 flex gap-3 sm:gap-4 flex-none">
+                                <button
+                                    onClick={() => { setSelectedPatient(null); setSelectedDoctorId(null); }}
+                                    className="flex-1 py-3.5 sm:py-4 text-slate-500 font-bold hover:bg-slate-50 rounded-2xl transition-all"
                                 >
                                     Cancel
                                 </button>
-                                <button 
+                                <button
                                     onClick={handleBook}
                                     disabled={booking || !selectedDoctorId || !reason.trim()}
-                                    className="flex-1 py-4 bg-blue-600 text-white font-bold rounded-2xl shadow-xl shadow-blue-200 hover:bg-blue-700 hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:translate-y-0"
+                                    className="flex-1 py-3.5 sm:py-4 bg-blue-600 text-white font-bold rounded-2xl shadow-xl shadow-blue-200 hover:bg-blue-700 hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:translate-y-0"
                                 >
                                     {booking ? <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin mx-auto"></span> : "Process Booking"}
                                 </button>
@@ -490,16 +717,19 @@ const WalkIn: React.FC = () => {
                         </motion.div>
                     </motion.div>
                 )}
-            </AnimatePresence>
+            </AnimatePresence>,
+            document.body
+            )}
 
             {/* REGISTRATION MODAL */}
+            {createPortal(
             <AnimatePresence>
                 {showRegisterModal && (
-                    <motion.div 
+                    <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm"
+                        className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm"
                     >
                         <motion.div 
                             initial={{ scale: 0.9, y: 20 }}
@@ -564,7 +794,9 @@ const WalkIn: React.FC = () => {
                         </motion.div>
                     </motion.div>
                 )}
-            </AnimatePresence>
+            </AnimatePresence>,
+            document.body
+            )}
 
         </div>
       </main>

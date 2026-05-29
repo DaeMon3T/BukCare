@@ -7,19 +7,35 @@ from models.users import User, UserRole
 from models.appointment import Appointment, AppointmentStatus, AppointmentType
 from schemas.appointment import AppointmentCreate, AppointmentResponse
 from routers.v1.dependencies import get_current_user
-from datetime import datetime
+from datetime import datetime, time as dt_time
 from models.notification import Notification
 from core.socket_manager import manager
 from pydantic import BaseModel
 from core.security import get_password_hash
 from models.medical_profile import MedicalProfile
 from models.doctor import Doctor, DoctorAvailability
-from models.doctor_staff_access import DoctorStaffAccess
 from sqlalchemy.orm import joinedload
 from utils.email import EmailService
+from utils.appointment_helpers import check_appointment_conflict
 import json
 
 router = APIRouter()
+
+
+def ensure_walkin_access(current_user: User, allow_doctor: bool = False):
+    """Walk-in front-desk operations are a baseline capability for any admin-approved
+    staff member (no per-doctor grant required). Admins always pass; doctors pass only
+    when allow_doctor is set."""
+    role = current_user.role
+    if role == UserRole.ADMIN:
+        return
+    if role == UserRole.DOCTOR and allow_doctor:
+        return
+    if role == UserRole.STAFF:
+        if not current_user.is_staff_approved:
+            raise HTTPException(status_code=403, detail="Your staff account is pending admin approval")
+        return
+    raise HTTPException(status_code=403, detail="Not authorized")
 
 
 # ============================================
@@ -31,21 +47,7 @@ def get_available_doctors_for_walkin(
     db: Session = Depends(get_db)
 ):
     """Returns all approved doctors with their specializations and availability slots."""
-    if current_user.role not in [UserRole.STAFF, UserRole.ADMIN]:
-        raise HTTPException(status_code=403, detail="Not authorized")
-
-    # Staff can only see doctors who granted them can_book_walkins access
-    granted_doctor_ids = None
-    if current_user.role == UserRole.STAFF:
-        granted_doctor_ids = [
-            a.doctor_id for a in
-            db.query(DoctorStaffAccess).filter(
-                DoctorStaffAccess.staff_user_id == current_user.id,
-                DoctorStaffAccess.can_book_walkins == True
-            ).all()
-        ]
-        if not granted_doctor_ids:
-            return []  # No walk-in access granted
+    ensure_walkin_access(current_user)
 
     doctors = (
         db.query(Doctor)
@@ -58,10 +60,6 @@ def get_available_doctors_for_walkin(
         .filter(User.is_doctor_approved == True)
         .all()
     )
-
-    # Filter by granted access if staff
-    if granted_doctor_ids is not None:
-        doctors = [d for d in doctors if d.user_id in granted_doctor_ids]
 
     results = []
     for doc in doctors:
@@ -105,16 +103,7 @@ def search_patients(
     db: Session = Depends(get_db)
 ):
     """Search for patients by name, email, or ID (Staff/Doctor Only)"""
-    if current_user.role not in [UserRole.STAFF, UserRole.DOCTOR, UserRole.ADMIN]:
-        raise HTTPException(status_code=403, detail="Not authorized")
-
-    # Staff needs at least one access grant to search patients
-    if current_user.role == UserRole.STAFF:
-        has_any_access = db.query(DoctorStaffAccess).filter(
-            DoctorStaffAccess.staff_user_id == current_user.id
-        ).first()
-        if not has_any_access:
-            raise HTTPException(status_code=403, detail="No doctor has granted you access")
+    ensure_walkin_access(current_user, allow_doctor=True)
 
     search_term = f"%{query}%"
     patients = db.query(User).filter(
@@ -144,27 +133,32 @@ async def quick_book_walkin(
     db: Session = Depends(get_db)
 ):
     """Quickly book a walk-in patient (Staff Only)"""
-    if current_user.role not in [UserRole.STAFF, UserRole.ADMIN]:
-        raise HTTPException(status_code=403, detail="Only staff can book walk-ins")
-
-    # Staff needs can_book_walkins access for the target doctor
-    if current_user.role == UserRole.STAFF:
-        access = db.query(DoctorStaffAccess).filter(
-            DoctorStaffAccess.staff_user_id == current_user.id,
-            DoctorStaffAccess.doctor_id == appointment_data.doctor_id,
-            DoctorStaffAccess.can_book_walkins == True
-        ).first()
-        if not access:
-            raise HTTPException(status_code=403, detail="You don't have walk-in booking access for this doctor")
+    ensure_walkin_access(current_user)
 
     if not appointment_data.patient_id:
         raise HTTPException(status_code=400, detail="Patient ID is required")
+
+    # Resolve the target Doctor (appointment_data.doctor_id is a user_id)
+    doctor = db.query(Doctor).filter(Doctor.user_id == appointment_data.doctor_id).first()
+    if not doctor:
+        raise HTTPException(status_code=404, detail="Doctor not found")
+
+    # Walk-ins are staff-driven, so the chosen date/time is honored as-is (custom booking)
+    # rather than being constrained to the doctor's published availability slots.
+    appt_dt = appointment_data.appointment_date or datetime.utcnow()
+
+    # Prevent double-booking: the doctor must not already have an overlapping appointment.
+    if check_appointment_conflict(db, appointment_data.doctor_id, appt_dt):
+        raise HTTPException(
+            status_code=409,
+            detail="This doctor already has an appointment at that time. Please pick another slot.",
+        )
 
     # Create the appointment
     appointment = Appointment(
         patient_id=appointment_data.patient_id,
         doctor_id=appointment_data.doctor_id,
-        appointment_date=appointment_data.appointment_date or datetime.utcnow(),
+        appointment_date=appt_dt,
         reason=appointment_data.reason,
         status=AppointmentStatus.CONFIRMED,
         appointment_type=AppointmentType.WALK_IN,
@@ -216,6 +210,50 @@ async def quick_book_walkin(
         "appointment_id": appointment.id
     }
 
+@router.get("/today", response_model=List[dict])
+def get_todays_walkins(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Today's walk-in queue. Staff/admin see all of today's walk-ins; doctors see their own."""
+    ensure_walkin_access(current_user, allow_doctor=True)
+
+    today = datetime.utcnow().date()
+    day_start = datetime.combine(today, dt_time.min)
+    day_end = datetime.combine(today, dt_time.max)
+
+    query = (
+        db.query(Appointment)
+        .options(joinedload(Appointment.patient), joinedload(Appointment.doctor))
+        .filter(
+            Appointment.appointment_type == AppointmentType.WALK_IN,
+            Appointment.appointment_date >= day_start,
+            Appointment.appointment_date <= day_end,
+        )
+    )
+
+    # Doctors only see their own queue; staff/admin see the whole front-desk queue.
+    if current_user.role == UserRole.DOCTOR:
+        query = query.filter(Appointment.doctor_id == current_user.id)
+
+    walkins = query.order_by(Appointment.appointment_date.asc()).all()
+
+    return [
+        {
+            "id": w.id,
+            "patient_id": w.patient_id,
+            "patient_name": f"{w.patient.fname} {w.patient.lname}" if w.patient else "Unknown",
+            "patient_picture": w.patient.picture if w.patient else None,
+            "doctor_id": w.doctor_id,
+            "doctor_name": f"Dr. {w.doctor.fname} {w.doctor.lname}" if w.doctor else "Unknown",
+            "appointment_date": w.appointment_date.isoformat(),
+            "status": w.status.value if hasattr(w.status, "value") else w.status,
+            "reason": w.reason,
+        }
+        for w in walkins
+    ]
+
+
 @router.post("/register", response_model=dict)
 async def register_walkin_patient(
     patient_data: WalkInPatientCreate,
@@ -224,17 +262,7 @@ async def register_walkin_patient(
     db: Session = Depends(get_db)
 ):
     """Register a new patient from the Walk-in counter (Staff Only)"""
-    if current_user.role not in [UserRole.STAFF, UserRole.ADMIN]:
-        raise HTTPException(status_code=403, detail="Only staff can register walk-in patients")
-
-    # Staff needs can_register_patients access from at least one doctor
-    if current_user.role == UserRole.STAFF:
-        has_register_access = db.query(DoctorStaffAccess).filter(
-            DoctorStaffAccess.staff_user_id == current_user.id,
-            DoctorStaffAccess.can_register_patients == True
-        ).first()
-        if not has_register_access:
-            raise HTTPException(status_code=403, detail="No doctor has granted you patient registration access")
+    ensure_walkin_access(current_user)
 
     # Check if email is already taken
     existing_user = db.query(User).filter(User.email == patient_data.email).first()
