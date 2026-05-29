@@ -176,7 +176,7 @@ const Messages: React.FC = () => {
                     </button>
                 </div>
 
-                <div className="h-full w-full md:w-80 lg:w-96 min-w-[20rem] bg-white rounded-2xl shadow-lg shadow-slate-200/50 border border-slate-100 flex flex-col overflow-hidden">
+                <div data-tour="messages-list" className="h-full w-full md:w-80 lg:w-96 min-w-[20rem] bg-white rounded-2xl shadow-lg shadow-slate-200/50 border border-slate-100 flex flex-col overflow-hidden">
                     <ChatList 
                         conversations={conversations}
                         activeChat={activeChat}

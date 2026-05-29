@@ -103,15 +103,23 @@ const TourOverlay: React.FC = () => {
 
     const placement = step?.placement ?? "bottom";
     let top: number;
-    let left = rect.left + rect.width / 2 - width / 2;
+    let left: number;
 
-    const fitsBelow = rect.top + rect.height + GAP + tipH < vh;
-    const useTop = placement === "top" || (placement === "bottom" && !fitsBelow);
-
-    if (useTop) {
-      top = rect.top - tipH - GAP;
+    if (placement === "left" || placement === "right") {
+      // Place beside the target, flipping to the other side if it won't fit.
+      top = rect.top;
+      if (placement === "right") {
+        left = rect.left + rect.width + GAP;
+        if (left + width > vw - 16) left = rect.left - width - GAP;
+      } else {
+        left = rect.left - width - GAP;
+        if (left < 16) left = rect.left + rect.width + GAP;
+      }
     } else {
-      top = rect.top + rect.height + GAP;
+      left = rect.left + rect.width / 2 - width / 2;
+      const fitsBelow = rect.top + rect.height + GAP + tipH < vh;
+      const useTop = placement === "top" || (placement === "bottom" && !fitsBelow);
+      top = useTop ? rect.top - tipH - GAP : rect.top + rect.height + GAP;
     }
 
     // Clamp into the viewport with a 16px margin.

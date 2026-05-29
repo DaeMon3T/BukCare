@@ -160,79 +160,215 @@ export const onboardingTours: Record<string, TourStep[]> = {
 
   doctor: [
     welcome("doctor"),
+    // ── Dashboard ──
     {
       target: '[data-tour="nav-dashboard"]',
+      route: "/doctor/dashboard",
       title: "Your Dashboard",
       content:
-        "An overview of your day: appointment stats, trends, and quick actions.",
+        "This is your command center. Use the top navigation to move between Dashboard, Appointments, Availability, Staff Access, and Messages.",
       placement: "bottom",
     },
     {
-      target: '[data-tour="nav-appointments"]',
-      title: "Appointments",
+      target: '[data-tour="doc-stats"]',
+      route: "/doctor/dashboard",
+      title: "At-a-Glance Stats",
       content:
-        "Review, confirm, complete, or reschedule patient appointments. Add consultation notes here too.",
+        "Today's appointments, pending requests, confirmed visits, and your totals — all summarized up top.",
       placement: "bottom",
     },
     {
-      target: '[data-tour="nav-availability"]',
-      title: "Set Availability",
+      target: '[data-tour="doc-charts"]',
+      route: "/doctor/dashboard",
+      title: "Visual Analytics",
       content:
-        "Define the days and time slots patients can book. Keep this updated so your schedule stays accurate.",
-      placement: "bottom",
+        "Weekly trends and a status breakdown help you see how your week is shaping up at a glance.",
+      placement: "top",
     },
     {
-      target: '[data-tour="nav-manage-staff"]',
-      title: "Staff Access",
+      target: '[data-tour="doc-appointments-list"]',
+      route: "/doctor/dashboard",
+      title: "Today's Appointments",
       content:
-        "Grant staff members granular permissions — like booking walk-ins or managing your appointments on your behalf.",
+        "Switch between Today, Upcoming, and All, search by patient, and click any card to view full details and update its status.",
+      placement: "top",
+    },
+    {
+      target: '[data-tour="doc-calendar"]',
+      route: "/doctor/dashboard",
+      title: "Schedule Calendar",
+      content:
+        "Click any date to see that day's slots and bookings. Dots mark days with appointments or availability.",
+      placement: "left",
+    },
+    {
+      target: '[data-tour="doc-scan"]',
+      route: "/doctor/dashboard",
+      title: "Scan Patient ID",
+      content:
+        "Scan a patient's Medical ID QR code to instantly pull up their record before a consultation.",
+      placement: "bottom",
+    },
+    // ── Appointments ──
+    {
+      target: '[data-tour="doc-appt-tabs"]',
+      route: "/doctor/appointments",
+      title: "Manage Appointments",
+      content:
+        "The Appointments tab lists every booking. Filter by status — pending, confirmed, completed, expired, or cancelled.",
       placement: "bottom",
     },
     {
-      target: '[data-tour="nav-messages"]',
+      target: '[data-tour="doc-appt-search"]',
+      route: "/doctor/appointments",
+      title: "Search & Act",
+      content:
+        "Search by patient or reason, sort by date, and use the menu (⋮) on any row to confirm, complete, or cancel a visit.",
+      placement: "bottom",
+    },
+    // ── Availability ──
+    {
+      target: '[data-tour="avail-generator"]',
+      route: "/doctor/set-availability",
+      title: "Set Your Availability",
+      content:
+        "Bulk-generate bookable time slots: pick a date range, the weekdays, daily hours, and slot length, then Generate.",
+      placement: "right",
+    },
+    {
+      target: '[data-tour="avail-list"]',
+      route: "/doctor/set-availability",
+      title: "Your Active Schedule",
+      content:
+        "Every generated slot shows here, grouped by day. Clear a whole day or remove individual slots anytime.",
+      placement: "top",
+    },
+    // ── Staff Access ──
+    {
+      target: '[data-tour="staff-add"]',
+      route: "/doctor/manage-staff",
+      title: "Grant Staff Access",
+      content:
+        "Add staff and assign a preset — Observer, Receptionist, or Full Access — then fine-tune individual permissions like booking walk-ins or managing appointments.",
+      placement: "bottom",
+    },
+    // ── Messages ──
+    {
+      target: '[data-tour="messages-list"]',
+      route: "/doctor/messages",
       title: "Messages",
-      content: "Chat with your patients and answer follow-up questions.",
+      content:
+        "Chat with your patients and answer follow-up questions. Conversations live here.",
       placement: "bottom",
     },
+    // ── Global ──
     notificationsStep,
     profileStep,
   ],
 
   staff: [
     welcome("staff member"),
+    // ── Dashboard ──
     {
       target: '[data-tour="nav-dashboard"]',
-      title: "Your Dashboard",
-      content: "A quick overview of today's activity and the tasks you can help with.",
-      placement: "bottom",
-    },
-    {
-      target: '[data-tour="nav-appointments"]',
-      title: "Appointments",
+      route: "/staff/dashboard",
+      title: "Your Workspace",
       content:
-        "View and manage the appointments you've been granted access to by your doctor.",
+        "This is your staff dashboard. Use the top navigation to reach Appointments, Walk-ins, Scan, and Messages.",
       placement: "bottom",
     },
     {
-      target: '[data-tour="nav-walk-in"]',
-      title: "Walk-ins",
+      target: '[data-tour="staff-scan"]',
+      route: "/staff/dashboard",
+      title: "Scan Patient ID",
       content:
-        "Register walk-in patients and quickly book them an appointment on the spot.",
+        "Scan a patient's Medical ID QR code to instantly verify them and pull up their record.",
       placement: "bottom",
     },
     {
-      target: '[data-tour="nav-scan"]',
-      title: "Scan Patient",
+      target: '[data-tour="staff-doctors"]',
+      route: "/staff/dashboard",
+      title: "Assigned Doctors",
       content:
-        "Scan a patient's Medical ID QR code to pull up their record instantly.",
+        "The doctors who've granted you access appear here, along with your permission level — Observer, Receptionist, or Full Access.",
       placement: "bottom",
     },
     {
-      target: '[data-tour="nav-messages"]',
+      target: '[data-tour="staff-stats"]',
+      route: "/staff/dashboard",
+      title: "At-a-Glance Stats",
+      content:
+        "Today's, pending, confirmed, completed, and cancelled appointments across all your doctors.",
+      placement: "bottom",
+    },
+    {
+      target: '[data-tour="staff-appointments"]',
+      route: "/staff/dashboard",
+      title: "Appointments Feed",
+      content:
+        "Switch between Today, Upcoming, and All, search by patient or doctor, and click any row to view and act on it.",
+      placement: "top",
+    },
+    {
+      target: '[data-tour="staff-charts"]',
+      route: "/staff/dashboard",
+      title: "Visual Analytics",
+      content:
+        "Weekly trends and a status breakdown give you a quick read on the week's workload.",
+      placement: "top",
+    },
+    {
+      target: '[data-tour="staff-calendar"]',
+      route: "/staff/dashboard",
+      title: "Schedule Calendar",
+      content:
+        "Click any date to see that day's appointments. Dots mark days with bookings.",
+      placement: "left",
+    },
+    // ── Appointments ──
+    {
+      target: '[data-tour="staff-appt-tabs"]',
+      route: "/staff/appointments",
+      title: "Manage Appointments",
+      content:
+        "The full Appointments page. Filter by status — pending, confirmed, completed, expired, or cancelled.",
+      placement: "bottom",
+    },
+    {
+      target: '[data-tour="staff-appt-search"]',
+      route: "/staff/appointments",
+      title: "Search & Act",
+      content:
+        "Search by patient, doctor, or reason and sort by date. For doctors who gave you manage access, you can confirm, complete, or cancel visits.",
+      placement: "bottom",
+    },
+    // ── Walk-ins ──
+    {
+      target: '[data-tour="walkin-new"]',
+      route: "/staff/walk-in",
+      title: "New Walk-in",
+      content:
+        "Register a patient who walked in, or look up a returning patient, then assign an available doctor and book on the spot.",
+      placement: "top",
+    },
+    {
+      target: '[data-tour="walkin-queue"]',
+      route: "/staff/walk-in",
+      title: "Today's Walk-in Queue",
+      content:
+        "Every walk-in booked today shows here with its status. Refresh to update, or cancel one if plans change.",
+      placement: "bottom",
+    },
+    // ── Messages ──
+    {
+      target: '[data-tour="messages-list"]',
+      route: "/staff/messages",
       title: "Messages",
-      content: "Communicate with patients on behalf of the practice.",
+      content:
+        "Communicate with patients on behalf of the practice. Conversations live here.",
       placement: "bottom",
     },
+    // ── Global ──
     notificationsStep,
     profileStep,
   ],

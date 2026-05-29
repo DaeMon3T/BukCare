@@ -667,7 +667,8 @@ const [selectedDate, setSelectedDate] = useState(new Date());
               <p className="text-slate-600 mt-2 text-sm sm:text-base">Welcome back! Here's what's happening today.</p>
             </div>
             <div className="flex flex-wrap items-center gap-3">
-              <button 
+              <button
+                  data-tour="doc-scan"
                   onClick={() => isStaff ? navigate('/staff/scan') : navigate('/doctor/scan')}
                   className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition shadow-sm text-sm sm:text-base"
               >
@@ -690,7 +691,7 @@ const [selectedDate, setSelectedDate] = useState(new Date());
 
         {/* Statistics Cards Grid */}
         {/* CHANGED: grid-cols-2 on mobile instead of 1 to fit side-by-side */}
-        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-2 sm:gap-3 mb-5">
+        <div data-tour="doc-stats" className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-2 sm:gap-3 mb-5">
           
           {/* TODAY'S APPOINTMENTS */}
           <div className="relative bg-white/40 backdrop-blur-2xl rounded-2xl sm:rounded-3xl p-3 sm:p-6 border border-white/40 shadow-md sm:shadow-xl hover:shadow-2xl transition-all duration-300 group overflow-hidden">
@@ -886,7 +887,7 @@ const [selectedDate, setSelectedDate] = useState(new Date());
             {/* Charts Row */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Weekly Trends Chart */}
-              <div className="bg-gradient-to-br from-white to-slate-50/50 rounded-2xl shadow-lg border border-slate-200/60 p-4 sm:p-6 relative overflow-hidden">
+              <div data-tour="doc-charts" className="bg-gradient-to-br from-white to-slate-50/50 rounded-2xl shadow-lg border border-slate-200/60 p-4 sm:p-6 relative overflow-hidden">
                 {/* Subtle decorative gradient */}
                 <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-500/5 to-indigo-500/5 rounded-full blur-2xl"></div>
                 
@@ -1116,8 +1117,9 @@ const [selectedDate, setSelectedDate] = useState(new Date());
             
 
             {/* Appointments List */}
-            <div 
+            <div
               ref={appointmentsListRef}
+              data-tour="doc-appointments-list"
               className="bg-white rounded-2xl shadow-sm border border-slate-200"
             >
               <div className="p-6 border-b border-slate-200">
@@ -1265,7 +1267,7 @@ const [selectedDate, setSelectedDate] = useState(new Date());
           {/* Right Sidebar */}
           <div className="space-y-8">
             {/* Calendar Widget */}
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+            <div data-tour="doc-calendar" className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
                 <div className="flex items-center justify-between mb-6">
                     <h3 className="text-lg font-semibold text-slate-900">
                         {currentMonth.toLocaleDateString("en-US", { month: "long", year: "numeric" })}

@@ -318,7 +318,7 @@ const WalkIn: React.FC = () => {
 
             {/* TODAY'S QUEUE */}
             <div className="lg:col-span-12">
-                <div className="bg-white rounded-[2rem] shadow-xl shadow-slate-200/50 border border-slate-100 p-6 sm:p-8">
+                <div data-tour="walkin-queue" className="bg-white rounded-[2rem] shadow-xl shadow-slate-200/50 border border-slate-100 p-6 sm:p-8">
                     <div className="flex items-center justify-between mb-5">
                         <div className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-2xl bg-blue-50 flex items-center justify-center">
@@ -391,7 +391,7 @@ const WalkIn: React.FC = () => {
                 <div className="bg-white rounded-[2rem] shadow-xl shadow-slate-200/50 border border-slate-100 p-8">
 
                     {/* PRIMARY: Register a new walk-in */}
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5 p-6 rounded-3xl bg-gradient-to-br from-blue-600 to-indigo-700 text-white">
+                    <div data-tour="walkin-new" className="flex flex-col sm:flex-row items-start sm:items-center gap-5 p-6 rounded-3xl bg-gradient-to-br from-blue-600 to-indigo-700 text-white">
                         <div className="w-14 h-14 rounded-2xl bg-white/15 flex items-center justify-center flex-shrink-0">
                             <UserPlus className="w-7 h-7" />
                         </div>
