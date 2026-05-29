@@ -291,6 +291,7 @@ const PatientDashboard = () => {
           </div>
           <div className="flex items-center gap-2">
             <button
+              data-tour="medical-id"
               onClick={() => setShowMedicalID(true)}
               className="w-9 h-9 bg-white hover:bg-slate-50 transition-colors border border-slate-100 rounded-full flex items-center justify-center shadow-sm"
               title="Show Medical ID"
@@ -330,6 +331,7 @@ const PatientDashboard = () => {
             </h1>
           </div>
           <button
+            data-tour="medical-id"
             onClick={() => setShowMedicalID(true)}
             className="flex items-center gap-2 bg-white border border-slate-200 text-slate-700 px-4 py-2.5 rounded-2xl font-semibold text-sm hover:border-blue-300 hover:text-blue-600 transition-all shadow-sm"
           >
@@ -339,7 +341,7 @@ const PatientDashboard = () => {
         </div>
 
         {/* ─── SEARCH BAR ─── */}
-        <div className="relative z-20">
+        <div data-tour="patient-search" className="relative z-20">
           <div className="relative">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
             <input
@@ -412,7 +414,7 @@ const PatientDashboard = () => {
         </div>
 
         {/* ─── UPCOMING SCHEDULE ─── */}
-        <div>
+        <div data-tour="patient-schedule">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-base font-bold text-slate-900">
               Upcoming Schedule
@@ -507,7 +509,7 @@ const PatientDashboard = () => {
         </div>
 
         {/* ─── DOCTOR SPECIALITY ─── */}
-        <div>
+        <div data-tour="patient-categories">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-base font-bold text-slate-900">Doctor Speciality</h3>
             <button
@@ -534,7 +536,7 @@ const PatientDashboard = () => {
         </div>
 
         {/* ─── NEARBY HOSPITALS ─── */}
-        <div>
+        <div data-tour="nearby-hospitals">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-base font-bold text-slate-900">Nearby Hospitals</h3>
             <button
@@ -607,7 +609,7 @@ const PatientDashboard = () => {
         </div>
 
         {/* ─── AI HEALTH TIP ─── */}
-        <div className="bg-gradient-to-r from-blue-500 to-indigo-500 rounded-2xl p-5 relative overflow-hidden transition-all duration-500">
+        <div data-tour="patient-health-tip" className="bg-gradient-to-r from-blue-500 to-indigo-500 rounded-2xl p-5 relative overflow-hidden transition-all duration-500">
           <div className="absolute top-0 right-0 w-28 h-28 rounded-full bg-white/10 -translate-y-1/3 translate-x-1/3" />
           <div className="relative z-10 flex items-start gap-3">
             <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center flex-shrink-0 mt-0.5">
@@ -629,7 +631,7 @@ const PatientDashboard = () => {
 
         {/* ─── SPECIALIST DOCTORS ─── */}
         {doctors.length > 0 && (
-          <div>
+          <div data-tour="patient-recommended">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-base font-bold text-slate-900">Recommended Doctors</h3>
               <button

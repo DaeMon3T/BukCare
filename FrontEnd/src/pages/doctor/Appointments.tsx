@@ -325,7 +325,7 @@ const DoctorAppointments = () => {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <div className="relative">
+            <div data-tour="doc-appt-search" className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <input
                 type="text" placeholder="Search patient, reason..."
@@ -341,7 +341,7 @@ const DoctorAppointments = () => {
         </div>
 
         {/* Filter Tabs */}
-        <div className="flex overflow-x-auto pb-1 gap-1.5 mb-6 scrollbar-hide">
+        <div data-tour="doc-appt-tabs" className="flex overflow-x-auto pb-1 gap-1.5 mb-6 scrollbar-hide">
           {TABS.map((tab) => {
             const count = tabCount(tab);
             const active = filter === tab;

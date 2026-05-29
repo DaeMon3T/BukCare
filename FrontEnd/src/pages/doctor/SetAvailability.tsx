@@ -242,7 +242,7 @@ const DoctorSetAvailability = () => {
             
             {/* LEFT: GENERATOR */}
             <div className="lg:col-span-1 space-y-6">
-                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 sticky top-24">
+                <div data-tour="avail-generator" className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 sticky top-24">
                     <div className="flex items-center gap-2 mb-6 pb-4 border-b border-slate-100">
                         <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
                             <RefreshCw className={`w-5 h-5 ${generating ? 'animate-spin' : ''}`} />
@@ -347,7 +347,7 @@ const DoctorSetAvailability = () => {
             </div>
 
             {/* RIGHT: SCHEDULE LIST */}
-            <div className="lg:col-span-2 space-y-4">
+            <div data-tour="avail-list" className="lg:col-span-2 space-y-4">
               <div className="flex items-center justify-between bg-white px-6 py-4 rounded-2xl border border-slate-200 shadow-sm">
                   <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
                       <CalendarDays className="w-5 h-5 text-blue-600" /> Active Schedule

@@ -49,6 +49,15 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
+// Clear only auth-related storage on logout/expiry. Using localStorage.clear()
+// would also wipe unrelated app state (e.g. the onboarding "seen" flag), which
+// would make first-run tours re-appear after every logout.
+const clearAuthStorage = () => {
+  localStorage.removeItem("access_token");
+  localStorage.removeItem("refresh_token");
+  localStorage.removeItem("user_data");
+};
+
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -79,14 +88,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           const now = Date.now() / 1000;
 
           if (payload.exp && payload.exp < now) {
-            localStorage.clear();
+            clearAuthStorage();
             setUser(null);
           } else {
             setUser(parsedUser);
           }
         } catch (err) {
           console.error("Auth init failed:", err);
-          localStorage.clear();
+          clearAuthStorage();
           setUser(null);
         }
       } else {
@@ -141,7 +150,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       return true;
     } catch (err) {
       console.error("Token refresh failed:", err);
-      localStorage.clear();
+      clearAuthStorage();
       setUser(null);
       return false;
     }
@@ -164,7 +173,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } catch (err) {
       console.error("Logout failed:", err);
     } finally {
-      localStorage.clear();
+      clearAuthStorage();
       setUser(null);
     }
   };

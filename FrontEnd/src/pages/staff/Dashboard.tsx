@@ -574,6 +574,7 @@ const StaffDashboard: FC = () => {
               Walk-in
             </button>
             <button
+              data-tour="staff-scan"
               onClick={() => navigate("/staff/scan")}
               className="inline-flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-sm transition"
             >
@@ -585,7 +586,7 @@ const StaffDashboard: FC = () => {
 
         {/* ─── Assigned Doctors ──────────────────────────────────── */}
         {assignedDoctors.length === 0 ? (
-          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 flex items-start gap-3">
+          <div data-tour="staff-doctors" className="bg-amber-50 border border-amber-200 rounded-2xl p-5 flex items-start gap-3">
             <div className="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center flex-shrink-0">
               <AlertCircle className="w-5 h-5 text-amber-700" />
             </div>
@@ -597,7 +598,7 @@ const StaffDashboard: FC = () => {
             </div>
           </div>
         ) : (
-          <div className="bg-white border border-slate-200 rounded-2xl">
+          <div data-tour="staff-doctors" className="bg-white border border-slate-200 rounded-2xl">
             <div className="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between">
               <h3 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
                 <Users className="w-4 h-4 text-slate-400" />
@@ -638,7 +639,7 @@ const StaffDashboard: FC = () => {
         )}
 
         {/* ─── KPI Stats ──────────────────────────────────────────── */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+        <div data-tour="staff-stats" className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
           {statTiles.map((tile) => {
             const c = colorMap[tile.color] ?? fallbackColor;
             const Icon = tile.icon;
@@ -671,7 +672,7 @@ const StaffDashboard: FC = () => {
           {/* LEFT — Appointments + Charts */}
           <div className="xl:col-span-2 space-y-5">
             {/* Tabs + Search + List */}
-            <div className="bg-white border border-slate-200 rounded-2xl">
+            <div data-tour="staff-appointments" className="bg-white border border-slate-200 rounded-2xl">
               <div className="px-5 py-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="flex items-center gap-1 bg-slate-100/70 p-1 rounded-lg">
                   {(["today", "upcoming", "all"] as const).map((tab) => (
@@ -764,7 +765,7 @@ const StaffDashboard: FC = () => {
             </div>
 
             {/* Charts */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div data-tour="staff-charts" className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div className="bg-white border border-slate-200 rounded-2xl p-5">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
@@ -845,7 +846,7 @@ const StaffDashboard: FC = () => {
           </div>
 
           {/* RIGHT — Calendar + Selected day */}
-          <div className="space-y-5">
+          <div data-tour="staff-calendar" className="space-y-5">
             <div className="bg-white border border-slate-200 rounded-2xl p-5">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-sm font-semibold text-slate-900">

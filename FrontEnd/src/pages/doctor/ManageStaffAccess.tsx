@@ -256,6 +256,7 @@ const ManageStaffAccess: FC = () => {
             </div>
 
             <button
+              data-tour="staff-add"
               onClick={handleOpenAddModal}
               className="flex items-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-xl hover:bg-blue-700 transition shadow-lg shadow-blue-200 font-medium"
             >

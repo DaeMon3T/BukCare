@@ -349,7 +349,7 @@ const StaffAppointments = () => {
 
             {/* Actions — full-width on mobile, right-aligned on desktop */}
             <div className="flex items-center gap-2 w-full sm:w-auto">
-              <div className="relative flex-1 sm:flex-none sm:w-64">
+              <div data-tour="staff-appt-search" className="relative flex-1 sm:flex-none sm:w-64">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 <input
                   type="text"
@@ -372,7 +372,7 @@ const StaffAppointments = () => {
         </header>
 
         {/* Filter Tabs — minimal underline style */}
-        <div className="border-b border-slate-200 -mx-4 sm:mx-0 px-4 sm:px-0 mb-5 sm:mb-6">
+        <div data-tour="staff-appt-tabs" className="border-b border-slate-200 -mx-4 sm:mx-0 px-4 sm:px-0 mb-5 sm:mb-6">
           <div className="flex gap-1 overflow-x-auto scrollbar-hide -mb-px">
             {TABS.map((tab) => {
               const count = tabCount(tab);

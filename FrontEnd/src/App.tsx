@@ -9,7 +9,9 @@ import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './context/AuthContext';
 import { WebSocketProvider } from './context/WebSocketContext';
 import { CallProvider } from './context/CallContext';
+import { TourProvider } from './context/TourContext';
 import ErrorBoundary from './components/ErrorBoundary';
+import TourOverlay from './components/TourOverlay';
 
 // Route Groups (organized by role)
 import PublicRoutes from './routes/PublicRoutes';
@@ -31,20 +33,24 @@ const App: FC = () => {
         <Router>
           <WebSocketProvider>
             <CallProvider>
-              <Toaster position="top-center" reverseOrder={false} />
+              <TourProvider>
+                <Toaster position="top-center" reverseOrder={false} />
 
-              <div className="App">
-                <Routes>
-                  {PublicRoutes()}
-                  {AdminRoutes()}
-                  {DoctorRoutes()}
-                  {StaffRoutes()}
-                  {PatientRoutes()}
+                <div className="App">
+                  <Routes>
+                    {PublicRoutes()}
+                    {AdminRoutes()}
+                    {DoctorRoutes()}
+                    {StaffRoutes()}
+                    {PatientRoutes()}
 
-                  {/* -------------------- Catch-All -------------------- */}
-                  <Route path="*" element={<Navigate to="/" replace />} />
-                </Routes>
-              </div>
+                    {/* -------------------- Catch-All -------------------- */}
+                    <Route path="*" element={<Navigate to="/" replace />} />
+                  </Routes>
+                </div>
+
+                <TourOverlay />
+              </TourProvider>
             </CallProvider>
           </WebSocketProvider>
         </Router>

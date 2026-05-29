@@ -175,7 +175,7 @@ const FindDoctor: React.FC = () => {
                     <p className="hidden md:block text-slate-500 mb-6 sm:mb-8 max-w-lg font-medium text-sm sm:text-base">Search through our network of trusted medical professionals to find the right care for you.</p>
                     
                     {/* Search Bar */}
-                    <div className="flex flex-col md:flex-row gap-4">
+                    <div data-tour="find-search" className="flex flex-col md:flex-row gap-4">
                         <div className="relative flex-1">
                             <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                             <input
@@ -197,7 +197,7 @@ const FindDoctor: React.FC = () => {
                     </div>
 
                     {/* Filter Pills */}
-                    <div className="mt-6">
+                    <div data-tour="find-filters" className="mt-6">
                         <div className="flex items-center gap-2 mb-3 text-xs sm:text-sm font-bold text-slate-500 uppercase tracking-wider">
                             <Filter className="w-3 h-3 sm:w-4 sm:h-4" /> Filter by Specialization
                         </div>
