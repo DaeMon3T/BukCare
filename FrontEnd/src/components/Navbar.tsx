@@ -17,11 +17,13 @@ import {
   CheckCircle,
   Info,
   MessageCircle,
-  CheckCheck, 
+  CheckCheck,
   Trash2,
-  UserPlus
+  UserPlus,
+  Compass
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { useTour } from "@/context/TourContext";
 import { useNotifications } from "@/hooks/useNotifications"; 
 import { useWebSocket } from "@/context/WebSocketContext"; 
 import logo from "@/assets/images/icon_logo_name.png";
@@ -32,10 +34,12 @@ interface NavItem {
     path: string;
     icon: any;
     badge?: number;
+    tourId?: string;
 }
 
 const Navbar: React.FC = () => {
   const { user, logout } = useAuth();
+  const { startTour } = useTour();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -100,35 +104,35 @@ const Navbar: React.FC = () => {
     switch (role) {
       case "admin":
         items = [
-          { label: "Dashboard", path: "/admin/dashboard", icon: Home },
-          { label: "Users", path: "/admin/users", icon: Users, badge: pendingApprovalCount },
+          { label: "Dashboard", path: "/admin/dashboard", icon: Home, tourId: "dashboard" },
+          { label: "Users", path: "/admin/users", icon: Users, badge: pendingApprovalCount, tourId: "users" },
         ];
         break;
       case "doctor":
         items = [
-          { label: "Dashboard", path: "/doctor/dashboard", icon: Home },
-          { label: "Appointments", path: "/doctor/appointments", icon: Calendar, badge: badgeCounts.appointments },
-          { label: "Availability", path: "/doctor/set-availability", icon: ClipboardList },
-          { label: "Staff Access", path: "/doctor/manage-staff", icon: Users },
-          { label: "Messages", path: "/doctor/messages", icon: MessageCircle, badge: badgeCounts.messages },
+          { label: "Dashboard", path: "/doctor/dashboard", icon: Home, tourId: "dashboard" },
+          { label: "Appointments", path: "/doctor/appointments", icon: Calendar, badge: badgeCounts.appointments, tourId: "appointments" },
+          { label: "Availability", path: "/doctor/set-availability", icon: ClipboardList, tourId: "availability" },
+          { label: "Staff Access", path: "/doctor/manage-staff", icon: Users, tourId: "manage-staff" },
+          { label: "Messages", path: "/doctor/messages", icon: MessageCircle, badge: badgeCounts.messages, tourId: "messages" },
         ];
         break;
       case "staff":
         items = [
-          { label: "Dashboard", path: "/staff/dashboard", icon: Home },
-          { label: "Appointments", path: "/staff/appointments", icon: Calendar, badge: badgeCounts.appointments },
-          { label: "Messages", path: "/staff/messages", icon: MessageCircle, badge: badgeCounts.messages },
-          { label: "Walk-ins", path: "/staff/walk-in", icon: UserPlus },
-          { label: "Scan", path: "/staff/scan", icon: Search },
+          { label: "Dashboard", path: "/staff/dashboard", icon: Home, tourId: "dashboard" },
+          { label: "Appointments", path: "/staff/appointments", icon: Calendar, badge: badgeCounts.appointments, tourId: "appointments" },
+          { label: "Messages", path: "/staff/messages", icon: MessageCircle, badge: badgeCounts.messages, tourId: "messages" },
+          { label: "Walk-ins", path: "/staff/walk-in", icon: UserPlus, tourId: "walk-in" },
+          { label: "Scan", path: "/staff/scan", icon: Search, tourId: "scan" },
         ];
         break;
       case "patient":
       default:
         items = [
-          { label: "Home", path: "/patient/home", icon: Home },
-          { label: "Find Doctors", path: "/patient/find-doctor", icon: Search },
-          { label: "Appointments", path: "/patient/appointments", icon: ClipboardList, badge: badgeCounts.appointments },
-          { label: "Messages", path: "/patient/messages", icon: MessageCircle, badge: badgeCounts.messages },
+          { label: "Home", path: "/patient/home", icon: Home, tourId: "home" },
+          { label: "Find Doctors", path: "/patient/find-doctor", icon: Search, tourId: "find-doctor" },
+          { label: "Appointments", path: "/patient/appointments", icon: ClipboardList, badge: badgeCounts.appointments, tourId: "appointments" },
+          { label: "Messages", path: "/patient/messages", icon: MessageCircle, badge: badgeCounts.messages, tourId: "messages" },
         ];
         break;
     }
@@ -190,6 +194,7 @@ const Navbar: React.FC = () => {
                   <Link
                     key={item.path}
                     to={item.path}
+                    data-tour={item.tourId ? `nav-${item.tourId}` : undefined}
                     className={`relative flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 ${
                       isActive ? "bg-white text-blue-600 shadow-sm ring-1 ring-black/5" : "text-slate-500 hover:text-slate-900 hover:bg-white/50"
                     }`}
@@ -209,6 +214,7 @@ const Navbar: React.FC = () => {
             <div className="flex items-center gap-2 sm:gap-4">
               <div className="relative">
                 <button
+                  data-tour="notifications"
                   onClick={() => setShowNotifications(!showNotifications)}
                   className={`relative p-2 md:p-2.5 rounded-xl transition-all ${
                     showNotifications || systemUnreadCount > 0 ? "bg-blue-50 text-blue-600 shadow-sm" : "text-slate-500 hover:bg-slate-100"
@@ -274,7 +280,7 @@ const Navbar: React.FC = () => {
               </div>
 
               <div className="relative">
-                <button onClick={() => setShowProfileDropdown(!showProfileDropdown)} className="flex items-center gap-2 md:gap-3 rounded-full border border-slate-200 bg-white p-1 pr-2 transition-all hover:border-blue-300 hover:bg-blue-50/50 md:p-1.5 md:pr-3">
+                <button data-tour="profile-menu" onClick={() => setShowProfileDropdown(!showProfileDropdown)} className="flex items-center gap-2 md:gap-3 rounded-full border border-slate-200 bg-white p-1 pr-2 transition-all hover:border-blue-300 hover:bg-blue-50/50 md:p-1.5 md:pr-3">
                   <img src={user.picture || defaultAvatar} alt="Profile" className="w-7 h-7 md:w-8 md:h-8 rounded-full object-cover ring-2 ring-white shadow-sm"/>
                   <div className="hidden md:block text-left leading-tight">
                     <p className="text-xs font-bold text-slate-800 max-w-[100px] truncate">{displayName}</p>
@@ -295,6 +301,9 @@ const Navbar: React.FC = () => {
                         <Link to={profileLink} onClick={() => setShowProfileDropdown(false)} className="flex items-center gap-3 px-3 py-2 text-sm font-medium text-slate-600 rounded-xl hover:bg-slate-50 hover:text-blue-600 transition-colors">
                           <User className="w-4 h-4" /> My Profile
                         </Link>
+                        <button onClick={() => { setShowProfileDropdown(false); startTour(); }} className="w-full flex items-center gap-3 px-3 py-2 text-sm font-medium text-slate-600 rounded-xl hover:bg-slate-50 hover:text-blue-600 transition-colors">
+                          <Compass className="w-4 h-4" /> Take a Tour
+                        </button>
                         <button onClick={handleLogout} className="w-full flex items-center gap-3 px-3 py-2 text-sm font-medium text-rose-600 rounded-xl hover:bg-rose-50 transition-colors">
                           <LogOut className="w-4 h-4" /> Sign Out
                         </button>

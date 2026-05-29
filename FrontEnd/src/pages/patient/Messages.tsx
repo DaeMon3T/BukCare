@@ -176,8 +176,8 @@ const PatientMessages: React.FC = () => {
                     </button>
                 </div>
 
-                <div className="h-full w-full md:w-80 lg:w-96 min-w-[20rem]">
-                    <ChatList 
+                <div data-tour="messages-list" className="h-full w-full md:w-80 lg:w-96 min-w-[20rem]">
+                    <ChatList
                         conversations={conversations}
                         activeChat={activeChat}
                         onSelectChat={(chat) => { 
