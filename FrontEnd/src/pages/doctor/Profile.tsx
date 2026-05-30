@@ -92,8 +92,8 @@ const EditProfileModal = ({
                         <input 
                             type="number" 
                             name="consultation_fee" 
-                            value={formData.consultation_fee || ""} 
-                            onChange={handleChange} 
+                            value={formData.consultation_fee ?? ""}
+                            onChange={handleChange}
                             className="w-full pl-8 p-3.5 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-none bg-slate-50/50 font-bold text-slate-700" 
                             placeholder="e.g. 500"
                         />
@@ -288,6 +288,9 @@ export default function DoctorProfile() {
     }
     if (name === "sex") {
       setFormData((prev) => ({...prev, sex: value === "true" ? true : value === "false" ? false : null}));
+    } else if (name === "consultation_fee") {
+      // Keep as a number so 0 is preserved; empty field clears it instead of sending ""
+      setFormData((prev) => ({ ...prev, consultation_fee: value === "" ? undefined : Number(value) }));
     } else {
       setFormData((prev) => ({ ...prev, [name]: value }));
     }
@@ -301,8 +304,10 @@ export default function DoctorProfile() {
       setUser(updatedUser);
 
       // 2. Update Doctor Table
+      // Send null (not undefined/"") when the field is blank so axios keeps the key
+      // and the backend can distinguish "leave unchanged" from a real value like 0.
       await api.put('/doctors/profile/me', {
-          consultation_fee: formData.consultation_fee,
+          consultation_fee: formData.consultation_fee ?? null,
           bio: formData.bio,
           status: formData.status
       });
@@ -633,7 +638,7 @@ export default function DoctorProfile() {
                             </div>
                         </div>
                         <p className="text-2xl font-black text-slate-800">
-                            ₱ {formData.consultation_fee || doctorData?.consultation_fee || "500"}
+                            ₱ {doctorData?.consultation_fee ?? formData.consultation_fee ?? 0}
                         </p>
                     </div>
                 </div>
