@@ -150,7 +150,16 @@ async def security_middleware_handler(request: Request, call_next):
     response.headers["X-XSS-Protection"] = "1; mode=block"
     response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-    response.headers["Content-Security-Policy"] = "default-src 'self'"
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://challenges.cloudflare.com; "
+        "frame-src 'self' https://challenges.cloudflare.com; "
+        "style-src 'self' 'unsafe-inline'; "
+        "connect-src 'self' https://challenges.cloudflare.com https://api.bukcare.com wss://api.bukcare.com; "
+        "img-src 'self' data: https:; "
+        "worker-src 'self' blob:; "
+        "font-src 'self' data: https:;"
+    )
     
     return response
 

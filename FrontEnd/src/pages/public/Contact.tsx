@@ -422,6 +422,7 @@ const Contact: React.FC = () => {
       </section>
 
       <Footer />
+      
     </div>
   );
 };

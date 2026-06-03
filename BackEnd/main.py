@@ -40,19 +40,11 @@ def create_app() -> FastAPI:
     # CORS (MUST be first)
     # ============================================================
     app.add_middleware(
-        CORSMiddleware,
-        allow_origins=[
-            "http://localhost:5173",
-            "http://127.0.0.1:5173",
-            "http://192.168.4.147:5173",
-            "https://county-elsewhere-voter.ngrok-free.dev",
-            "https://bukcare.com",
-            "https://www.bukcare.com",
-            "https://bukcare.pages.dev",
-        ],
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
+    CORSMiddleware,
+    allow_origins=settings.allowed_origins_list,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
     )
 
     # ============================================================
