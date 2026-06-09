@@ -1,68 +1,94 @@
-# ==============================
-# Backend / FastAPI
-# ==============================
-BackEnd/__pycache__/
-BackEnd/*.py[cod]
-BackEnd/*.pyo
-BackEnd/*.env
-BackEnd/logs/
-BackEnd/.venv/
-BackEnd/venv/
-BackEnd/.env.development
-BackEnd/.env copy.development
-BackEnd/.env.production
-BackEnd/clean_cache.sh
-BackEnd/init_migration.sh
-BackEnd/Postgres*
+# ============================================================
+# BUKCARE PROJECT - CONSOLIDATED GITIGNORE
+# ============================================================
 
-# # Python caches
+# ------------------------------------------------------------
+# Environment & Secrets (NEVER COMMIT)
+# ------------------------------------------------------------
+.env
+.env.*
+*.env
+*.env.*
+*.env copy*
+*.env.bak
+.venv/
+venv/
+env/
+
+# ------------------------------------------------------------
+# Backend (Python / FastAPI / Alembic)
+# ------------------------------------------------------------
 **/__pycache__/
 **/*.py[cod]
-
-
-# Alembic compiled files
+**/*.pyo
+**/*.pyd
+BackEnd/logs/
+*.log
+.pytest_cache/
+.coverage
+.cache
+.ruff_cache/
+.mypy_cache/
 BackEnd/alembic/__pycache__/
 BackEnd/alembic/versions/__pycache__/
 
-# ==============================
-# Frontend / Node
-# ==============================
-FrontEnd/node_modules/
-FrontEnd/dist/
-FrontEnd/build/
-FrontEnd/.env
-FrontEnd/.env.development
-FrontEnd/.env.production
+# ------------------------------------------------------------
+# Frontend (Node / React / Vite)
+# ------------------------------------------------------------
+**/node_modules/
+**/dist/
+**/build/
+.vite/
+.eslintcache
+*.tsbuildinfo
+npm-debug.log*
+yarn-debug.log*
 
+# ------------------------------------------------------------
+# Database
+# ------------------------------------------------------------
+Postgres/
+BackEnd/Postgres*
+*.db
+*.sqlite3
 
-# ==============================
-# IDE / OS files
-# ==============================
+# ------------------------------------------------------------
+# IDE, Editors & OS
+# ------------------------------------------------------------
 .vscode/
 .idea/
 .DS_Store
+Thumbs.db
+desktop.ini
 *.swp
 *.swo
+*.swn
+.history/
 
+# ------------------------------------------------------------
+# Project Specific Scripts & Testing
+# ------------------------------------------------------------
 start_backend.sh
 start_frontend.sh
 start.sh
 stop.sh
+BackEnd/clean_cache.sh
+BackEnd/init_migration.sh
 test_complete_app.py
 test_connection.py
 
-#docker
-docker-compose.yml
+# ------------------------------------------------------------
+# Docker
+# ------------------------------------------------------------
+# Keeping docker-compose.yml here if you prefer to keep it local-only,
+# but usually, it is recommended to commit it.
+# docker-compose.yml
+docker-compose.override.yml
+.docker/
 
-# Database
-Postgres/
-
-*.pyc
-
-__pycache__/
-*.pyc
-
-# Node / React / Vite
-node_modules/
-.vite/
-dist/
+# ------------------------------------------------------------
+# Misc
+# ------------------------------------------------------------
+*.zip
+*.tar.gz
+*.egg-info/
