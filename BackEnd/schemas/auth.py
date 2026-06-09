@@ -1,12 +1,9 @@
 from pydantic import BaseModel, EmailStr, Field, validator, conint
 from typing import Optional, List
 from datetime import date, datetime
-
-
 # ==========================
 # 🔐 AUTHENTICATION SCHEMAS
 # ==========================
-
 class RegisterRequest(BaseModel):
     """User registration request"""
     email: EmailStr

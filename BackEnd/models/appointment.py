@@ -4,7 +4,6 @@ from datetime import datetime
 from core.database import Base
 import enum
 
-
 class AppointmentStatus(str, enum.Enum):
     PENDING = "pending"
     CONFIRMED = "confirmed"
@@ -17,7 +16,6 @@ class AppointmentStatus(str, enum.Enum):
 class AppointmentType(str, enum.Enum):
     ONLINE = "online"
     WALK_IN = "walk_in"
-
 
 class Appointment(Base):
     __tablename__ = "appointments"
