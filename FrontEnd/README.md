@@ -1,12 +1,49 @@
-# React + Vite
+# BukCare Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+This is the React-based frontend for the BukCare Appointment System, built with Vite and Tailwind CSS.
 
-Currently, two official plugins are available:
+## Prerequisites
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **Node.js 18+**
+- **npm** or **yarn**
 
-## Expanding the ESLint configuration
+## Local Setup
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+1. **Navigate to the Frontend directory:**
+   ```bash
+   cd FrontEnd
+   ```
+
+2. **Install dependencies:**
+   ```bash
+   npm install
+   ```
+
+3. **Configure Environment Variables:**
+   - Create a `.env` file in the `FrontEnd` directory.
+   - Required variables usually include:
+     - `VITE_API_URL` (Point this to your Backend API, e.g., `http://localhost:8000/v1`)
+     - `VITE_GOOGLE_CLIENT_ID` (For Google OAuth)
+
+4. **Run the Development Server:**
+   ```bash
+   npm run dev
+   ```
+   The application will be available at `http://localhost:5173`.
+
+## Build for Production
+
+```bash
+npm run build
+```
+This generates a `dist` folder ready to be served by a web server like Nginx.
+
+## Key Technologies
+
+- **React 19:** UI library.
+- **Vite:** Next-generation frontend tooling.
+- **Tailwind CSS 4:** Utility-first CSS framework.
+- **Framer Motion & GSAP:** Smooth animations.
+- **Lucide React:** Icon set.
+- **React Router Dom:** Navigation and routing.
+- **Axios:** HTTP client for API requests.
